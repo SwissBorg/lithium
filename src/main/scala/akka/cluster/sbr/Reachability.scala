@@ -1,4 +1,4 @@
-package akka.sbr
+package akka.cluster.sbr
 
 import akka.cluster.ClusterEvent._
 import akka.cluster.Member
@@ -20,10 +20,10 @@ final case class Reachability private (reachableNodes: SortedSet[Member], unreac
    *
    * Note:
    *   Reachability events might convey the same information as a member event.
-   *   However, since [[reachabilityEvent()]] and [[clusterEvent()]] are idempotent
+   *   However, since [[reachabilityEvent()]] and [[memberEvent()]] are idempotent
    *   this is not a problem.
    */
-  def clusterEvent(event: MemberEvent): Reachability = event match {
+  def memberEvent(event: MemberEvent): Reachability = event match {
     case MemberJoined(member) => becomeReachable(member)
     case MemberUp(member)     => becomeReachable(member)
     case MemberLeft(member)   => becomeReachable(member)
@@ -41,7 +41,7 @@ final case class Reachability private (reachableNodes: SortedSet[Member], unreac
    *
    * Note:
    *   Reachability events might convey the same information as a member event.
-   *   However, since [[reachabilityEvent()]] and [[clusterEvent()]] are idempotent
+   *   However, since [[reachabilityEvent()]] and [[memberEvent()]] are idempotent
    *   this is not a problem.
    */
   def reachabilityEvent(event: ReachabilityEvent): Reachability = event match {

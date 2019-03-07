@@ -1,4 +1,4 @@
-package akka.sbr
+package akka.cluster.sbr
 
 import akka.actor.{Actor, ActorLogging, Cancellable, Props}
 import akka.cluster.Cluster
@@ -44,7 +44,7 @@ class StaticQuorumDowner(cluster: Cluster, quorumSize: QuorumSize, stableAfter: 
    */
   private def clusterMovement(reachability: Reachability, stabilityTrigger: Cancellable): Receive = {
     case e: MemberEvent =>
-      val reachability0 = reachability.clusterEvent(e)
+      val reachability0 = reachability.memberEvent(e)
       // Only reset trigger if the event impacted the reachability.
       if (reachability0 != reachability) {
         resetStabilityTrigger(reachability0, stabilityTrigger)

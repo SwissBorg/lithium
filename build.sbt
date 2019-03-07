@@ -36,13 +36,9 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion % Test,
   "org.typelevel" %% "cats-testkit" % "1.1.0" % Test,
   "com.github.alexarchambault" %% "scalacheck-shapeless_1.13" % "1.1.6" % Test,
+  "eu.timepit" %% "refined-scalacheck" % "0.9.4" % Test,
   "org.scalatest" %% "scalatest" % scalatestVersion % Test
 )
-
-// GRPC
-enablePlugins(AkkaGrpcPlugin)
-enablePlugins(JavaAgent)
-javaAgents += "org.mortbay.jetty.alpn" % "jetty-alpn-agent" % "2.0.9" % "runtime;test"
 
 lazy val root = (project in file("."))
   .enablePlugins(MultiJvmPlugin)

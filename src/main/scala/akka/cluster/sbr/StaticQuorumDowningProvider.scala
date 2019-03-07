@@ -1,4 +1,4 @@
-package akka.sbr
+package akka.cluster.sbr
 
 import akka.actor.{ActorSystem, Props}
 import akka.cluster.DowningProvider

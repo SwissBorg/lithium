@@ -1,4 +1,4 @@
-package akka.sbr
+package akka.cluster.sbr
 
 import akka.actor.Address
 import monocle.Getter
@@ -16,6 +16,8 @@ object ResolutionStrategy {
       /**
        * If we decide DownReachable the entire cluster will shutdown. Always?
        * If we decide DownUnreachable we might create a SB if there's actually quorum in the unreachable
+       *
+       * Either way this happens when `quorumSize` is less than half of the cluster. That SHOULD be logged! TODO
        */
       case (_: ReachableQuorum, _: UnreachablePotentialQuorum) => ???
 

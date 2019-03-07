@@ -1,4 +1,4 @@
-package akka
+package akka.cluster
 
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive

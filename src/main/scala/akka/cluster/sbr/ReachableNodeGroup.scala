@@ -1,4 +1,4 @@
-package akka.sbr
+package akka.cluster.sbr
 
 import akka.cluster.Member
 import cats.data.NonEmptySet
