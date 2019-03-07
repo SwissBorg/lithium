@@ -1,24 +1,82 @@
 package akka.sbr
 
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, ActorLogging, Cancellable, Props}
 import akka.cluster.Cluster
-import akka.cluster.ClusterEvent.{InitialStateAsEvents, UnreachableMember}
+import akka.cluster.ClusterEvent._
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
 class StaticQuorumDowner(cluster: Cluster, quorumSize: QuorumSize, stableAfter: FiniteDuration)
     extends Actor
     with ActorLogging {
+  import StaticQuorumDowner._
 
-  override def receive: Receive = {
-    case UnreachableMember(_) =>
+  // TODO is this one ok?
+  implicit private val ec: ExecutionContext = context.system.dispatcher
+
+  override def receive: Receive = waitingForSnapshot
+
+  /**
+   * Waits for the state snapshot we should get after having
+   * subscribed to the cluster's state with the initial
+   * state as snapshot.
+   */
+  private def waitingForSnapshot: Receive = {
+    case state: CurrentClusterState => setStabilityTrigger(Reachability(state))
+    case _                          => () // ignore // TODO needed?
   }
 
-  def handle(): Unit =
-    ReachableNodeGroup(cluster.state, quorumSize)
+  def mainReceive(reachability: Reachability, stabilityTrigger: Cancellable): Receive =
+    clusterStable(reachability, stabilityTrigger).orElse(clusterMovement(reachability, stabilityTrigger))
+
+  /**
+   * Listens to a stable cluster signal, detects a split-brain and attempts to resolve it.
+   */
+  private def clusterStable(reachability: Reachability, stabilityTrigger: Cancellable): Receive = {
+    case ClusterIsStable =>
+      handleUnreachableNodes(reachability)
+      resetStabilityTrigger(reachability, stabilityTrigger)
+  }
+
+  /**
+   * Listens to cluster movements and resets the stability trigger when necessary.
+   */
+  private def clusterMovement(reachability: Reachability, stabilityTrigger: Cancellable): Receive = {
+    case e: MemberEvent =>
+      val reachability0 = reachability.clusterEvent(e)
+      // Only reset trigger if the event impacted the reachability.
+      if (reachability0 != reachability) {
+        resetStabilityTrigger(reachability0, stabilityTrigger)
+      }
+
+    case e: UnreachableMember => // TODO check what really should be counted
+      val reachability0 = reachability.reachabilityEvent(e)
+      // Only reset trigger if the event impacted the reachability.
+      if (reachability0 != reachability) {
+        resetStabilityTrigger(reachability0, stabilityTrigger)
+      }
+
+      resetStabilityTrigger(reachability, stabilityTrigger)
+  }
+
+  private def setStabilityTrigger(reachability: Reachability): Unit =
+    context.become(mainReceive(reachability, scheduleStabilityMessage()))
+
+  private def resetStabilityTrigger(reachability: Reachability, stabilityTrigger: Cancellable): Unit = {
+    stabilityTrigger.cancel()
+    setStabilityTrigger(reachability)
+  }
+
+  /**
+   * Attemps to resolve a split-brain issue if there is one using
+   * the static-quorum strategy.
+   */
+  private def handleUnreachableNodes(reachability: Reachability): Unit =
+    ReachableNodeGroup(reachability, quorumSize)
       .map { reachableNodeGroup =>
-        Decision
-          .staticQuorum(reachableNodeGroup, UnreachableNodeGroup(cluster.state, quorumSize))
+        ResolutionStrategy
+          .staticQuorum(reachableNodeGroup, UnreachableNodeGroup(reachability, quorumSize))
           .addressesToDown
           .foreach(cluster.down)
       }
@@ -27,19 +85,11 @@ class StaticQuorumDowner(cluster: Cluster, quorumSize: QuorumSize, stableAfter: 
         throw new IllegalStateException(s"Oh fuck... $err")
       }, identity)
 
-//
-//  val a: MemberStatus = a match {
-//    case MemberStatus.Joining  =>
-//    case MemberStatus.WeaklyUp =>
-//    case MemberStatus.Up       =>
-//    case MemberStatus.Leaving  =>
-//    case MemberStatus.Exiting  =>
-//    case MemberStatus.Down     =>
-//    case MemberStatus.Removed  =>
-//  }
+  private def scheduleStabilityMessage(): Cancellable =
+    context.system.scheduler.scheduleOnce(stableAfter, self, ClusterIsStable)
 
   override def preStart(): Unit =
-    cluster.subscribe(self, InitialStateAsEvents, classOf[UnreachableMember])
+    cluster.subscribe(self, InitialStateAsSnapshot, classOf[UnreachableMember], classOf[MemberEvent])
 
   override def postStop(): Unit =
     cluster.unsubscribe(self)
@@ -48,4 +98,6 @@ class StaticQuorumDowner(cluster: Cluster, quorumSize: QuorumSize, stableAfter: 
 object StaticQuorumDowner {
   def props(cluster: Cluster, quorumSize: QuorumSize, stableAfter: FiniteDuration): Props =
     Props(new StaticQuorumDowner(cluster, quorumSize, stableAfter))
+
+  final case object ClusterIsStable
 }

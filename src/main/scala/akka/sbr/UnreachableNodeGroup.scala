@@ -9,8 +9,8 @@ import scala.collection.immutable.SortedSet
 sealed abstract class UnreachableNodeGroup
 
 object UnreachableNodeGroup {
-  def apply[S: ClusterState](state: S, quorumSize: QuorumSize): UnreachableNodeGroup = {
-    val unreachableNodes = ClusterState[S].unreachableNodes(state)
+  def apply(reachability: Reachability, quorumSize: QuorumSize): UnreachableNodeGroup = {
+    val unreachableNodes = reachability.unreachableNodes
 
     if (unreachableNodes.isEmpty) (new EmptyUnreachable() {})
     else {

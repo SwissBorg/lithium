@@ -7,9 +7,9 @@ import eu.timepit.refined.auto._
 sealed abstract class ReachableNodeGroup extends Product with Serializable
 
 object ReachableNodeGroup {
-  def apply[S: ClusterState](state: S,
-                             quorumSize: QuorumSize): Either[NoReachableNodesError.type, ReachableNodeGroup] = {
-    val reachableNodes = ClusterState[S].reachableNodes(state)
+  def apply(reachability: Reachability,
+            quorumSize: QuorumSize): Either[NoReachableNodesError.type, ReachableNodeGroup] = {
+    val reachableNodes = reachability.reachableNodes
 
     if (reachableNodes.isEmpty) Left(NoReachableNodesError)
     else {
