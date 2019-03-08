@@ -1,74 +1,86 @@
 package akka.cluster.sbr
 
 import akka.cluster.ClusterEvent._
-import org.scalacheck.Prop.{forAll, BooleanOperators}
-import org.scalacheck.Properties
+import akka.cluster.Member
+import org.scalacheck.Prop._
+import org.scalacheck.{Prop, Properties}
+import akka.cluster.sbr.ArbitraryInstances._
 
-class ReachabilitySpec extends Properties("ReachableNodeGroup") {
-  property("weakly-up") = forAll { (reachability: Reachability, memberWeaklyUp: MemberWeaklyUp) =>
-    reachability.memberEvent(memberWeaklyUp) == reachability
+class ReachabilitySpec extends Properties("Reachability") {
+  import ReachabilitySpec._
+
+  property("reachability") = forAll { reachability: Reachability =>
+    noIntersection(reachability)
   }
 
-  property("member-removed") = forAll { (reachability: Reachability, memberRemoved: MemberRemoved) =>
-    (reachability.reachableNodes.contains(memberRemoved.member) || reachability.unreachableNodes.contains(
-      memberRemoved.member
-    )) ==> {
-      val reachability0 = reachability.memberEvent(memberRemoved)
+  property("memberEvent") = forAll { (reachability: Reachability, memberEvent: MemberEvent) =>
+    memberEvent match {
+      case _: MemberWeaklyUp => reachability.memberEvent(memberEvent) == reachability
 
-      !reachability0.reachableNodes.contains(memberRemoved.member) && !reachability0.unreachableNodes.contains(
-        memberRemoved.member
-      )
+      case _: MemberRemoved =>
+        val reachability0 = reachability.memberEvent(memberEvent)
+        !memberReachable(reachability0, memberEvent.member) && !memberUnreachable(reachability0, memberEvent.member)
+
+      case _ =>
+        val reachability0 = reachability.memberEvent(memberEvent)
+        memberReachable(reachability0, memberEvent.member) && !memberUnreachable(reachability0, memberEvent.member)
     }
   }
 
-  property("become reachable 1") = forAll { (reachability: Reachability, memberEvent: MemberEvent) =>
-    (memberEvent match {
-      case _: MemberWeaklyUp | _: MemberRemoved => false
-      case _                                    => true
-    }) ==> {
-      val reachability0 = reachability.memberEvent(memberEvent)
+  property("reachabilityEvent") = forAll { (reachability: Reachability, reachabilityEvent: ReachabilityEvent) =>
+    reachabilityEvent match {
+      case UnreachableMember(member) =>
+        val reachability0 = reachability.reachabilityEvent(reachabilityEvent)
+        !memberReachable(reachability0, member) && memberUnreachable(reachability0, member)
 
-      reachability0.reachableNodes.contains(memberEvent.member) && !reachability0.unreachableNodes.contains(
-        memberEvent.member
-      )
+      case ReachableMember(member) =>
+        val reachability0 = reachability.reachabilityEvent(reachabilityEvent)
+        memberReachable(reachability0, member) && !memberUnreachable(reachability0, member)
     }
   }
 
-  property("become reachable 2") = forAll { (reachability: Reachability, reachableMember: ReachableMember) =>
-    val reachability0 = reachability.reachabilityEvent(reachableMember)
-
-    reachability0.reachableNodes.contains(reachableMember.member) && !reachability0.unreachableNodes.contains(
-      reachableMember.member
-    )
-  }
-
-  property("become unreachable") = forAll { (reachability: Reachability, unreachableMember: UnreachableMember) =>
-    val reachability0 = reachability.reachabilityEvent(unreachableMember)
-
-    !reachability0.reachableNodes.contains(unreachableMember.member) && reachability0.unreachableNodes.contains(
-      unreachableMember.member
-    )
-  }
-
-  property("memberEvent creates no overlaps") = forAll {
-    (reachability: Reachability, memberEvents: List[MemberEvent]) =>
-      (reachability.reachableNodes.intersect(reachability.unreachableNodes) == Set.empty) ==> {
-        val reachability0 = memberEvents.foldLeft(reachability) {
-          case (reachability, memberEvent) => reachability.memberEvent(memberEvent)
-        }
-
-        reachability0.reachableNodes.intersect(reachability0.unreachableNodes) == Set.empty
+  property("noIntersection") = forAll {
+    (reachability: Reachability, memberEvents: List[MemberEvent], reachabilityEvents: List[ReachabilityEvent]) =>
+      val reachability0 = memberEvents.foldLeft(reachability) {
+        case (reachability, memberEvent) => reachability.memberEvent(memberEvent)
       }
-  }
 
-  property("reachabilityEvent creates no overlaps") = forAll {
-    (reachability: Reachability, reachabilityEvents: List[ReachabilityEvent]) =>
-      (reachability.reachableNodes.intersect(reachability.unreachableNodes) == Set.empty) ==> {
-        val reachability0 = reachabilityEvents.foldLeft(reachability) {
-          case (reachability, reachabilityEvent) => reachability.reachabilityEvent(reachabilityEvent)
-        }
-
-        reachability0.reachableNodes.intersect(reachability0.unreachableNodes) == Set.empty
+      val reachability1 = reachabilityEvents.foldLeft(reachability0) {
+        case (reachability, reachabilityEvent) => reachability.reachabilityEvent(reachabilityEvent)
       }
+
+      noIntersection(reachability1)
   }
+
+  property("reachableNodes") = forAll { reachability: Reachability =>
+    reachability.reachableNodes.map(_.node).subsetOf(reachability.m.keySet) :| "not a subset" &&
+    reachability.reachableNodes
+      .map(_.node)
+      .forall(n => reachability.m.get(n).forall(_ == Reachable)) :| "not all are reachable"
+  }
+
+  property("unreachableNodes") = forAll { reachability: Reachability =>
+    reachability.unreachableNodes.map(_.node).subsetOf(reachability.m.keySet) :| "not a subset" &&
+    reachability.unreachableNodes
+      .map(_.node)
+      .forall(n => reachability.m.get(n).forall(_ == Unreachable)) :| "not all are unreachable"
+  }
+}
+
+object ReachabilitySpec {
+  def classifyPreExistentMember(reachability: Reachability, member: Member)(prop: Prop): Prop = {
+    def preExistentMember(member: Member): Boolean =
+      memberReachable(reachability, member) || memberUnreachable(reachability, member)
+
+    classify(preExistentMember(member), "pre-existent", "non-existent")(prop)
+  }
+
+  def noIntersection(reachability: Reachability): Boolean =
+    reachability.reachableNodes.map(_.node).intersect(reachability.unreachableNodes.map(_.node)).isEmpty
+
+  def memberReachable(reachability: Reachability, member: Member): Boolean =
+    reachability.reachableNodes.contains(ReachableNode(member))
+
+  def memberUnreachable(reachability: Reachability, member: Member): Boolean =
+    reachability.unreachableNodes.contains(UnreachableNode(member))
 }

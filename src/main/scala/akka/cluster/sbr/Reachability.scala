@@ -1,19 +1,36 @@
 package akka.cluster.sbr
 
-import akka.cluster.ClusterEvent._
+import akka.cluster.ClusterEvent.{ReachableMember => AkkaReachableMember, UnreachableMember => AkkaUnreachableMember, _}
 import akka.cluster.Member
 import akka.cluster.MemberStatus.WeaklyUp
+import cats.data.NonEmptyMap
+import cats.implicits._
+import akka.cluster.Member._
 
-import scala.collection.immutable.SortedSet
+import scala.collection.SortedMap
+import scala.collection.SortedSet
 
 /**
  * Tracks the reachable and unreachable nodes given the [[MemberEvent]]s and [[ReachabilityEvent]]s.
- *
- * @param reachableNodes nodes that are reachable from the current node. Does not count weakly-up nodes
- *                       as they might not be visible from the other side of a potential split.
- * @param unreachableNodes nodes that have flagged as unreachable.
  */
-final case class Reachability private (reachableNodes: SortedSet[Member], unreachableNodes: Set[Member]) {
+final case class Reachability private[sbr] (private[sbr] val m: SortedMap[Member, ReachabilityTag]) {
+
+  /**
+   * Nodes that are reachable from the current node. Does not count weakly-up nodes
+   * as they might not be visible from the other side of a potential split.
+   */
+  def reachableNodes: SortedSet[ReachableNode] =
+    SortedSet(m.collect {
+      case (member, Reachable) => ReachableNode(member)
+    }.toSeq: _*)
+
+  /**
+   * Nodes that have been flagged as unreachable.
+   */
+  def unreachableNodes: SortedSet[UnreachableNode] =
+    SortedSet(m.iterator.collect {
+      case (member, Unreachable) => UnreachableNode(member)
+    }.toSeq: _*)
 
   /**
    * Updates the reachability given the member event.
@@ -45,21 +62,29 @@ final case class Reachability private (reachableNodes: SortedSet[Member], unreac
    *   this is not a problem.
    */
   def reachabilityEvent(event: ReachabilityEvent): Reachability = event match {
-    case UnreachableMember(member) => becomeUnreachable(member)
-    case ReachableMember(member)   => becomeReachable(member) // TODO should remove
+    case AkkaUnreachableMember(member) => becomeUnreachable(member)
+    case AkkaReachableMember(member)   => becomeReachable(member)
   }
 
-  private def becomeUnreachable(member: Member): Reachability =
-    Reachability(reachableNodes - member, unreachableNodes + member)
+  private def remove(member: Member): Reachability = new Reachability(m - member)
 
-  private def becomeReachable(member: Member): Reachability =
-    Reachability(reachableNodes + member, unreachableNodes - member)
+  private def becomeUnreachable(member: Member): Reachability = new Reachability(m + (member -> Unreachable))
 
-  private def remove(member: Member): Reachability =
-    Reachability(reachableNodes - member, unreachableNodes - member)
+  private def becomeReachable(member: Member): Reachability = new Reachability(m + (member -> Reachable))
 }
 
 object Reachability {
-  def apply(state: CurrentClusterState): Reachability =
-    Reachability(state.members.diff(state.unreachable).filterNot(_.status == WeaklyUp), state.unreachable)
+  def apply(state: CurrentClusterState): Reachability = {
+    val unreachableMembers: SortedMap[Member, Unreachable.type] =
+      state.unreachable
+        .map(_ -> Unreachable)(collection.breakOut)
+
+    val reachableMembers: SortedMap[Member, Reachable.type] =
+      state.members
+        .diff(state.unreachable)
+        .filterNot(_.status == WeaklyUp)
+        .map(_ -> Reachable)(collection.breakOut)
+
+    new Reachability(unreachableMembers ++ reachableMembers)
+  }
 }

@@ -49,3 +49,4 @@ lazy val root = (project in file("."))
 scalacOptions += "-Ywarn-unused"
 
 //wartremoverErrors in (Compile, compile) ++= Warts.allBut(Wart.Any, Wart.Nothing, Wart.ImplicitParameter, Wart.Recursion)
+//testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "5")

@@ -10,8 +10,8 @@ import monocle.Getter
 sealed abstract class ResolutionStrategy
 
 object ResolutionStrategy {
-  def staticQuorum(quorum: ReachableNodeGroup, unreachableQuorum: UnreachableNodeGroup): ResolutionStrategy =
-    (quorum, unreachableQuorum) match {
+  def staticQuorum(reachableNodes: ReachableNodes, unreachableNodes: UnreachableNodes): ResolutionStrategy =
+    (reachableNodes, unreachableNodes) match {
 
       /**
        * If we decide DownReachable the entire cluster will shutdown. Always?
@@ -19,7 +19,8 @@ object ResolutionStrategy {
        *
        * Either way this happens when `quorumSize` is less than half of the cluster. That SHOULD be logged! TODO
        */
-      case (_: ReachableQuorum, _: UnreachablePotentialQuorum) => ???
+      case (reachableQuorum: ReachableQuorum, _: UnreachablePotentialQuorum) =>
+        new UnsafeDownReachable(reachableQuorum) {}
 
       /**
        * This side is the quorum, the other side should be downed.
@@ -50,9 +51,10 @@ object ResolutionStrategy {
    * Gets the addresses of the members that should be downed.
    */
   val addressesToDown: Getter[ResolutionStrategy, Set[Address]] = Getter[ResolutionStrategy, Set[Address]] {
-    case DownReachable(nodeGroup)   => nodeGroup.nodes.toSortedSet.map(_.address)
-    case DownUnreachable(nodeGroup) => nodeGroup.nodes.toSortedSet.map(_.address)
-    case _: Idle                    => Set.empty
+    case DownReachable(nodeGroup)       => nodeGroup.reachableNodes.toSortedSet.map(_.node.address)
+    case DownUnreachable(nodeGroup)     => nodeGroup.unreachableNodes.toSortedSet.map(_.node.address)
+    case UnsafeDownReachable(nodeGroup) => nodeGroup.reachableNodes.toSortedSet.map(_.node.address)
+    case _: Idle                        => Set.empty
   }
 
   implicit class DecisionOps(private val decision: ResolutionStrategy) extends AnyVal {
@@ -68,6 +70,11 @@ object ResolutionStrategy {
  * The reachable nodes should be downed.
  */
 sealed abstract case class DownReachable(nodeGroup: ReachableSubQuorum) extends ResolutionStrategy
+
+/**
+ * TODO doc!
+ */
+sealed abstract case class UnsafeDownReachable(nodeGroup: ReachableQuorum) extends ResolutionStrategy
 
 /**
  * The unreachable nodes should be downed.

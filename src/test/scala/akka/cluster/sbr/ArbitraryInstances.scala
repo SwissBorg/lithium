@@ -1,72 +1,86 @@
-package akka.cluster
+package akka.cluster.sbr
 
 import akka.actor.Address
-import akka.cluster.{Reachability => _}
 import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus._
-import org.scalacheck.Arbitrary.arbitrary
-import org.scalacheck.{Arbitrary, Gen}
+import akka.cluster.{Member, MemberStatus, UniqueAddress, Reachability => _}
+import eu.timepit.refined._
+import eu.timepit.refined.numeric.Positive
+import org.scalacheck.Arbitrary
+import org.scalacheck.Arbitrary._
+import org.scalacheck.Gen._
 import shapeless.tag
 import shapeless.tag.@@
 
-import scala.collection.immutable.SortedSet
+import scala.collection.immutable.SortedMap
 
-package object sbr {
+object ArbitraryInstances {
   sealed trait JoiningTag
-  sealed trait WeaklyUpTag
-  sealed trait UpTag
-  sealed trait LeavingTag
-  sealed trait ExitingTag
-  sealed trait DownTag
-  sealed trait RemovedTag
-
   type JoiningMember = Member @@ JoiningTag
+
+  sealed trait WeaklyUpTag
   type WeaklyUpMember = Member @@ WeaklyUpTag
+
+  sealed trait UpTag
   type UpMember = Member @@ UpTag
+
+  sealed trait LeavingTag
   type LeavingMember = Member @@ LeavingTag
+
+  sealed trait ExitingTag
   type ExitingMember = Member @@ ExitingTag
+
+  sealed trait DownTag
   type DownMember = Member @@ DownTag
+
+  sealed trait RemovedTag
   type RemovedMember = Member @@ RemovedTag
 
-  implicit val arbReachibility: Arbitrary[Reachability] = Arbitrary(
-    for {
-      reachableNodes <- arbitrary[SortedSet[Member]]
-      unreachableNodes <- arbitrary[Set[Member]]
-    } yield Reachability(reachableNodes, unreachableNodes)
+  implicit val arbReachability: Arbitrary[Reachability] = Arbitrary(
+    arbitrary[Seq[(Member, ReachabilityTag)]].map(m => new Reachability(SortedMap(m: _*)))
   )
 
-  implicit val arbJoiningMember: Arbitrary[JoiningMember] =
-    Arbitrary(for {
+  implicit val arbReachabilityTag: Arbitrary[ReachabilityTag] =
+    Arbitrary(oneOf(Reachable, Unreachable))
+
+  implicit val arbJoiningMember: Arbitrary[JoiningMember] = Arbitrary {
+    val randJoiningMember = for {
       uniqueAddress <- arbitrary[UniqueAddress]
       datacenter <- arbitrary[String]
-    } yield tag[JoiningTag][Member](Member(uniqueAddress, Set(s"dc-$datacenter"))))
+    } yield tag[JoiningTag][Member](Member(uniqueAddress, Set(s"dc-$datacenter")))
+
+    oneOf(
+      randJoiningMember,
+      const(tag[JoiningTag][Member](Member(UniqueAddress(Address("proto", "sys"), 0L), Set(s"dc-def"))))
+    )
+  }
 
   implicit val arbWeaklyUpMember: Arbitrary[WeaklyUpMember] = Arbitrary(
-    arbJoiningMember.arbitrary.map(m => tag[WeaklyUpTag][Member](m.copy(WeaklyUp)))
+    arbitrary[JoiningMember].map(m => tag[WeaklyUpTag][Member](m.copy(WeaklyUp)))
   )
 
   implicit val arbUpMember: Arbitrary[UpMember] = Arbitrary(
-    arbJoiningMember.arbitrary.map(m => tag[UpTag][Member](m.copy(Up)))
+    arbitrary[JoiningMember].map(m => tag[UpTag][Member](m.copy(Up)))
   )
 
   implicit val arbLeavingMember: Arbitrary[LeavingMember] = Arbitrary(
-    arbJoiningMember.arbitrary.map(m => tag[LeavingTag][Member](m.copy(Leaving)))
+    arbitrary[JoiningMember].map(m => tag[LeavingTag][Member](m.copy(Leaving)))
   )
 
   implicit val arbDownMember: Arbitrary[DownMember] = Arbitrary(
-    arbJoiningMember.arbitrary.map(m => tag[DownTag][Member](m.copy(Down)))
+    arbitrary[JoiningMember].map(m => tag[DownTag][Member](m.copy(Down)))
   )
 
   implicit val arbRemovedMember: Arbitrary[RemovedMember] = Arbitrary(
-    arbJoiningMember.arbitrary.map(m => tag[RemovedTag][Member](m.copy(Removed)))
+    arbitrary[JoiningMember].map(m => tag[RemovedTag][Member](m.copy(Removed)))
   )
 
   implicit val arbExitingMember: Arbitrary[ExitingMember] = Arbitrary(
-    arbLeavingMember.arbitrary.map(m => tag[ExitingTag][Member](m.copy(Exiting)))
+    arbitrary[LeavingMember].map(m => tag[ExitingTag][Member](m.copy(Exiting)))
   )
 
   implicit val arbMember: Arbitrary[Member] = Arbitrary(
-    Gen.oneOf(
+    oneOf(
       arbWeaklyUpMember.arbitrary,
       arbUpMember.arbitrary,
       arbLeavingMember.arbitrary,
@@ -75,6 +89,12 @@ package object sbr {
       arbExitingMember.arbitrary
     )
   )
+
+  implicit val arbReachableNode: Arbitrary[ReachableNode] =
+    Arbitrary(arbMember.arbitrary.map(ReachableNode(_)))
+
+  implicit val arbUnreachableNode: Arbitrary[UnreachableNode] =
+    Arbitrary(arbMember.arbitrary.map(UnreachableNode(_)))
 
   implicit val arbUniqueAddress: Arbitrary[UniqueAddress] =
     Arbitrary(for {
@@ -89,7 +109,7 @@ package object sbr {
     } yield Address(protocol, system, None, None))
 
   implicit val arbMemberStatusFromJoining: Arbitrary[MemberStatus] =
-    Arbitrary(Gen.oneOf[MemberStatus](WeaklyUp, WeaklyUp))
+    Arbitrary(oneOf[MemberStatus](WeaklyUp, WeaklyUp))
 
   implicit val arbMemberJoined: Arbitrary[MemberJoined] = Arbitrary(
     arbitrary[JoiningMember].map(MemberJoined)
@@ -120,7 +140,7 @@ package object sbr {
   )
 
   implicit val arbMemberEvent: Arbitrary[MemberEvent] = Arbitrary(
-    Gen.oneOf(
+    oneOf(
       arbMemberJoined.arbitrary,
       arbMemberUp.arbitrary,
       arbMemberLeft.arbitrary,
@@ -140,6 +160,24 @@ package object sbr {
   )
 
   implicit val arbReachabilityEvent: Arbitrary[ReachabilityEvent] = Arbitrary(
-    Gen.oneOf(arbUnreachableMember.arbitrary, arbReachableMember.arbitrary)
+    oneOf(arbitrary[UnreachableMember], arbitrary[ReachableMember])
+  )
+
+  implicit val arbQuorumSize: Arbitrary[QuorumSize] = Arbitrary {
+    posNum[Long].map(refineV[Positive](_).right.get) // trust me
+  }
+
+  implicit val arbReachableNodes: Arbitrary[Either[NoReachableNodesError.type, ReachableNodes]] = Arbitrary(
+    for {
+      reachability <- arbitrary[Reachability]
+      quorumSize <- arbitrary[QuorumSize]
+    } yield ReachableNodes(reachability, quorumSize)
+  )
+
+  implicit val arbUnreachableNodes: Arbitrary[UnreachableNodes] = Arbitrary(
+    for {
+      reachability <- arbitrary[Reachability]
+      quorumSize <- arbitrary[QuorumSize]
+    } yield UnreachableNodes(reachability, quorumSize)
   )
 }

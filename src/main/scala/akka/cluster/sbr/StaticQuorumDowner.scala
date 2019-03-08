@@ -50,7 +50,7 @@ class StaticQuorumDowner(cluster: Cluster, quorumSize: QuorumSize, stableAfter: 
         resetStabilityTrigger(reachability0, stabilityTrigger)
       }
 
-    case e: UnreachableMember => // TODO check what really should be counted
+    case e: ReachabilityEvent => // TODO check what really should be counted
       val reachability0 = reachability.reachabilityEvent(e)
       // Only reset trigger if the event impacted the reachability.
       if (reachability0 != reachability) {
@@ -73,10 +73,10 @@ class StaticQuorumDowner(cluster: Cluster, quorumSize: QuorumSize, stableAfter: 
    * the static-quorum strategy.
    */
   private def handleUnreachableNodes(reachability: Reachability): Unit =
-    ReachableNodeGroup(reachability, quorumSize)
+    ReachableNodes(reachability, quorumSize)
       .map { reachableNodeGroup =>
         ResolutionStrategy
-          .staticQuorum(reachableNodeGroup, UnreachableNodeGroup(reachability, quorumSize))
+          .staticQuorum(reachableNodeGroup, UnreachableNodes(reachability, quorumSize))
           .addressesToDown
           .foreach(cluster.down)
       }
@@ -89,7 +89,7 @@ class StaticQuorumDowner(cluster: Cluster, quorumSize: QuorumSize, stableAfter: 
     context.system.scheduler.scheduleOnce(stableAfter, self, ClusterIsStable)
 
   override def preStart(): Unit =
-    cluster.subscribe(self, InitialStateAsSnapshot, classOf[UnreachableMember], classOf[MemberEvent])
+    cluster.subscribe(self, InitialStateAsSnapshot, classOf[UnreachableNode], classOf[MemberEvent])
 
   override def postStop(): Unit =
     cluster.unsubscribe(self)
