@@ -3,6 +3,7 @@ package akka.cluster.sbr
 import org.scalacheck.Prop._
 import org.scalacheck.{Prop, Properties}
 import akka.cluster.sbr.ArbitraryInstances._
+import cats.implicits._
 
 class ResolutionStrategySpec extends Properties("ResolutionStrategy") {
   import ResolutionStrategySpec._
@@ -44,9 +45,26 @@ class ResolutionStrategySpec extends Properties("ResolutionStrategy") {
       }
   }
 
-  property("bla") = forAll { splitScenario: SplitScenario =>
-    true
-  }
+//  property("bla") = forAll { (splitScenario: Scenario, quorumSize: QuorumSize) =>
+//    val a: Int = splitScenario.worldViews
+//      .traverse { reachability =>
+//        ReachableNodes(reachability, quorumSize)
+//          .map { reachableNodeGroup =>
+//            ResolutionStrategy
+//              .staticQuorum(reachableNodeGroup, UnreachableNodes(reachability, quorumSize)) match {
+//              case DownReachable(_)       => 0
+//              case UnsafeDownReachable(_) => 0
+//              case DownUnreachable(_)     => 1
+//              case Idle()                 => 1
+//            }
+//          }
+//      }
+//      .fold(_ => -1, _.sum)
+//
+//    println(a)
+//    println(s"---- ${splitScenario.worldViews.size}")
+//    a <=1
+//  }
 }
 
 object ResolutionStrategySpec {

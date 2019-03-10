@@ -8,7 +8,7 @@ import scala.collection.immutable.SortedSet
 sealed abstract class UnreachableNodes
 
 object UnreachableNodes {
-  def apply(reachability: Reachability, quorumSize: QuorumSize): UnreachableNodes = {
+  def apply(reachability: WorldView, quorumSize: QuorumSize): UnreachableNodes = {
     val unreachableNodes = reachability.unreachableNodes
 
     if (unreachableNodes.isEmpty) (new EmptyUnreachable() {})

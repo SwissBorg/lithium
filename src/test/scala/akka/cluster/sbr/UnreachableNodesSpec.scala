@@ -1,23 +1,26 @@
 package akka.cluster.sbr
 
 import akka.cluster.sbr.ArbitraryInstances._
-import eu.timepit.refined.auto._
-import org.scalacheck.Prop._
-import org.scalacheck.Properties
+import org.scalatest.prop.PropertyChecks
+import org.scalatest.{FreeSpec, Matchers}
 
-class UnreachableNodesSpec extends Properties("UnreachableNodes") {
-  property("unreachableNodes") = forAll { (reachability: Reachability, quorumSize: QuorumSize) =>
-    UnreachableNodes(reachability, quorumSize) match {
-      case EmptyUnreachable() =>
-        reachability.unreachableNodes.isEmpty
+class UnreachableNodesSpec extends FreeSpec with Matchers with PropertyChecks {
+  "UnreachableNodes" - {
+    "1 - should instantiate the correct instance" in {
+      forAll { (reachability: WorldView, quorumSize: QuorumSize) =>
+        UnreachableNodes(reachability, quorumSize) match {
+          case EmptyUnreachable() =>
+            reachability.unreachableNodes shouldBe empty
 
-      case UnreachablePotentialQuorum(unreachableNodes) =>
-        unreachableNodes.length >= quorumSize &&
-          unreachableNodes.toSortedSet.diff(reachability.unreachableNodes).isEmpty
+          case UnreachablePotentialQuorum(unreachableNodes) =>
+            unreachableNodes.length should be >= quorumSize.value
+            unreachableNodes.toSortedSet shouldEqual reachability.unreachableNodes
 
-      case UnreachableSubQuorum(unreachableNodes) =>
-        unreachableNodes.length < quorumSize &&
-          unreachableNodes.toSortedSet.diff(reachability.unreachableNodes).isEmpty
+          case UnreachableSubQuorum(unreachableNodes) =>
+            unreachableNodes.length should be < quorumSize.value
+            unreachableNodes.toSortedSet shouldEqual reachability.unreachableNodes
+        }
+      }
     }
   }
 }

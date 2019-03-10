@@ -2,18 +2,15 @@ package akka.cluster.sbr
 
 import akka.cluster.ClusterEvent.{ReachableMember => AkkaReachableMember, UnreachableMember => AkkaUnreachableMember, _}
 import akka.cluster.Member
-import akka.cluster.MemberStatus.WeaklyUp
-import cats.data.NonEmptyMap
-import cats.implicits._
 import akka.cluster.Member._
+import akka.cluster.MemberStatus.WeaklyUp
 
-import scala.collection.SortedMap
-import scala.collection.SortedSet
+import scala.collection.{SortedMap, SortedSet}
 
 /**
- * Tracks the reachable and unreachable nodes given the [[MemberEvent]]s and [[ReachabilityEvent]]s.
+ * The cluster from the point of view of a node.
  */
-final case class Reachability private[sbr] (private[sbr] val m: SortedMap[Member, ReachabilityTag]) {
+final case class WorldView private[sbr] (private[sbr] val m: SortedMap[Member, Reachability]) {
 
   /**
    * Nodes that are reachable from the current node. Does not count weakly-up nodes
@@ -40,7 +37,7 @@ final case class Reachability private[sbr] (private[sbr] val m: SortedMap[Member
    *   However, since [[reachabilityEvent()]] and [[memberEvent()]] are idempotent
    *   this is not a problem.
    */
-  def memberEvent(event: MemberEvent): Reachability = event match {
+  def memberEvent(event: MemberEvent): WorldView = event match {
     case MemberJoined(member) => becomeReachable(member)
     case MemberUp(member)     => becomeReachable(member)
     case MemberLeft(member)   => becomeReachable(member)
@@ -61,20 +58,20 @@ final case class Reachability private[sbr] (private[sbr] val m: SortedMap[Member
    *   However, since [[reachabilityEvent()]] and [[memberEvent()]] are idempotent
    *   this is not a problem.
    */
-  def reachabilityEvent(event: ReachabilityEvent): Reachability = event match {
+  def reachabilityEvent(event: ReachabilityEvent): WorldView = event match {
     case AkkaUnreachableMember(member) => becomeUnreachable(member)
     case AkkaReachableMember(member)   => becomeReachable(member)
   }
 
-  private def remove(member: Member): Reachability = new Reachability(m - member)
+  private def remove(member: Member): WorldView = new WorldView(m - member)
 
-  private def becomeUnreachable(member: Member): Reachability = new Reachability(m + (member -> Unreachable))
+  private def becomeUnreachable(member: Member): WorldView = new WorldView(m + (member -> Unreachable))
 
-  private def becomeReachable(member: Member): Reachability = new Reachability(m + (member -> Reachable))
+  private def becomeReachable(member: Member): WorldView = new WorldView(m + (member -> Reachable))
 }
 
-object Reachability {
-  def apply(state: CurrentClusterState): Reachability = {
+object WorldView {
+  def apply(state: CurrentClusterState): WorldView = {
     val unreachableMembers: SortedMap[Member, Unreachable.type] =
       state.unreachable
         .map(_ -> Unreachable)(collection.breakOut)
@@ -85,6 +82,6 @@ object Reachability {
         .filterNot(_.status == WeaklyUp)
         .map(_ -> Reachable)(collection.breakOut)
 
-    new Reachability(unreachableMembers ++ reachableMembers)
+    new WorldView(unreachableMembers ++ reachableMembers)
   }
 }

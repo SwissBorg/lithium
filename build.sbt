@@ -30,7 +30,6 @@ libraryDependencies ++= Seq(
   "com.chuusai" %% "shapeless" % shapelessVersion,
   "com.github.julien-truffaut" %% "monocle-core" % monocleVersion,
   "com.github.scopt" %% "scopt" % scoptVersion,
-  "me.lyh" %% "magnolia" % "0.10.1-jto",
   "com.github.julien-truffaut" %% "monocle-law" % monocleVersion % Test,
   "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
   "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion % Test,
@@ -49,4 +48,4 @@ lazy val root = (project in file("."))
 scalacOptions += "-Ywarn-unused"
 
 //wartremoverErrors in (Compile, compile) ++= Warts.allBut(Wart.Any, Wart.Nothing, Wart.ImplicitParameter, Wart.Recursion)
-//testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "5")
+testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "5")

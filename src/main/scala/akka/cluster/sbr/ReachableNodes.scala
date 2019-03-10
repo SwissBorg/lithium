@@ -8,8 +8,8 @@ import scala.collection.immutable.SortedSet
 sealed abstract class ReachableNodes extends Product with Serializable
 
 object ReachableNodes {
-  def apply(reachability: Reachability, quorumSize: QuorumSize): Either[NoReachableNodesError.type, ReachableNodes] = {
-    val reachableNodes = reachability.reachableNodes
+  def apply(worldView: WorldView, quorumSize: QuorumSize): Either[NoReachableNodesError.type, ReachableNodes] = {
+    val reachableNodes = worldView.reachableNodes
 
     if (reachableNodes.isEmpty) Left(NoReachableNodesError)
     else {

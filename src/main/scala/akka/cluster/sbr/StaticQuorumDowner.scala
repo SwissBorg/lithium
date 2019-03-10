@@ -23,17 +23,17 @@ class StaticQuorumDowner(cluster: Cluster, quorumSize: QuorumSize, stableAfter: 
    * state as snapshot.
    */
   private def waitingForSnapshot: Receive = {
-    case state: CurrentClusterState => setStabilityTrigger(Reachability(state))
+    case state: CurrentClusterState => setStabilityTrigger(WorldView(state))
     case _                          => () // ignore // TODO needed?
   }
 
-  def mainReceive(reachability: Reachability, stabilityTrigger: Cancellable): Receive =
+  def mainReceive(reachability: WorldView, stabilityTrigger: Cancellable): Receive =
     clusterStable(reachability, stabilityTrigger).orElse(clusterMovement(reachability, stabilityTrigger))
 
   /**
    * Listens to a stable cluster signal, detects a split-brain and attempts to resolve it.
    */
-  private def clusterStable(reachability: Reachability, stabilityTrigger: Cancellable): Receive = {
+  private def clusterStable(reachability: WorldView, stabilityTrigger: Cancellable): Receive = {
     case ClusterIsStable =>
       handleUnreachableNodes(reachability)
       resetStabilityTrigger(reachability, stabilityTrigger)
@@ -42,7 +42,7 @@ class StaticQuorumDowner(cluster: Cluster, quorumSize: QuorumSize, stableAfter: 
   /**
    * Listens to cluster movements and resets the stability trigger when necessary.
    */
-  private def clusterMovement(reachability: Reachability, stabilityTrigger: Cancellable): Receive = {
+  private def clusterMovement(reachability: WorldView, stabilityTrigger: Cancellable): Receive = {
     case e: MemberEvent =>
       val reachability0 = reachability.memberEvent(e)
       // Only reset trigger if the event impacted the reachability.
@@ -60,10 +60,10 @@ class StaticQuorumDowner(cluster: Cluster, quorumSize: QuorumSize, stableAfter: 
       resetStabilityTrigger(reachability, stabilityTrigger)
   }
 
-  private def setStabilityTrigger(reachability: Reachability): Unit =
+  private def setStabilityTrigger(reachability: WorldView): Unit =
     context.become(mainReceive(reachability, scheduleStabilityMessage()))
 
-  private def resetStabilityTrigger(reachability: Reachability, stabilityTrigger: Cancellable): Unit = {
+  private def resetStabilityTrigger(reachability: WorldView, stabilityTrigger: Cancellable): Unit = {
     stabilityTrigger.cancel()
     setStabilityTrigger(reachability)
   }
@@ -72,7 +72,7 @@ class StaticQuorumDowner(cluster: Cluster, quorumSize: QuorumSize, stableAfter: 
    * Attemps to resolve a split-brain issue if there is one using
    * the static-quorum strategy.
    */
-  private def handleUnreachableNodes(reachability: Reachability): Unit =
+  private def handleUnreachableNodes(reachability: WorldView): Unit =
     ReachableNodes(reachability, quorumSize)
       .map { reachableNodeGroup =>
         ResolutionStrategy

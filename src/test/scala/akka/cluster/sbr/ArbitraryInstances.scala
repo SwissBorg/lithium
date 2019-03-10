@@ -36,17 +36,31 @@ object ArbitraryInstances {
   sealed trait RemovedTag
   type RemovedMember = Member @@ RemovedTag
 
-  implicit val arbReachability: Arbitrary[Reachability] = Arbitrary(
-    arbitrary[Seq[(Member, ReachabilityTag)]].map(m => new Reachability(SortedMap(m: _*)))
+  sealed trait HealthyTag
+  type HealthyWorldView = WorldView @@ HealthyTag
+
+  implicit val arbWorldView: Arbitrary[WorldView] = Arbitrary(
+    arbitrary[Seq[(Member, Reachability)]].map(m => new WorldView(SortedMap(m: _*)))
   )
 
-  implicit val arbReachabilityTag: Arbitrary[ReachabilityTag] =
+  implicit val arbHealthyWorldView: Arbitrary[HealthyWorldView] = Arbitrary(
+    for {
+      members <- arbitrary[Seq[Member]]
+      member <- arbitrary[Member]
+      all = (member +: members).map(_ -> Reachable)
+      worldView = new WorldView(SortedMap(all: _*))
+    } yield tag[HealthyTag][WorldView](worldView)
+  )
+
+//  implicit val arbHealth
+
+  implicit val arbReachability: Arbitrary[Reachability] =
     Arbitrary(oneOf(Reachable, Unreachable))
 
   implicit val arbJoiningMember: Arbitrary[JoiningMember] = Arbitrary {
     val randJoiningMember = for {
       uniqueAddress <- arbitrary[UniqueAddress]
-      datacenter <- arbitrary[String]
+      datacenter <- alphaNumStr
     } yield tag[JoiningTag][Member](Member(uniqueAddress, Set(s"dc-$datacenter")))
 
     oneOf(
@@ -104,8 +118,8 @@ object ArbitraryInstances {
 
   implicit val arbAddress: Arbitrary[Address] =
     Arbitrary(for {
-      protocol <- arbitrary[String]
-      system <- arbitrary[String]
+      protocol <- alphaNumStr
+      system <- alphaNumStr
     } yield Address(protocol, system, None, None))
 
   implicit val arbMemberStatusFromJoining: Arbitrary[MemberStatus] =
@@ -164,20 +178,20 @@ object ArbitraryInstances {
   )
 
   implicit val arbQuorumSize: Arbitrary[QuorumSize] = Arbitrary {
-    posNum[Long].map(refineV[Positive](_).right.get) // trust me
+    posNum[Int].map(refineV[Positive](_).right.get) // trust me
   }
 
   implicit val arbReachableNodes: Arbitrary[Either[NoReachableNodesError.type, ReachableNodes]] = Arbitrary(
     for {
-      reachability <- arbitrary[Reachability]
+      worldView <- arbitrary[WorldView]
       quorumSize <- arbitrary[QuorumSize]
-    } yield ReachableNodes(reachability, quorumSize)
+    } yield ReachableNodes(worldView, quorumSize)
   )
 
   implicit val arbUnreachableNodes: Arbitrary[UnreachableNodes] = Arbitrary(
     for {
-      reachability <- arbitrary[Reachability]
+      worldView <- arbitrary[WorldView]
       quorumSize <- arbitrary[QuorumSize]
-    } yield UnreachableNodes(reachability, quorumSize)
+    } yield UnreachableNodes(worldView, quorumSize)
   )
 }
