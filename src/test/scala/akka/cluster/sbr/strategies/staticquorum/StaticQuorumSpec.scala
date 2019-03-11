@@ -3,6 +3,7 @@ package akka.cluster.sbr.strategies.staticquorum
 import akka.cluster.sbr.Scenario.SymmetricSplitScenario
 import akka.cluster.sbr._
 import akka.cluster.sbr.strategies.staticquorum.ArbitraryInstances._
+import akka.cluster.sbr.utils.RemainingSubClusters
 import cats.Monoid
 import cats.implicits._
 import eu.timepit.refined._
@@ -48,21 +49,13 @@ class StaticQuorumSpec extends MySpec {
 //      }
     }
 
-    "2 - should correctly handle a symmetric split scenarios with a correctly defined quorum size" in {
+    "2 - should handle symmetric split scenarios with a correctly defined quorum size" in {
       forAll { (scenario: SymmetricSplitScenario, quorumSize: QuorumSize) =>
         whenever(quorumSize > (scenario.clusterSize / 2)) {
           val remainingSubClusters: RemainingSubClusters = scenario.worldViews.foldMap { worldView =>
-            Strategy[StaticQuorum](worldView, quorumSize)
-              .map {
-                case DownReachable(_)       => RemainingSubClusters(0)
-                case UnsafeDownReachable(_) => RemainingSubClusters(0)
-                case DownUnreachable(_)     => RemainingSubClusters(1)
-                case Idle                   => RemainingSubClusters(1)
-              }
-              .fold(_ => RemainingSubClusters(0), identity)
+            Strategy[StaticQuorum](worldView, quorumSize).foldMap(RemainingSubClusters.fromDecision)
           }
 
-          //            println(remainingSubClusters.n)
           remainingSubClusters.n.value should be <= 1
         }
       }
@@ -72,17 +65,6 @@ class StaticQuorumSpec extends MySpec {
 }
 
 object StaticQuorumSpec {
-  final case class RemainingSubClusters(n: Int Refined NonNegative)
-
-  object RemainingSubClusters {
-    implicit val remainingSubClustersMonoid: Monoid[RemainingSubClusters] = new Monoid[RemainingSubClusters] {
-      override def empty: RemainingSubClusters = RemainingSubClusters(refineMV[NonNegative](0))
-
-      override def combine(x: RemainingSubClusters, y: RemainingSubClusters): RemainingSubClusters =
-        RemainingSubClusters(refineV[NonNegative](x.n.value + y.n.value).right.get)
-    }
-  }
-
   def classifyNetwork(reachableNodes: ReachableNodes, unreachableNodes: UnreachableNodes)(prop: Prop): Prop = {
     val isNormal: Boolean =
       (reachableNodes, unreachableNodes) match {

@@ -13,6 +13,11 @@ import scala.collection.immutable.{SortedMap, SortedSet}
 final case class WorldView private[sbr] (private[sbr] val m: SortedMap[Member, Reachability]) {
 
   /**
+   * All the nodes in the cluster.
+   */
+  def allNodes: SortedSet[Member] = m.keySet
+
+  /**
    * Nodes that are reachable from the current node. Does not count weakly-up nodes
    * as they might not be visible from the other side of a potential split.
    */

@@ -1,7 +1,6 @@
 package akka.cluster.sbr
 
 import akka.actor.Address
-import akka.cluster.sbr.strategies.staticquorum.StaticQuorumUnreachableSubQuorum
 import cats.data.NonEmptySet
 import monocle.Getter
 
