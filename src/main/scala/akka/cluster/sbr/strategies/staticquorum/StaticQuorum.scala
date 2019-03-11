@@ -10,8 +10,7 @@ object StaticQuorum {
       staticQuorum(reachableNodes, UnreachableNodes(worldView, quorumSize))
     }
 
-  private def staticQuorum(reachableNodes: ReachableNodes,
-                           unreachableNodes: UnreachableNodes): StrategyDecision =
+  private def staticQuorum(reachableNodes: ReachableNodes, unreachableNodes: UnreachableNodes): StrategyDecision =
     (reachableNodes, unreachableNodes) match {
 
       /**
@@ -51,8 +50,9 @@ object StaticQuorum {
     }
 
   implicit val staticQuorumStrategy: Strategy.Aux[StaticQuorum, QuorumSize] = new Strategy[StaticQuorum] {
-    override type B = QuorumSize
+    override type Config = QuorumSize
     override val name: String = "quorum-size"
-    override def handle(worldView: WorldView, b: QuorumSize): Either[Throwable, StrategyDecision] = bla(worldView, b)
+    override def handle(worldView: WorldView, config: QuorumSize): Either[Throwable, StrategyDecision] =
+      bla(worldView, config)
   }
 }

@@ -35,6 +35,11 @@ final case class WorldView private[sbr] (private[sbr] val m: SortedMap[Member, R
     }.toSeq: _*)
 
   /**
+   * The reachability of the `member`.
+   */
+  def reachabilityOf(node: Member): Option[Reachability] = m.get(node)
+
+  /**
    * Updates the reachability given the member event.
    *
    * Note:
