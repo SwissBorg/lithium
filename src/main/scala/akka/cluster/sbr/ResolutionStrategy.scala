@@ -20,6 +20,7 @@ object ResolutionStrategy {
        * Either way this happens when `quorumSize` is less than half of the cluster. That SHOULD be logged! TODO
        */
       case (reachableQuorum: ReachableQuorum, _: UnreachablePotentialQuorum) =>
+        // new Idle {}
         new UnsafeDownReachable(reachableQuorum) {}
 
       /**

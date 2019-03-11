@@ -5,7 +5,7 @@ import akka.cluster.Member
 import akka.cluster.Member._
 import akka.cluster.MemberStatus.WeaklyUp
 
-import scala.collection.{SortedMap, SortedSet}
+import scala.collection.immutable.{SortedMap, SortedSet}
 
 /**
  * The cluster from the point of view of a node.

@@ -1,10 +1,8 @@
 package akka.cluster.sbr
 
 import akka.cluster.sbr.ArbitraryInstances._
-import org.scalatest.prop.PropertyChecks
-import org.scalatest.{FreeSpec, Matchers}
 
-class ReachableNodeSpec extends FreeSpec with Matchers with PropertyChecks {
+class ReachableNodeSpec extends MySpec {
   "ReachableNode" - {
     "1 - should not affect the order" in {
       forAll { reachableNodes: List[ReachableNode] =>

@@ -17,9 +17,11 @@ val scalatestVersion = "3.0.5"
 val monocleVersion = "1.5.0"
 val scoptVersion = "4.0.0-RC2"
 val shapelessVersion = "2.3.3"
+val refinedVersion = "0.9.4"
 
 libraryDependencies ++= Seq(
-  "eu.timepit" %% "refined" % "0.9.4",
+  "eu.timepit" %% "refined" % refinedVersion,
+  "eu.timepit" %% "refined-cats" % refinedVersion,
   "com.typesafe.akka" %% "akka-actor" % akkaVersion,
   "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
   "com.typesafe.akka" %% "akka-cluster-tools" % akkaVersion,

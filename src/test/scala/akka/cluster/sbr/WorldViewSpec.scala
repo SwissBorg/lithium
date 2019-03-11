@@ -2,10 +2,8 @@ package akka.cluster.sbr
 
 import akka.cluster.ClusterEvent._
 import akka.cluster.sbr.ArbitraryInstances._
-import org.scalatest.prop.PropertyChecks
-import org.scalatest.{FreeSpec, Matchers}
 
-class WorldViewSpec extends FreeSpec with Matchers with PropertyChecks {
+class WorldViewSpec extends MySpec {
   "WorldView" - {
     "1 - should not have a node simultaneously reachable and unreachable" in {
       forAll { (worldView: WorldView, memberEvents: List[MemberEvent], reachabilityEvent: List[ReachabilityEvent]) =>

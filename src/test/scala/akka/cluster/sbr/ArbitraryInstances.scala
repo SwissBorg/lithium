@@ -52,8 +52,6 @@ object ArbitraryInstances {
     } yield tag[HealthyTag][WorldView](worldView)
   )
 
-//  implicit val arbHealth
-
   implicit val arbReachability: Arbitrary[Reachability] =
     Arbitrary(oneOf(Reachable, Unreachable))
 

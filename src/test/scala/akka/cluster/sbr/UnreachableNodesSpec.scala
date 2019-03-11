@@ -1,10 +1,8 @@
 package akka.cluster.sbr
 
 import akka.cluster.sbr.ArbitraryInstances._
-import org.scalatest.prop.PropertyChecks
-import org.scalatest.{FreeSpec, Matchers}
 
-class UnreachableNodesSpec extends FreeSpec with Matchers with PropertyChecks {
+class UnreachableNodesSpec extends MySpec {
   "UnreachableNodes" - {
     "1 - should instantiate the correct instance" in {
       forAll { (reachability: WorldView, quorumSize: QuorumSize) =>

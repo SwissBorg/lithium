@@ -1,73 +1,95 @@
 package akka.cluster.sbr
 
-import org.scalacheck.Prop._
-import org.scalacheck.{Prop, Properties}
 import akka.cluster.sbr.ArbitraryInstances._
+import akka.cluster.sbr.Scenario.SymmetricSplitScenario
+import cats.Monoid
 import cats.implicits._
+import eu.timepit.refined._
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.auto._
+import eu.timepit.refined.numeric._
+import org.scalacheck.Prop
+import org.scalacheck.Prop._
 
-class ResolutionStrategySpec extends Properties("ResolutionStrategy") {
+class ResolutionStrategySpec extends MySpec {
   import ResolutionStrategySpec._
 
-  property("staticQuorum") = forAll {
-    (maybeReachableNodes: Either[NoReachableNodesError.type, ReachableNodes], unreachableNodes: UnreachableNodes) =>
-      maybeReachableNodes.isRight ==> {
-        val reachableNodes = maybeReachableNodes.right.get
+  "ResolutionStrategy" - {
+    "staticQuorum" - {
+      "1 - should follow the specs" in {
+        forAll {
+          (maybeReachableNodes: Either[NoReachableNodesError.type, ReachableNodes],
+           unreachableNodes: UnreachableNodes) =>
+            whenever(maybeReachableNodes.isRight) {
+              val reachableNodes = maybeReachableNodes.right.get
 
-        val strategy = ResolutionStrategy.staticQuorum(reachableNodes, unreachableNodes)
+              ResolutionStrategy.staticQuorum(reachableNodes, unreachableNodes) match {
+                case DownReachable(nodeGroup) =>
+                  reachableNodes match {
+                    case ReachableQuorum(reachableNodes)    => fail
+                    case ReachableSubQuorum(reachableNodes) => succeed
+                  }
 
-        classifyNetwork(reachableNodes, unreachableNodes) {
-          strategy match {
-            case DownReachable(nodeGroup) =>
-              reachableNodes match {
-                case ReachableQuorum(reachableNodes)    => false
-                case ReachableSubQuorum(reachableNodes) => true
+                case DownUnreachable(nodeGroup) =>
+                  reachableNodes match {
+                    case ReachableQuorum(reachableNodes)    => succeed
+                    case ReachableSubQuorum(reachableNodes) => fail
+                  }
+
+                case UnsafeDownReachable(nodeGroup) =>
+                  (reachableNodes, unreachableNodes) match {
+                    case (_: ReachableQuorum, _: UnreachablePotentialQuorum) => succeed
+                    case _                                                   => fail
+                  }
+
+                case Idle() =>
+                  unreachableNodes match {
+                    case EmptyUnreachable() => succeed
+                    case _                  => fail("Should not idle if there are unreachable nodes.")
+                  }
               }
+            }
 
-            case DownUnreachable(nodeGroup) =>
-              reachableNodes match {
-                case ReachableQuorum(reachableNodes)    => true
-                case ReachableSubQuorum(reachableNodes) => false
-              }
+        }
+      }
 
-            case UnsafeDownReachable(nodeGroup) =>
-              (reachableNodes, unreachableNodes) match {
-                case (_: ReachableQuorum, _: UnreachablePotentialQuorum) => true
-                case _                                                   => false
+      "2 - should correctly handle a symmetric split scenarios with a correctly defined quorum size" in {
+        forAll { (scenario: SymmetricSplitScenario, quorumSize: QuorumSize) =>
+          whenever(quorumSize > (scenario.clusterSize / 2)) {
+            val remainingSubClusters: RemainingSubClusters = scenario.worldViews.foldMap { worldView =>
+              ResolutionStrategy
+                .staticQuorum(
+                  ReachableNodes(worldView, quorumSize).right.get, // SymmetricSplitScenario has at least one reachable node
+                  UnreachableNodes(worldView, quorumSize)
+                ) match {
+                case DownReachable(_)       => RemainingSubClusters(0)
+                case UnsafeDownReachable(_) => RemainingSubClusters(0)
+                case DownUnreachable(_)     => RemainingSubClusters(1)
+                case Idle()                 => RemainingSubClusters(1)
               }
+            }
 
-            case Idle() =>
-              unreachableNodes match {
-                case EmptyUnreachable() => true
-                case _                  => false
-              }
+//            println(remainingSubClusters.n)
+            remainingSubClusters.n.value should be <= 1
           }
         }
       }
+    }
   }
-
-//  property("bla") = forAll { (splitScenario: Scenario, quorumSize: QuorumSize) =>
-//    val a: Int = splitScenario.worldViews
-//      .traverse { reachability =>
-//        ReachableNodes(reachability, quorumSize)
-//          .map { reachableNodeGroup =>
-//            ResolutionStrategy
-//              .staticQuorum(reachableNodeGroup, UnreachableNodes(reachability, quorumSize)) match {
-//              case DownReachable(_)       => 0
-//              case UnsafeDownReachable(_) => 0
-//              case DownUnreachable(_)     => 1
-//              case Idle()                 => 1
-//            }
-//          }
-//      }
-//      .fold(_ => -1, _.sum)
-//
-//    println(a)
-//    println(s"---- ${splitScenario.worldViews.size}")
-//    a <=1
-//  }
 }
 
 object ResolutionStrategySpec {
+  final case class RemainingSubClusters(n: Int Refined NonNegative)
+
+  object RemainingSubClusters {
+    implicit val remainingSubClustersMonoid: Monoid[RemainingSubClusters] = new Monoid[RemainingSubClusters] {
+      override def empty: RemainingSubClusters = RemainingSubClusters(refineMV[NonNegative](0))
+
+      override def combine(x: RemainingSubClusters, y: RemainingSubClusters): RemainingSubClusters =
+        RemainingSubClusters(refineV[NonNegative](x.n.value + y.n.value).right.get)
+    }
+  }
+
   def classifyNetwork(reachableNodes: ReachableNodes, unreachableNodes: UnreachableNodes)(prop: Prop): Prop = {
     val isNormal: Boolean =
       (reachableNodes, unreachableNodes) match {
