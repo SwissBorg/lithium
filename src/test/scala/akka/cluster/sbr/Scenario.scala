@@ -23,7 +23,7 @@ object Scenario {
   implicit val memberOrder: Order[Member] = Order.fromOrdering
 
   /**
-   * Generates symmetric split scenarios where the cluster is split
+   * Generates symmetric split scenarios where the allNodes is split
    * in multiple sub-clusters and where each one sees the rest as
    * unreachable.
    */
@@ -31,20 +31,17 @@ object Scenario {
     for {
       healthyWorldView <- arbHealthyWorldView.arbitrary
 
-      cluster = NonEmptySet
-        .fromSetUnsafe(healthyWorldView.reachableNodes.map(_.node)) // HealthyWorldView has at least one reachable node
+      allNodes = NonEmptySet
+        .fromSetUnsafe(healthyWorldView.allNodes) // HealthyWorldView has at least one node and all are reachable
 
-      // Split the cluster in `nSubCluster`.
-      subClusters <- splitCluster(cluster)
+      // Split the allNodes in `nSubCluster`.
+      partitions <- splitCluster(allNodes)
 
-      // Each sub-cluster sees the other nodes as unreachable.
-      divergedWorldViews = subClusters.map { subCluster =>
-        divergeWorldView(healthyWorldView, cluster, subCluster)
-      }
-
+      // Each sub-allNodes sees the other nodes as unreachable.
+      divergedWorldViews = partitions.map(divergeWorldView(healthyWorldView, allNodes, _))
     } yield
       tag[SymmetricSplitTag][Scenario](
-        Scenario(divergedWorldViews, refineV[Positive](cluster.length).right.get)
+        Scenario(divergedWorldViews, refineV[Positive](allNodes.length).right.get)
       )
   )
 
@@ -53,20 +50,20 @@ object Scenario {
    */
   private def splitCluster(nodes: NonEmptySet[Member]): Gen[NonEmptyList[NonEmptySet[Member]]] =
     for {
-      // Split the cluster in `nSubCluster`.
+      // Split the allNodes in `nSubCluster`.
       nSubClusters <- chooseNum(1, nodes.length).map(refineV[Positive](_).right.get) // always > 1
       subClusters <- splitIn(nSubClusters, nodes).arbitrary
     } yield subClusters
 
   /**
    * Yields a [[WorldView]] that based on `worldView`
-   * that sees all the nodes of the cluster not in the
-   * `subCluster` as unreachable.
+   * that sees all the nodes not in the `partition`
+   * as unreachable.
    */
   private def divergeWorldView(worldView: WorldView,
-                               cluster: NonEmptySet[Member],
-                               subCluster: NonEmptySet[Member]): WorldView = {
-    val otherNodes = cluster -- subCluster
+                               allNodes: NonEmptySet[Member],
+                               partition: NonEmptySet[Member]): WorldView = {
+    val otherNodes = allNodes -- partition
 
     otherNodes.foldLeft[WorldView](worldView) {
       case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node))

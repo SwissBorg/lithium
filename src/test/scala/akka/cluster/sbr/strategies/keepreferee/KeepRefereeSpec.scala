@@ -1,12 +1,12 @@
 package akka.cluster.sbr.strategies.keepreferee
 
 import akka.cluster.sbr.Scenario.SymmetricSplitScenario
-import akka.cluster.sbr.strategies.keepreferee.ArbitraryInstances._
 import akka.cluster.sbr.strategies.keepreferee.KeepReferee.Config
-import akka.cluster.sbr.utils.RemainingSubClusters
+import akka.cluster.sbr.utils.RemainingPartitions
 import akka.cluster.sbr.{MySpec, Strategy}
 import cats.implicits._
 import eu.timepit.refined.api.Refined
+import eu.timepit.refined.scalacheck.all._
 import eu.timepit.refined.numeric.Positive
 
 class KeepRefereeSpec extends MySpec {
@@ -18,7 +18,7 @@ class KeepRefereeSpec extends MySpec {
 
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
           Strategy[KeepReferee](worldView, Config(referee, downAllIfLessThanNodes))
-            .foldMap(RemainingSubClusters.fromDecision)
+            .foldMap(RemainingPartitions.fromDecision)
         }
 
         remainingSubClusters.n.value should be <= 1

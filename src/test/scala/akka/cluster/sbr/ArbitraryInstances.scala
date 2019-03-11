@@ -58,12 +58,11 @@ trait ArbitraryInstances {
   implicit val arbJoiningMember: Arbitrary[JoiningMember] = Arbitrary {
     val randJoiningMember = for {
       uniqueAddress <- arbitrary[UniqueAddress]
-      datacenter <- alphaNumStr
-    } yield tag[JoiningTag][Member](Member(uniqueAddress, Set(s"dc-$datacenter")))
+    } yield tag[JoiningTag][Member](Member(uniqueAddress, Set("dc-datacenter")))
 
     oneOf(
       randJoiningMember,
-      const(tag[JoiningTag][Member](Member(UniqueAddress(Address("proto", "sys"), 0L), Set(s"dc-def"))))
+      const(tag[JoiningTag][Member](Member(UniqueAddress(Address("proto", "sys"), 0L), Set("dc-datacenter"))))
     )
   }
 

@@ -21,4 +21,5 @@ addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.9.4")
 //WartRemover
 addSbtPlugin("org.wartremover" % "sbt-wartremover" % "2.4.1")
 
-addCompilerPlugin("io.tryp" % "splain" % "0.4.0" cross CrossVersion.patch)
+// SBT-updates
+addSbtPlugin("com.timushev.sbt" % "sbt-updates" % "0.4.0")

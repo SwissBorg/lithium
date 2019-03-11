@@ -3,18 +3,13 @@ package akka.cluster.sbr.strategies.staticquorum
 import akka.cluster.sbr.Scenario.SymmetricSplitScenario
 import akka.cluster.sbr._
 import akka.cluster.sbr.strategies.staticquorum.ArbitraryInstances._
-import akka.cluster.sbr.utils.RemainingSubClusters
-import cats.Monoid
+import akka.cluster.sbr.utils.RemainingPartitions
 import cats.implicits._
-import eu.timepit.refined._
-import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
-import eu.timepit.refined.numeric.NonNegative
 import org.scalacheck.Prop
 import org.scalacheck.Prop.classify
 
 class StaticQuorumSpec extends MySpec {
-  import StaticQuorumSpec._
 
   "StaticQuorum" - {
     // TODO
@@ -52,8 +47,8 @@ class StaticQuorumSpec extends MySpec {
     "2 - should handle symmetric split scenarios with a correctly defined quorum size" in {
       forAll { (scenario: SymmetricSplitScenario, quorumSize: QuorumSize) =>
         whenever(quorumSize > (scenario.clusterSize / 2)) {
-          val remainingSubClusters: RemainingSubClusters = scenario.worldViews.foldMap { worldView =>
-            Strategy[StaticQuorum](worldView, quorumSize).foldMap(RemainingSubClusters.fromDecision)
+          val remainingSubClusters: RemainingPartitions = scenario.worldViews.foldMap { worldView =>
+            Strategy[StaticQuorum](worldView, quorumSize).foldMap(RemainingPartitions.fromDecision)
           }
 
           remainingSubClusters.n.value should be <= 1

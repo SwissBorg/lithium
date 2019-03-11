@@ -5,19 +5,25 @@ name := "akka-sbr"
 
 version := "0.0.1"
 
-scalaVersion := "2.12.6"
+scalaVersion := "2.12.8"
 sbtVersion := "1.2.1"
 
-scalacOptions += "-Ypartial-unification"
+scalacOptions ++= Seq("-Ypartial-unification",
+                      "-Ywarn-unused",
+                      "-Xmacro-settings:materialize-derivations",
+                      "-Yrangepos")
 
 val akkaVersion = "2.5.21"
 val akkaHTTPVersion = "10.1.7"
 val catsVersion = "1.6.0"
-val scalatestVersion = "3.0.5"
+val scalatestVersion = "3.0.6"
 val monocleVersion = "1.5.0"
 val scoptVersion = "4.0.0-RC2"
 val shapelessVersion = "2.3.3"
 val refinedVersion = "0.9.4"
+val pureConfigVersion = "0.10.2"
+val scalacheckShapelessVersion = "1.1.8"
+val refinedScalacheckVersion = "0.9.4"
 
 libraryDependencies ++= Seq(
   "eu.timepit" %% "refined" % refinedVersion,
@@ -31,14 +37,13 @@ libraryDependencies ++= Seq(
   "org.typelevel" %% "cats-core" % catsVersion,
   "com.chuusai" %% "shapeless" % shapelessVersion,
   "com.github.julien-truffaut" %% "monocle-core" % monocleVersion,
-  "com.github.pureconfig" %% "pureconfig" % "0.10.2",
+  "com.github.pureconfig" %% "pureconfig" % pureConfigVersion,
   "com.github.scopt" %% "scopt" % scoptVersion,
   "com.github.julien-truffaut" %% "monocle-law" % monocleVersion % Test,
   "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
   "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion % Test,
-  "org.typelevel" %% "cats-testkit" % "1.1.0" % Test,
-  "com.github.alexarchambault" %% "scalacheck-shapeless_1.13" % "1.1.6" % Test,
-  "eu.timepit" %% "refined-scalacheck" % "0.9.4" % Test,
+  "com.github.alexarchambault" %% "scalacheck-shapeless_1.13" % scalacheckShapelessVersion % Test,
+  "eu.timepit" %% "refined-scalacheck" % refinedScalacheckVersion % Test,
   "org.scalatest" %% "scalatest" % scalatestVersion % Test
 )
 
@@ -48,12 +53,8 @@ lazy val root = (project in file("."))
   .settings(multiJvmSettings: _*)
   .settings(parallelExecution in Test := false)
 
-scalacOptions += "-Ywarn-unused"
-
 //wartremoverErrors in (Compile, compile) ++= Warts.allBut(Wart.Any, Wart.Nothing, Wart.ImplicitParameter, Wart.Recursion)
 testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "5")
 
-scalacOptions += "-Xmacro-settings:materialize-derivations"
-//scalacOptions += "-Xlog-implicits"
-
-//scalacOptions += "-P:splain:implicits:false"
+// SemanticDB
+addCompilerPlugin(scalafixSemanticdb)
