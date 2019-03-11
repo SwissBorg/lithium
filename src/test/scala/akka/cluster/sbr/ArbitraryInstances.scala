@@ -4,8 +4,6 @@ import akka.actor.Address
 import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus._
 import akka.cluster.{Member, MemberStatus, UniqueAddress, Reachability => _}
-import eu.timepit.refined._
-import eu.timepit.refined.numeric.Positive
 import org.scalacheck.Arbitrary
 import org.scalacheck.Arbitrary._
 import org.scalacheck.Gen._
@@ -14,7 +12,9 @@ import shapeless.tag.@@
 
 import scala.collection.immutable.SortedMap
 
-object ArbitraryInstances {
+object ArbitraryInstances extends ArbitraryInstances
+
+trait ArbitraryInstances {
   sealed trait JoiningTag
   type JoiningMember = Member @@ JoiningTag
 
@@ -173,23 +173,5 @@ object ArbitraryInstances {
 
   implicit val arbReachabilityEvent: Arbitrary[ReachabilityEvent] = Arbitrary(
     oneOf(arbitrary[UnreachableMember], arbitrary[ReachableMember])
-  )
-
-  implicit val arbQuorumSize: Arbitrary[QuorumSize] = Arbitrary {
-    posNum[Int].map(refineV[Positive](_).right.get) // trust me
-  }
-
-  implicit val arbReachableNodes: Arbitrary[Either[NoReachableNodesError.type, ReachableNodes]] = Arbitrary(
-    for {
-      worldView <- arbitrary[WorldView]
-      quorumSize <- arbitrary[QuorumSize]
-    } yield ReachableNodes(worldView, quorumSize)
-  )
-
-  implicit val arbUnreachableNodes: Arbitrary[UnreachableNodes] = Arbitrary(
-    for {
-      worldView <- arbitrary[WorldView]
-      quorumSize <- arbitrary[QuorumSize]
-    } yield UnreachableNodes(worldView, quorumSize)
   )
 }

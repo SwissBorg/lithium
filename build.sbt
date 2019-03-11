@@ -31,6 +31,7 @@ libraryDependencies ++= Seq(
   "org.typelevel" %% "cats-core" % catsVersion,
   "com.chuusai" %% "shapeless" % shapelessVersion,
   "com.github.julien-truffaut" %% "monocle-core" % monocleVersion,
+  "com.github.pureconfig" %% "pureconfig" % "0.10.2",
   "com.github.scopt" %% "scopt" % scoptVersion,
   "com.github.julien-truffaut" %% "monocle-law" % monocleVersion % Test,
   "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
@@ -51,3 +52,8 @@ scalacOptions += "-Ywarn-unused"
 
 //wartremoverErrors in (Compile, compile) ++= Warts.allBut(Wart.Any, Wart.Nothing, Wart.ImplicitParameter, Wart.Recursion)
 testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "5")
+
+scalacOptions += "-Xmacro-settings:materialize-derivations"
+//scalacOptions += "-Xlog-implicits"
+
+//scalacOptions += "-P:splain:implicits:false"

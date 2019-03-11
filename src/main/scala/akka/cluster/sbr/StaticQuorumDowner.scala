@@ -3,6 +3,8 @@ package akka.cluster.sbr
 import akka.actor.{Actor, ActorLogging, Cancellable, Props}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
+import akka.cluster.sbr.strategies.staticquorum.{QuorumSize, StaticQuorum}
+import pureconfig.ConfigReader
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
@@ -72,18 +74,16 @@ class StaticQuorumDowner(cluster: Cluster, quorumSize: QuorumSize, stableAfter: 
    * Attemps to resolve a split-brain issue if there is one using
    * the static-quorum strategy.
    */
-  private def handleUnreachableNodes(reachability: WorldView): Unit =
-    ReachableNodes(reachability, quorumSize)
-      .map { reachableNodeGroup =>
-        ResolutionStrategy
-          .staticQuorum(reachableNodeGroup, UnreachableNodes(reachability, quorumSize))
-          .addressesToDown
-          .foreach(cluster.down)
-      }
+  private def handleUnreachableNodes(worldView: WorldView): Unit = {
+    implicit val reader: ConfigReader[QuorumSize] = ???
+
+    Strategy[StaticQuorum]
+      .fromConfig(worldView)
       .fold(err => {
         log.error(s"Oh fuck... $err")
         throw new IllegalStateException(s"Oh fuck... $err")
       }, identity)
+  }
 
   private def scheduleStabilityMessage(): Cancellable =
     context.system.scheduler.scheduleOnce(stableAfter, self, ClusterIsStable)
