@@ -12,7 +12,7 @@ class KeepMajoritySpec extends MySpec {
     "1 - should handle symmetric split scenarios" in {
       forAll { (scenario: SymmetricSplitScenario, config: Config) =>
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          Strategy[KeepMajority](worldView, Config("???")).foldMap(RemainingPartitions.fromDecision)
+          Strategy[KeepMajority](worldView, Config("???")).foldMap(RemainingPartitions.fromDecision) // TODO
         }
 
         remainingSubClusters.n.value should be <= 1
