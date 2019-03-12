@@ -2,7 +2,6 @@ package akka.cluster.sbr
 
 import pureconfig.ConfigReader
 import pureconfig.error.ConfigReaderFailures
-import cats.implicits._
 
 trait Strategy[A] {
   type Config
@@ -26,10 +25,9 @@ object Strategy {
       implicit ev: Aux[A, Config],
     ): Either[ConfigReaderFailures, ConfiguredStrategy[A, Config]] =
       pureconfig
-        .loadConfig[Config](s"ns.${ev.name}")
+        .loadConfig[Config](s"ns.${ev.name}") // TODO define a namespace
         .map(a => new ConfiguredStrategy[A, Config](a))
 
-    def unit(implicit ev: Aux[A, Unit]): Either[ConfigReaderFailures, ConfiguredStrategy[A, Unit]] =
-      new ConfiguredStrategy[A, Unit](()).asRight
+    def noConfig(implicit ev: Aux[A, Unit]): ConfiguredStrategy[A, Unit] = new ConfiguredStrategy[A, Unit](())
   }
 }

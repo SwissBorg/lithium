@@ -9,8 +9,10 @@ import scala.collection.immutable.SortedSet
 sealed abstract private[staticquorum] class ReachableNodes extends Product with Serializable
 
 private[staticquorum] object ReachableNodes {
-  def apply(worldView: WorldView, quorumSize: QuorumSize): Either[NoReachableNodesError.type, ReachableNodes] = {
-    val reachableNodes = worldView.reachableNodes
+  def apply(worldView: WorldView,
+            quorumSize: QuorumSize,
+            role: String): Either[NoReachableNodesError.type, ReachableNodes] = {
+    val reachableNodes = worldView.reachableNodesWithRole(role)
 
     if (reachableNodes.isEmpty) Left(NoReachableNodesError)
     else {

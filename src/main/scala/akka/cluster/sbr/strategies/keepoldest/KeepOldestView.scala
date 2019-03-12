@@ -1,15 +1,14 @@
 package akka.cluster.sbr.strategies.keepoldest
 
 import akka.cluster.Member
-import akka.cluster.sbr.strategies.keepoldest.KeepOldest.Config
 import akka.cluster.sbr.{Reachable, Unreachable, WorldView}
 import cats.implicits._
 
 sealed abstract class KeepOldestView extends Product with Serializable
 
 object KeepOldestView {
-  def apply(worldView: WorldView, config: Config): Either[Error.type, KeepOldestView] = {
-    val allNodesSortedByAge = worldView.allNodes.toList.sorted(Member.ageOrdering)
+  def apply(worldView: WorldView, downIfAlone: Boolean, role: String): Either[Error.type, KeepOldestView] = {
+    val allNodesSortedByAge = worldView.allNodesWithRole(role).toList.sorted(Member.ageOrdering)
 
     val maybeKeepOldestView = for {
       oldestNode <- allNodesSortedByAge.headOption
@@ -17,7 +16,7 @@ object KeepOldestView {
     } yield
       reachability match {
         case Reachable =>
-          if (config.downIfAlone && worldView.reachableNodes.size > 1) OldestReachable
+          if (downIfAlone && worldView.reachableNodes.size > 1) OldestReachable
           else OldestAlone
         case Unreachable => OldestUnreachable
       }

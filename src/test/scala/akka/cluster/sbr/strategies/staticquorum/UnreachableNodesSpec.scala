@@ -6,18 +6,18 @@ import akka.cluster.sbr.{MySpec, WorldView}
 class UnreachableNodesSpec extends MySpec {
   "UnreachableNodes" - {
     "1 - should instantiate the correct instance" in {
-      forAll { (worldView: WorldView, quorumSize: QuorumSize) =>
-        UnreachableNodes(worldView, quorumSize) match {
+      forAll { (worldView: WorldView, quorumSize: QuorumSize, role: String) =>
+        UnreachableNodes(worldView, quorumSize, role) match {
           case EmptyUnreachable() =>
-            worldView.unreachableNodes shouldBe empty
+            worldView.unreachableNodesWithRole(role) shouldBe empty
 
           case StaticQuorumUnreachablePotentialQuorum(unreachableNodes) =>
             unreachableNodes.length should be >= quorumSize.value
-            unreachableNodes.toSortedSet shouldEqual worldView.unreachableNodes
+            unreachableNodes.toSortedSet shouldEqual worldView.unreachableNodesWithRole(role)
 
           case StaticQuorumUnreachableSubQuorum(unreachableNodes) =>
             unreachableNodes.length should be < quorumSize.value
-            unreachableNodes.toSortedSet shouldEqual worldView.unreachableNodes
+            unreachableNodes.toSortedSet shouldEqual worldView.unreachableNodesWithRole(role)
         }
       }
     }

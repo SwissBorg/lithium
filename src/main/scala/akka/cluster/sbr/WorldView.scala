@@ -18,6 +18,15 @@ final case class WorldView private[sbr] (private[sbr] val m: SortedMap[Member, R
   def allNodes: SortedSet[Member] = m.keySet
 
   /**
+   * All the nodes in the cluster with the given role. If `role` is the empty
+   * string all nodes will be returned.
+   *
+   * @see [[allNodes]]
+   */
+  def allNodesWithRole(role: String): SortedSet[Member] =
+    if (role != "") allNodes.filter(_.roles.contains(role)) else allNodes
+
+  /**
    * Nodes that are reachable from the current node. Does not count weakly-up nodes
    * as they might not be visible from the other side of a potential split.
    */
@@ -27,12 +36,30 @@ final case class WorldView private[sbr] (private[sbr] val m: SortedMap[Member, R
     }.toSeq: _*)
 
   /**
+   * Reachable nodes with the given role. If `role` is the empty
+   * string all reachable nodes will be returned.
+   *
+   * @see [[reachableNodes]]
+   */
+  def reachableNodesWithRole(role: String): SortedSet[ReachableNode] =
+    if (role != "") reachableNodes.filter(_.node.roles.contains(role)) else reachableNodes
+
+  /**
    * Nodes that have been flagged as unreachable.
    */
   def unreachableNodes: SortedSet[UnreachableNode] =
     SortedSet(m.iterator.collect {
       case (member, Unreachable) => UnreachableNode(member)
     }.toSeq: _*)
+
+  /**
+   * Unreachable nodes with the given role. If `role` is the empty
+   * string all unreachable nodes will be returned.
+   *
+   * @see [[unreachableNodes]]
+   */
+  def unreachableNodesWithRole(role: String): SortedSet[UnreachableNode] =
+    if (role != "") unreachableNodes.filter(_.node.roles.contains(role)) else unreachableNodes
 
   /**
    * The reachability of the `member`.

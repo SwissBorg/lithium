@@ -65,6 +65,38 @@ class WorldViewSpec extends MySpec {
         (worldView.m.toList should contain).allElementsOf(worldView.unreachableNodes.map(n => n.node -> Unreachable))
       }
     }
+
+    "6 - allNodes" in {
+      forAll { worldView: WorldView =>
+        (worldView.allNodes should contain)
+          .theSameElementsAs(worldView.reachableNodes.map(_.node) ++ worldView.unreachableNodes.map(_.node))
+      }
+    }
+
+    "7 - allNodesWithRole" in {
+      forAll { (worldView: WorldView, role: String) =>
+        if (role == "") worldView.allNodesWithRole(role) shouldEqual worldView.allNodes
+        else (worldView.allNodes should contain).allElementsOf(worldView.allNodesWithRole(role))
+
+        worldView.allNodesWithRole(role) shouldEqual (worldView.reachableNodesWithRole(role).map(_.node) ++ worldView
+          .unreachableNodesWithRole(role)
+          .map(_.node))
+      }
+    }
+
+    "8 - reachableNodesWithRole" in {
+      forAll { (worldView: WorldView, role: String) =>
+        if (role == "") worldView.reachableNodesWithRole(role) shouldEqual worldView.reachableNodes
+        else (worldView.reachableNodes should contain).allElementsOf(worldView.reachableNodesWithRole(role))
+      }
+    }
+
+    "9 - unreachableNodesWithRole" in {
+      forAll { (worldView: WorldView, role: String) =>
+        if (role == "") worldView.unreachableNodesWithRole(role) shouldEqual worldView.unreachableNodes
+        else (worldView.unreachableNodes should contain).allElementsOf(worldView.unreachableNodesWithRole(role))
+      }
+    }
   }
 
   "HealthyWorldView" - {

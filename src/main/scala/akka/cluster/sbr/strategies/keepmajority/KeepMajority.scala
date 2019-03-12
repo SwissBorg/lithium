@@ -3,12 +3,20 @@ package akka.cluster.sbr.strategies.keepmajority
 import akka.cluster.sbr._
 import cats.data.NonEmptySet
 import cats.implicits._
+import pureconfig.ConfigReader
+import pureconfig.generic.semiauto.deriveReader
 
 final case class KeepMajority()
 
 object KeepMajority {
-  def keepMajority(worldView: WorldView): StrategyDecision =
-    NodesMajority(worldView) match {
+  final case class Config(role: String)
+
+  object Config {
+    implicit val configReader: ConfigReader[Config] = deriveReader[Config]
+  }
+
+  def keepMajority(worldView: WorldView, config: Config): StrategyDecision =
+    NodesMajority(worldView, config.role) match {
       case ReachableMajority(_) =>
         NonEmptySet.fromSet(worldView.unreachableNodes).fold[StrategyDecision](Idle)(DownUnreachable)
 
@@ -20,10 +28,10 @@ object KeepMajority {
         NonEmptySet.fromSet(worldView.reachableNodes).fold[StrategyDecision](Idle)(DownReachable)
     }
 
-  implicit val keepMajorityStrategy: Strategy.Aux[KeepMajority, Unit] = new Strategy[KeepMajority] {
-    override type Config = Unit
+  implicit val keepMajorityStrategy: Strategy.Aux[KeepMajority, KeepMajority.Config] = new Strategy[KeepMajority] {
+    override type Config = KeepMajority.Config
     override val name: String = "keep-majority"
-    override def handle(worldView: WorldView, config: Unit): Either[Throwable, StrategyDecision] =
-      keepMajority(worldView).asRight
+    override def handle(worldView: WorldView, config: KeepMajority.Config): Either[Throwable, StrategyDecision] =
+      keepMajority(worldView, config).asRight
   }
 }

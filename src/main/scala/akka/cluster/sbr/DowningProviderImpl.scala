@@ -22,8 +22,12 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
 
     strategy match {
       case `keepMajority` =>
-        Strategy[KeepMajority].unit
-          .map(Downer.props(Cluster(system), _, FiniteDuration(0, "seconds")))
+        Strategy[KeepMajority]
+          .fromConfig[KeepMajority.Config]
+          .map(
+            Downer
+              .props(Cluster(system), _, FiniteDuration(0, "seconds"))
+          )
           .fold(throw new IllegalArgumentException("bla"), _.some)
 
       case `keepOldest` =>

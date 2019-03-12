@@ -8,15 +8,15 @@ import eu.timepit.refined.pureconfig._ // DO NOT REMOVE
 final case class StaticQuorum()
 
 object StaticQuorum {
-  final case class Config(quorumSize: QuorumSize)
+  final case class Config(quorumSize: QuorumSize, role: String)
 
   object Config {
     implicit val configReader: ConfigReader[Config] = deriveReader[Config]
   }
 
   def staticQuorum(worldView: WorldView, config: Config): Either[Throwable, StrategyDecision] =
-    ReachableNodes(worldView, config.quorumSize).map { reachableNodes =>
-      (reachableNodes, UnreachableNodes(worldView, config.quorumSize)) match {
+    ReachableNodes(worldView, config.quorumSize, config.role).map { reachableNodes =>
+      (reachableNodes, UnreachableNodes(worldView, config.quorumSize, config.role)) match {
 
         /**
          * If we decide DownReachable the entire cluster will shutdown. Always?

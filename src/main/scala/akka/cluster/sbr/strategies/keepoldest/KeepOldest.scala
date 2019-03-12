@@ -14,14 +14,14 @@ object KeepOldest {
    *
    * @param downIfAlone down the oldest node if it is partitioned from all other nodes.
    */
-  final case class Config(downIfAlone: Boolean)
+  final case class Config(downIfAlone: Boolean, role: String)
 
   object Config {
     implicit val configReader: ConfigReader[Config] = deriveReader[Config]
   }
 
   def keepOldest(worldView: WorldView, config: Config): Either[Error.type, StrategyDecision] =
-    KeepOldestView(worldView, config).map {
+    KeepOldestView(worldView, config.downIfAlone, config.role).map {
       case OldestReachable =>
         NonEmptySet.fromSet(worldView.unreachableNodes).fold[StrategyDecision](Idle)(DownUnreachable)
       case OldestAlone =>
