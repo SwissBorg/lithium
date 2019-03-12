@@ -1,6 +1,6 @@
 package akka.cluster.sbr
 
-import akka.cluster.ClusterEvent.{ReachableMember => AkkaReachableMember, UnreachableMember => AkkaUnreachableMember, _}
+import akka.cluster.ClusterEvent._
 import akka.cluster.Member
 import akka.cluster.Member._
 import akka.cluster.MemberStatus.WeaklyUp
@@ -10,12 +10,12 @@ import scala.collection.immutable.{SortedMap, SortedSet}
 /**
  * The cluster from the point of view of a node.
  */
-final case class WorldView private[sbr] (private[sbr] val m: SortedMap[Member, Reachability]) {
+final case class WorldView private[sbr] (private[sbr] val reachabilities: SortedMap[Member, Reachability]) {
 
   /**
    * All the nodes in the cluster.
    */
-  def allNodes: SortedSet[Member] = m.keySet
+  def allNodes: SortedSet[Member] = reachabilities.keySet
 
   /**
    * All the nodes in the cluster with the given role. If `role` is the empty
@@ -31,7 +31,7 @@ final case class WorldView private[sbr] (private[sbr] val m: SortedMap[Member, R
    * as they might not be visible from the other side of a potential split.
    */
   def reachableNodes: SortedSet[ReachableNode] =
-    SortedSet(m.collect {
+    SortedSet(reachabilities.collect {
       case (member, Reachable) => ReachableNode(member)
     }.toSeq: _*)
 
@@ -48,7 +48,7 @@ final case class WorldView private[sbr] (private[sbr] val m: SortedMap[Member, R
    * Nodes that have been flagged as unreachable.
    */
   def unreachableNodes: SortedSet[UnreachableNode] =
-    SortedSet(m.iterator.collect {
+    SortedSet(reachabilities.iterator.collect {
       case (member, Unreachable) => UnreachableNode(member)
     }.toSeq: _*)
 
@@ -64,7 +64,7 @@ final case class WorldView private[sbr] (private[sbr] val m: SortedMap[Member, R
   /**
    * The reachability of the `member`.
    */
-  def reachabilityOf(node: Member): Option[Reachability] = m.get(node)
+  def reachabilityOf(node: Member): Option[Reachability] = reachabilities.get(node)
 
   /**
    * Updates the reachability given the member event.
@@ -96,15 +96,15 @@ final case class WorldView private[sbr] (private[sbr] val m: SortedMap[Member, R
    *   this is not a problem.
    */
   def reachabilityEvent(event: ReachabilityEvent): WorldView = event match {
-    case AkkaUnreachableMember(member) => becomeUnreachable(member)
-    case AkkaReachableMember(member)   => becomeReachable(member)
+    case UnreachableMember(member) => becomeUnreachable(member)
+    case ReachableMember(member)   => becomeReachable(member)
   }
 
-  private def remove(member: Member): WorldView = new WorldView(m - member)
+  private def remove(member: Member): WorldView = new WorldView(reachabilities - member)
 
-  private def becomeUnreachable(member: Member): WorldView = new WorldView(m + (member -> Unreachable))
+  private def becomeUnreachable(member: Member): WorldView = new WorldView(reachabilities + (member -> Unreachable))
 
-  private def becomeReachable(member: Member): WorldView = new WorldView(m + (member -> Reachable))
+  private def becomeReachable(member: Member): WorldView = new WorldView(reachabilities + (member -> Reachable))
 }
 
 object WorldView {
