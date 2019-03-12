@@ -1,11 +1,12 @@
 package akka.cluster.sbr
 
-import cats.implicits._
 import pureconfig.ConfigReader
+import pureconfig.error.ConfigReaderFailures
+import cats.implicits._
 
 trait Strategy[A] {
   type Config
-  val name: String // TODO refine
+  val name: String
   def handle(worldView: WorldView, config: Config): Either[Throwable, StrategyDecision]
 }
 
@@ -14,17 +15,21 @@ object Strategy {
 
   def apply[A]: PartiallyAppliedStrategy[A] = new PartiallyAppliedStrategy[A]
 
+  def name[A](implicit ev: Strategy[A]): String = ev.name
+
   implicit class PartiallyAppliedStrategy[A](private val dummy: Boolean = true) extends AnyVal {
     def apply[Config](worldView: WorldView,
                       config: Config)(implicit ev: Aux[A, Config]): Either[Throwable, StrategyDecision] =
       ev.handle(worldView, config)
 
     def fromConfig[Config: ConfigReader](
-      worldView: WorldView
-    )(implicit ev: Aux[A, Config]): Either[Throwable, StrategyDecision] =
+      implicit ev: Aux[A, Config],
+    ): Either[ConfigReaderFailures, ConfiguredStrategy[A, Config]] =
       pureconfig
         .loadConfig[Config](s"ns.${ev.name}")
-        .leftMap(_ => new IllegalArgumentException("yo mama"))
-        .flatMap(ev.handle(worldView, _))
+        .map(a => new ConfiguredStrategy[A, Config](a))
+
+    def unit(implicit ev: Aux[A, Unit]): Either[ConfigReaderFailures, ConfiguredStrategy[A, Unit]] =
+      new ConfiguredStrategy[A, Unit](()).asRight
   }
 }

@@ -3,16 +3,14 @@ package akka.cluster.sbr
 import akka.actor.{Actor, ActorLogging, Cancellable, Props}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
-import akka.cluster.sbr.strategies.staticquorum.{QuorumSize, StaticQuorum}
-import pureconfig.ConfigReader
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
-class StaticQuorumDowner(cluster: Cluster, quorumSize: QuorumSize, stableAfter: FiniteDuration)
+class Downer[A, Config](cluster: Cluster, strategy: ConfiguredStrategy[A, Config], stableAfter: FiniteDuration)
     extends Actor
     with ActorLogging {
-  import StaticQuorumDowner._
+  import Downer._
 
   // TODO is this one ok?
   implicit private val ec: ExecutionContext = context.system.dispatcher
@@ -74,16 +72,13 @@ class StaticQuorumDowner(cluster: Cluster, quorumSize: QuorumSize, stableAfter: 
    * Attemps to resolve a split-brain issue if there is one using
    * the static-quorum strategy.
    */
-  private def handleUnreachableNodes(worldView: WorldView): Unit = {
-    implicit val reader: ConfigReader[QuorumSize] = ???
-
-    Strategy[StaticQuorum]
-      .fromConfig(worldView)
+  private def handleUnreachableNodes(worldView: WorldView): Unit =
+    strategy
+      .handle(worldView)
       .fold(err => {
         log.error(s"Oh fuck... $err")
         throw new IllegalStateException(s"Oh fuck... $err")
       }, identity)
-  }
 
   private def scheduleStabilityMessage(): Cancellable =
     context.system.scheduler.scheduleOnce(stableAfter, self, ClusterIsStable)
@@ -95,9 +90,11 @@ class StaticQuorumDowner(cluster: Cluster, quorumSize: QuorumSize, stableAfter: 
     cluster.unsubscribe(self)
 }
 
-object StaticQuorumDowner {
-  def props(cluster: Cluster, quorumSize: QuorumSize, stableAfter: FiniteDuration): Props =
-    Props(new StaticQuorumDowner(cluster, quorumSize, stableAfter))
+object Downer {
+  def props[A: Strategy, Config](cluster: Cluster,
+                                 strategy: ConfiguredStrategy[A, Config],
+                                 stableAfter: FiniteDuration): Props =
+    Props(new Downer(cluster, strategy, stableAfter))
 
   final case object ClusterIsStable
 }

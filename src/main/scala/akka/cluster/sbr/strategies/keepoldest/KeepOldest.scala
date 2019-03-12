@@ -2,6 +2,8 @@ package akka.cluster.sbr.strategies.keepoldest
 
 import akka.cluster.sbr._
 import cats.data.NonEmptySet
+import pureconfig.ConfigReader
+import pureconfig.generic.semiauto.deriveReader
 
 final case class KeepOldest()
 
@@ -13,6 +15,10 @@ object KeepOldest {
    * @param downIfAlone down the oldest node if it is partitioned from all other nodes.
    */
   final case class Config(downIfAlone: Boolean)
+
+  object Config {
+    implicit val configReader: ConfigReader[Config] = deriveReader[Config]
+  }
 
   def keepOldest(worldView: WorldView, config: Config): Either[Error.type, StrategyDecision] =
     KeepOldestView(worldView, config).map {

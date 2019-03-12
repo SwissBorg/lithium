@@ -3,10 +3,15 @@ package akka.cluster.sbr.strategies.staticquorum
 import akka.cluster.sbr.Scenario.SymmetricSplitScenario
 import akka.cluster.sbr._
 import akka.cluster.sbr.strategies.staticquorum.ArbitraryInstances._
+import akka.cluster.sbr.strategies.staticquorum.StaticQuorum.Config
 import akka.cluster.sbr.utils.RemainingPartitions
 import cats.implicits._
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.refineV
 import eu.timepit.refined.auto._
-import org.scalacheck.Prop
+import eu.timepit.refined.numeric.Positive
+import org.scalacheck.{Arbitrary, Prop}
+import org.scalacheck.Gen._
 import org.scalacheck.Prop.classify
 
 class StaticQuorumSpec extends MySpec {
@@ -45,10 +50,12 @@ class StaticQuorumSpec extends MySpec {
     }
 
     "2 - should handle symmetric split scenarios with a correctly defined quorum size" in {
-      forAll { (scenario: SymmetricSplitScenario, quorumSize: QuorumSize) =>
-        whenever(quorumSize > (scenario.clusterSize / 2)) {
+      forAll { scenario: SymmetricSplitScenario =>
+        implicit val _: Arbitrary[Config] = StaticQuorumSpec.arbConfig(scenario.clusterSize)
+
+        forAll { config: Config =>
           val remainingSubClusters: RemainingPartitions = scenario.worldViews.foldMap { worldView =>
-            Strategy[StaticQuorum](worldView, quorumSize).foldMap(RemainingPartitions.fromDecision)
+            Strategy[StaticQuorum](worldView, config).foldMap(RemainingPartitions.fromDecision)
           }
 
           remainingSubClusters.n.value should be <= 1
@@ -56,10 +63,15 @@ class StaticQuorumSpec extends MySpec {
       }
     }
   }
-
 }
 
 object StaticQuorumSpec {
+  private def arbConfig(clusterSize: Int Refined Positive): Arbitrary[StaticQuorum.Config] = Arbitrary {
+    val minQuorumSize = clusterSize / 2 + 1
+    chooseNum(minQuorumSize, clusterSize.value)
+      .map(quorumSize => StaticQuorum.Config(refineV[Positive](quorumSize).right.get))
+  }
+
   def classifyNetwork(reachableNodes: ReachableNodes, unreachableNodes: UnreachableNodes)(prop: Prop): Prop = {
     val isNormal: Boolean =
       (reachableNodes, unreachableNodes) match {
