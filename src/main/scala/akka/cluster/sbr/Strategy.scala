@@ -30,4 +30,15 @@ object Strategy {
 
     def noConfig(implicit ev: Aux[A, Unit]): ConfiguredStrategy[A, Unit] = new ConfiguredStrategy[A, Unit](())
   }
+
+  def foo[A, Config](a: A)(implicit ev: Strategy[A]): ev.Config = ???
+
+  trait Strat {
+    type Config
+  }
+
+  def foo[A <: Strat](a: A): A#Config = ???
 }
+
+
+

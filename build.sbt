@@ -8,10 +8,25 @@ version := "0.0.1"
 scalaVersion := "2.12.8"
 sbtVersion := "1.2.1"
 
-scalacOptions ++= Seq("-Ypartial-unification",
-                      "-Ywarn-unused",
-                      "-Xmacro-settings:materialize-derivations",
-                      "-Yrangepos")
+scalacOptions ++=
+  Seq(
+    "-encoding",
+    "UTF-8",
+    "-feature",
+    "-language:existentials",
+    "-language:higherKinds",
+    "-language:implicitConversions",
+    "-language:experimental.macros",
+    "-unchecked",
+    "-Ypartial-unification",
+    "-Ywarn-dead-code",
+    "-Ywarn-numeric-widen",
+    "-Ywarn-value-discard",
+    "-Xfuture",
+    "-Yno-adapted-args",
+//    "-Xfatal-warnings",
+    "-deprecation"
+  )
 
 val akkaVersion = "2.5.21"
 val akkaHTTPVersion = "10.1.7"

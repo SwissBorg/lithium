@@ -17,10 +17,10 @@ object KeepMajority {
 
   def keepMajority(worldView: WorldView, config: Config): StrategyDecision =
     NodesMajority(worldView, config.role) match {
-      case ReachableMajority(_) =>
+      case _: ReachableMajority | _: ReachableLowestAddress =>
         NonEmptySet.fromSet(worldView.unreachableNodes).fold[StrategyDecision](Idle)(DownUnreachable)
 
-      case UnreachableMajority(_) =>
+      case _: UnreachableMajority | _: UnreachableLowestAddress =>
         NonEmptySet.fromSet(worldView.reachableNodes).fold[StrategyDecision](Idle)(DownReachable)
 
       // Same as Akka
