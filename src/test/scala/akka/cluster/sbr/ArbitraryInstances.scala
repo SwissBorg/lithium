@@ -39,6 +39,9 @@ trait ArbitraryInstances {
   sealed trait HealthyTag
   type HealthyWorldView = WorldView @@ HealthyTag
 
+  sealed trait UpNumberConsistentTag
+  type UpNumberConsistentWorldView = WorldView @@ UpNumberConsistentTag
+
   implicit val arbWorldView: Arbitrary[WorldView] = Arbitrary(
     arbitrary[Seq[(Member, Reachability)]].map(m => new WorldView(SortedMap(m: _*)))
   )
@@ -51,6 +54,19 @@ trait ArbitraryInstances {
       worldView = new WorldView(SortedMap(all: _*))
     } yield tag[HealthyTag][WorldView](worldView)
   )
+
+  implicit val arbUpNumberConsistentWorldView: Arbitrary[UpNumberConsistentWorldView] = Arbitrary {
+    for {
+      members <- arbitrary[Seq[WeaklyUpMember]]
+      member <- arbitrary[WeaklyUpMember]
+
+      all = (member +: members).zipWithIndex.map {
+        case (weaklyUpMember, ix) => weaklyUpMember.copyUp(ix) -> Reachable
+      }
+
+      worldView = new WorldView(SortedMap(all: _*))
+    } yield tag[UpNumberConsistentTag][WorldView](worldView)
+  }
 
   implicit val arbReachability: Arbitrary[Reachability] =
     Arbitrary(oneOf(Reachable, Unreachable))
@@ -71,7 +87,7 @@ trait ArbitraryInstances {
   )
 
   implicit val arbUpMember: Arbitrary[UpMember] = Arbitrary(
-    arbitrary[JoiningMember].map(m => tag[UpTag][Member](m.copy(Up)))
+    arbitrary[JoiningMember].map(m => tag[UpTag][Member](m.copyUp(m.hashCode())))
   )
 
   implicit val arbLeavingMember: Arbitrary[LeavingMember] = Arbitrary(

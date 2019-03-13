@@ -56,13 +56,15 @@ class WorldViewSpec extends MySpec {
 
     "4 - reachableNodes" in {
       forAll { worldView: WorldView =>
-        (worldView.reachabilities.toList should contain).allElementsOf(worldView.reachableNodes.map(n => n.node -> Reachable))
+        (worldView.reachabilities.toList should contain)
+          .allElementsOf(worldView.reachableNodes.map(n => n.node -> Reachable))
       }
     }
 
     "5 - unreachableNodes" in {
       forAll { worldView: WorldView =>
-        (worldView.reachabilities.toList should contain).allElementsOf(worldView.unreachableNodes.map(n => n.node -> Unreachable))
+        (worldView.reachabilities.toList should contain)
+          .allElementsOf(worldView.unreachableNodes.map(n => n.node -> Unreachable))
       }
     }
 

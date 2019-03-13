@@ -2,7 +2,7 @@ package akka.cluster.sbr.strategies.downall
 
 import akka.cluster.sbr._
 import akka.cluster.sbr.ArbitraryInstances._
-import akka.cluster.sbr.Scenario.SymmetricSplitScenario
+import akka.cluster.sbr.scenarios.{SymmetricSplitScenario, UpDisseminationScenario}
 import akka.cluster.sbr.utils.RemainingPartitions
 import cats.implicits._
 
@@ -32,5 +32,14 @@ class DownAllSpec extends MySpec {
       }
     }
 
+    "3 - should handle split during up-dissemination" in {
+      forAll { scenario: UpDisseminationScenario =>
+        val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
+          Strategy[DownAll](worldView, ()).foldMap(RemainingPartitions.fromDecision)
+        }
+
+        remainingSubClusters.n.value should be <= 1
+      }
+    }
   }
 }

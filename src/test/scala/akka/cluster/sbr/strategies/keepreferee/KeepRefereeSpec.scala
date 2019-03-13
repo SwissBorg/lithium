@@ -1,6 +1,6 @@
 package akka.cluster.sbr.strategies.keepreferee
 
-import akka.cluster.sbr.Scenario.SymmetricSplitScenario
+import akka.cluster.sbr.scenarios.{SymmetricSplitScenario, UpDisseminationScenario}
 import akka.cluster.sbr.strategies.keepreferee.KeepReferee.Config
 import akka.cluster.sbr.utils.RemainingPartitions
 import akka.cluster.sbr.{MySpec, Strategy}
@@ -24,5 +24,20 @@ class KeepRefereeSpec extends MySpec {
         remainingSubClusters.n.value should be <= 1
       }
     }
+
+    "2 - should handle split during up-dissemination" in {
+      forAll { (scenario: UpDisseminationScenario, downAllIfLessThanNodes: Int Refined Positive) =>
+        // same referee for everyone
+        val referee = scenario.worldViews.head.allNodes.take(1).head.address.toString
+
+        val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
+          Strategy[KeepReferee](worldView, Config(referee, downAllIfLessThanNodes))
+            .foldMap(RemainingPartitions.fromDecision)
+        }
+
+        remainingSubClusters.n.value should be <= 1
+      }
+    }
+
   }
 }

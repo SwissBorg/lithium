@@ -1,19 +1,18 @@
 package akka.cluster.sbr.strategies.staticquorum
 
-import akka.cluster.sbr.Scenario.SymmetricSplitScenario
+import akka.cluster.sbr.scenarios.SymmetricSplitScenario
 import akka.cluster.sbr._
-import akka.cluster.sbr.strategies.staticquorum.ArbitraryInstances._
 import akka.cluster.sbr.strategies.staticquorum.StaticQuorum.Config
 import akka.cluster.sbr.utils.RemainingPartitions
 import cats.implicits._
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.refineV
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
-import org.scalacheck.{Arbitrary, Prop}
-import org.scalacheck.Gen._
+import eu.timepit.refined.refineV
 import org.scalacheck.Arbitrary._
+import org.scalacheck.Gen._
 import org.scalacheck.Prop.classify
+import org.scalacheck.{Arbitrary, Prop}
 
 class StaticQuorumSpec extends MySpec {
 
@@ -31,6 +30,21 @@ class StaticQuorumSpec extends MySpec {
         }
       }
     }
+
+    // TODO check if can really be handled
+//    "2 - should handle split during up-dissemination" in {
+//      forAll { scenario: UpDisseminationScenario =>
+//        implicit val _: Arbitrary[Config] = StaticQuorumSpec.arbConfig(scenario.clusterSize)
+//
+//        forAll { config: Config =>
+//          val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
+//            Strategy[StaticQuorum](worldView, config).foldMap(RemainingPartitions.fromDecision)
+//          }
+//
+//          remainingSubClusters.n.value should be <= 1
+//        }
+//      }
+//    }
   }
 }
 
