@@ -16,8 +16,8 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
     val strategy: String = ???
 
     val keepMajority = Strategy.name[KeepMajority]
-    val keepOldest = Strategy.name[KeepOldest]
-    val keepReferee = Strategy.name[KeepReferee]
+    val keepOldest   = Strategy.name[KeepOldest]
+    val keepReferee  = Strategy.name[KeepReferee]
     val staticQuorum = Strategy.name[StaticQuorum]
 
     strategy match {

@@ -66,7 +66,7 @@ object StaticQuorumSpec {
     val minQuorumSize = clusterSize / 2 + 1
     for {
       quorumSize <- chooseNum(minQuorumSize, clusterSize.value)
-      role <- arbitrary[String]
+      role       <- arbitrary[String]
     } yield StaticQuorum.Config(refineV[Positive](quorumSize).right.get, role)
   }
 

@@ -10,7 +10,7 @@ object implicits {
     override def ap[A, B](ff: Arbitrary[A => B])(fa: Arbitrary[A]): Arbitrary[B] =
       Arbitrary(for {
         ff <- ff.arbitrary
-        a <- fa.arbitrary
+        a  <- fa.arbitrary
       } yield ff(a))
   }
 }

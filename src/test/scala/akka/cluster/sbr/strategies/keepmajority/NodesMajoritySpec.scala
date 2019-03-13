@@ -9,7 +9,7 @@ class NodesMajoritySpec extends MySpec {
     "1 - should instantiate the correct instance" in {
       forAll { (worldView: WorldView, config: Config) =>
         val totalNodes = worldView.allNodesWithRole(config.role).size
-        val majority = if (totalNodes == 0) 1 else totalNodes / 2 + 1
+        val majority   = if (totalNodes == 0) 1 else totalNodes / 2 + 1
 
         NodesMajority(worldView, config.role) match {
           case ReachableMajority(reachableNodes) =>

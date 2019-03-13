@@ -49,8 +49,8 @@ trait ArbitraryInstances {
   implicit val arbHealthyWorldView: Arbitrary[HealthyWorldView] = Arbitrary(
     for {
       members <- arbitrary[Seq[Member]]
-      member <- arbitrary[Member]
-      all = (member +: members).map(_ -> Reachable)
+      member  <- arbitrary[Member]
+      all       = (member +: members).map(_ -> Reachable)
       worldView = new WorldView(SortedMap(all: _*))
     } yield tag[HealthyTag][WorldView](worldView)
   )
@@ -58,7 +58,7 @@ trait ArbitraryInstances {
   implicit val arbUpNumberConsistentWorldView: Arbitrary[UpNumberConsistentWorldView] = Arbitrary {
     for {
       members <- arbitrary[Seq[WeaklyUpMember]]
-      member <- arbitrary[WeaklyUpMember]
+      member  <- arbitrary[WeaklyUpMember]
 
       all = (member +: members).zipWithIndex.map {
         case (weaklyUpMember, ix) => weaklyUpMember.copyUp(ix) -> Reachable
@@ -132,7 +132,7 @@ trait ArbitraryInstances {
   implicit val arbAddress: Arbitrary[Address] =
     Arbitrary(for {
       protocol <- alphaNumStr
-      system <- alphaNumStr
+      system   <- alphaNumStr
     } yield Address(protocol, system, None, None))
 
   implicit val arbMemberStatusFromJoining: Arbitrary[MemberStatus] =

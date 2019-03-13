@@ -11,8 +11,8 @@ private[keepmajority] object NodesMajority {
   def apply(worldView: WorldView, role: String): NodesMajority = {
     val totalNodes = worldView.allNodesWithRole(role).size
 
-    val majority = if (totalNodes == 0) 1 else totalNodes / 2 + 1
-    val reachableNodes = worldView.reachableNodesWithRole(role)
+    val majority         = if (totalNodes == 0) 1 else totalNodes / 2 + 1
+    val reachableNodes   = worldView.reachableNodesWithRole(role)
     val unreachableNodes = worldView.unreachableNodesWithRole(role)
 
     if (reachableNodes.size >= majority) ReachableMajority(reachableNodes)

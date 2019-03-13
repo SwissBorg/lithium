@@ -17,6 +17,6 @@ package object scenarios {
     for {
       // Split the allNodes in `nSubCluster`.
       nSubClusters <- chooseNum(1, nodes.length).map(refineV[Positive](_).right.get) // always > 1
-      subClusters <- splitIn(nSubClusters, nodes).arbitrary
+      subClusters  <- splitIn(nSubClusters, nodes).arbitrary
     } yield subClusters
 }

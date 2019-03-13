@@ -14,17 +14,17 @@ object ArbitraryInstances extends akka.cluster.sbr.ArbitraryInstances {
 
   implicit val arbReachableNodes: Arbitrary[Either[NoReachableNodesError.type, ReachableNodes]] = Arbitrary(
     for {
-      worldView <- arbitrary[WorldView]
+      worldView  <- arbitrary[WorldView]
       quorumSize <- arbitrary[QuorumSize]
-      role <- arbitrary[String]
+      role       <- arbitrary[String]
     } yield ReachableNodes(worldView, quorumSize, role)
   )
 
   implicit val arbUnreachableNodes: Arbitrary[UnreachableNodes] = Arbitrary(
     for {
-      worldView <- arbitrary[WorldView]
+      worldView  <- arbitrary[WorldView]
       quorumSize <- arbitrary[QuorumSize]
-      role <- arbitrary[String]
+      role       <- arbitrary[String]
     } yield UnreachableNodes(worldView, quorumSize, role)
   )
 }

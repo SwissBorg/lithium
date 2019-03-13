@@ -39,6 +39,3 @@ object Strategy {
 
   def foo[A <: Strat](a: A): A#Config = ???
 }
-
-
-

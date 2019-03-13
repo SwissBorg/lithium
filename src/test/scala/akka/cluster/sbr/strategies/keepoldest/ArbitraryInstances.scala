@@ -8,7 +8,7 @@ object ArbitraryInstances extends akka.cluster.sbr.ArbitraryInstances {
   implicit val arbConfig: Arbitrary[Config] = Arbitrary {
     for {
       downIfAlone <- arbitrary[Boolean]
-      role <- arbitrary[String]
+      role        <- arbitrary[String]
     } yield Config(downIfAlone, role)
   }
 }
