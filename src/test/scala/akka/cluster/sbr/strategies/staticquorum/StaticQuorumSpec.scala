@@ -1,6 +1,6 @@
 package akka.cluster.sbr.strategies.staticquorum
 
-import akka.cluster.sbr.scenarios.SymmetricSplitScenario
+import akka.cluster.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario}
 import akka.cluster.sbr._
 import akka.cluster.sbr.strategies.staticquorum.StaticQuorum.Config
 import akka.cluster.sbr.utils.RemainingPartitions
@@ -23,7 +23,7 @@ class StaticQuorumSpec extends MySpec {
 
         forAll { config: Config =>
           val remainingSubClusters: RemainingPartitions = scenario.worldViews.foldMap { worldView =>
-            Strategy[StaticQuorum](worldView, config).foldMap(RemainingPartitions.fromDecision)
+            Strategy[StaticQuorum](worldView, config).foldMap(RemainingPartitions.fromDecision(worldView))
           }
 
           remainingSubClusters.n.value should be <= 1
@@ -31,6 +31,19 @@ class StaticQuorumSpec extends MySpec {
       }
     }
 
+    "2 - should handle a split during the oldest-removed scenarios" in {
+      forAll { scenario: OldestRemovedScenario =>
+        implicit val _: Arbitrary[Config] = StaticQuorumSpec.arbConfig(scenario.clusterSize)
+
+        forAll { config: Config =>
+          val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
+            Strategy[StaticQuorum](worldView, config).foldMap(RemainingPartitions.fromDecision(worldView))
+          }
+
+          remainingSubClusters.n.value should be <= 1
+        }
+      }
+    }
     // TODO check if can really be handled
 //    "2 - should handle split during up-dissemination" in {
 //      forAll { scenario: UpDisseminationScenario =>

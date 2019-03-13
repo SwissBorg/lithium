@@ -4,7 +4,6 @@ import akka.cluster.ClusterEvent.{MemberUp, UnreachableMember}
 import akka.cluster.Member
 import akka.cluster.sbr.ArbitraryInstances._
 import akka.cluster.sbr.WorldView
-import akka.cluster.sbr.scenarios.Scenario.splitCluster
 import cats.data.{NonEmptyList, NonEmptySet}
 import org.scalacheck.Arbitrary
 import org.scalacheck.Gen.listOf
@@ -39,17 +38,17 @@ object UpDisseminationScenario {
     }
 
     for {
-      healthyWorldView <- arbUpNumberConsistentWorldView.arbitrary
+      initWorldView <- arbUpNumberConsistentWorldView.arbitrary
 
       allNodes = NonEmptySet
-        .fromSetUnsafe(healthyWorldView.allNodes) // HealthyWorldView has at least one node and all are reachable
+        .fromSetUnsafe(initWorldView.allNodes) // UpNumberConsistentWorldView has at least one node and all are reachable
 
       // Split the allNodes in `nSubCluster`.
       partitions <- splitCluster(allNodes)
 
       // Each sub-allNodes sees the other nodes as unreachable.
 
-      divergedWorldViews <- partitions.traverse(divergeWorldView(healthyWorldView, allNodes, _)).arbitrary
+      divergedWorldViews <- partitions.traverse(divergeWorldView(initWorldView, allNodes, _)).arbitrary
     } yield UpDisseminationScenario(divergedWorldViews)
   }
 

@@ -15,11 +15,13 @@ import eu.timepit.refined.refineV
 final case class RemainingPartitions(n: Int Refined NonNegative)
 
 object RemainingPartitions {
-  def fromDecision(decision: StrategyDecision): RemainingPartitions = decision match {
+  def fromDecision(worldView: WorldView)(decision: StrategyDecision): RemainingPartitions = decision match {
     case _: DownReachable       => RemainingPartitions(0)
     case _: UnsafeDownReachable => RemainingPartitions(0)
     case _: DownUnreachable     => RemainingPartitions(1)
-    case _: Idle.type           => RemainingPartitions(1)
+    case _: Idle.type =>
+      if (worldView.reachableNodes.isEmpty) RemainingPartitions(0) // node is effectively down
+      else RemainingPartitions(1)
   }
 
   implicit val remainingSubClustersMonoid: Monoid[RemainingPartitions] = new Monoid[RemainingPartitions] {

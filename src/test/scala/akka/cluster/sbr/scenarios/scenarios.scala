@@ -1,4 +1,4 @@
-package akka.cluster.sbr.scenarios
+package akka.cluster.sbr
 
 import akka.cluster.Member
 import akka.cluster.sbr.utils.splitIn
@@ -8,7 +8,7 @@ import eu.timepit.refined.numeric.Positive
 import org.scalacheck.Gen
 import org.scalacheck.Gen._
 
-object Scenario {
+package object scenarios {
 
   /**
    * Split the nodes into n sub-clusters, where 1 <= n <= #nodes.

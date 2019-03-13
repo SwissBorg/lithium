@@ -4,7 +4,6 @@ import akka.cluster.ClusterEvent.UnreachableMember
 import akka.cluster.Member
 import akka.cluster.sbr.ArbitraryInstances._
 import akka.cluster.sbr.WorldView
-import akka.cluster.sbr.scenarios.Scenario.splitCluster
 import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
