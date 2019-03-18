@@ -103,8 +103,7 @@ final case class WorldView private[sbr] (private[sbr] val reachabilities: Sorted
   private def remove(member: Member): WorldView = new WorldView(reachabilities - member)
 
   private def becomeUnreachable(member: Member): WorldView = new WorldView(reachabilities + (member -> Unreachable))
-
-  private def becomeReachable(member: Member): WorldView = new WorldView(reachabilities + (member -> Reachable))
+  private def becomeReachable(member: Member): WorldView   = new WorldView(reachabilities + (member -> Reachable))
 }
 
 object WorldView {

@@ -23,8 +23,9 @@ class Downer[A, Config](cluster: Cluster, strategy: ConfiguredStrategy[A, Config
    * state as snapshot.
    */
   private def waitingForSnapshot: Receive = {
-    case state: CurrentClusterState => setStabilityTrigger(WorldView(state))
-    case _                          => () // ignore // TODO needed?
+    case state: CurrentClusterState =>
+      setStabilityTrigger(WorldView(state))
+    case _ => () // ignore // TODO needed?
   }
 
   def mainReceive(reachability: WorldView, stabilityTrigger: Cancellable): Receive =
@@ -52,12 +53,13 @@ class Downer[A, Config](cluster: Cluster, strategy: ConfiguredStrategy[A, Config
 
     case e: ReachabilityEvent => // TODO check what really should be counted
       val reachability0 = reachability.reachabilityEvent(e)
+
       // Only reset trigger if the event impacted the reachability.
       if (reachability0 != reachability) {
         resetStabilityTrigger(reachability0, stabilityTrigger)
+      } else {
+        resetStabilityTrigger(reachability, stabilityTrigger)
       }
-
-      resetStabilityTrigger(reachability, stabilityTrigger)
   }
 
   private def setStabilityTrigger(reachability: WorldView): Unit =
@@ -79,21 +81,24 @@ class Downer[A, Config](cluster: Cluster, strategy: ConfiguredStrategy[A, Config
         log.error(s"Oh fuck... $err")
         throw new IllegalStateException(s"Oh fuck... $err")
       }, identity)
+      .addressesToDown
+      .foreach(Cluster(context.system).down)
 
   private def scheduleStabilityMessage(): Cancellable =
     context.system.scheduler.scheduleOnce(stableAfter, self, ClusterIsStable)
 
   override def preStart(): Unit =
-    cluster.subscribe(self, InitialStateAsSnapshot, classOf[UnreachableNode], classOf[MemberEvent])
+    cluster.subscribe(self,
+                      InitialStateAsSnapshot,
+                      classOf[akka.cluster.ClusterEvent.MemberEvent],
+                      classOf[akka.cluster.ClusterEvent.ReachabilityEvent])
 
   override def postStop(): Unit =
     cluster.unsubscribe(self)
 }
 
 object Downer {
-  def props[A: Strategy, Config](cluster: Cluster,
-                                 strategy: ConfiguredStrategy[A, Config],
-                                 stableAfter: FiniteDuration): Props =
+  def props[A, Config](cluster: Cluster, strategy: ConfiguredStrategy[A, Config], stableAfter: FiniteDuration): Props =
     Props(new Downer(cluster, strategy, stableAfter))
 
   final case object ClusterIsStable

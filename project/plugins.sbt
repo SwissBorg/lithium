@@ -23,3 +23,7 @@ addSbtPlugin("org.wartremover" % "sbt-wartremover" % "2.4.1")
 
 // SBT-updates
 addSbtPlugin("com.timushev.sbt" % "sbt-updates" % "0.4.0")
+
+// Test coverage
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.5.1")
+

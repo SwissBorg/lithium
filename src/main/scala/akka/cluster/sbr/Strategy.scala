@@ -25,17 +25,9 @@ object Strategy {
       implicit ev: Aux[A, Config],
     ): Either[ConfigReaderFailures, ConfiguredStrategy[A, Config]] =
       pureconfig
-        .loadConfig[Config](s"ns.${ev.name}") // TODO define a namespace
+        .loadConfig[Config](s"akka.cluster.split-brain-resolver.${ev.name}")
         .map(a => new ConfiguredStrategy[A, Config](a))
 
     def noConfig(implicit ev: Aux[A, Unit]): ConfiguredStrategy[A, Unit] = new ConfiguredStrategy[A, Unit](())
   }
-
-  def foo[A, Config](a: A)(implicit ev: Strategy[A]): ev.Config = ???
-
-  trait Strat {
-    type Config
-  }
-
-  def foo[A <: Strat](a: A): A#Config = ???
 }

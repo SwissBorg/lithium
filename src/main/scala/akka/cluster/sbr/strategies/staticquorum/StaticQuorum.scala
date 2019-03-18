@@ -57,7 +57,7 @@ object StaticQuorum {
 
   implicit val staticQuorumStrategy: Strategy.Aux[StaticQuorum, StaticQuorum.Config] = new Strategy[StaticQuorum] {
     override type Config = StaticQuorum.Config
-    override val name: String = "quorum-size"
+    override val name: String = "static-quorum"
     override def handle(worldView: WorldView, config: Config): Either[Throwable, StrategyDecision] =
       staticQuorum(worldView, config)
   }
