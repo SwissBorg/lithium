@@ -57,7 +57,7 @@ class StaticQuorumSpec
       enterBarrier("node3-up")
     }
 
-    "4 - Bidirectional link failure" in {
+    "4 - Bidirectional link failure" in within(30 seconds) {
       runOn(node1) {
         // Kill link bi-directionally to node3
         testConductor.blackhole(node1, node3, Direction.Both).await
@@ -80,23 +80,34 @@ class StaticQuorumSpec
 
       enterBarrier("node3-downed")
     }
+
+    "6 - Complete bidirectional link failure" in within(30 seconds) {
+      runOn(node1) {
+        testConductor.blackhole(node1, node2, Direction.Both).await
+      }
+
+      enterBarrier("all-disconnected")
+
+      runOn(node1) {
+        waitToBecomeUnreachable(node2)
+      }
+
+      enterBarrier("all-downed")
+    }
   }
 
   private def waitToBecomeUnreachable(roleNames: RoleName*): Unit = roleNames.map(addressOf).foreach { address =>
-    awaitCond(
-      Cluster(system).state.unreachable.exists(_.address == address),
-      30 seconds
-    )
+    awaitCond(Cluster(system).state.unreachable.exists(_.address == address))
   }
 
   private def waitForUnreachableHandling(): Unit =
-    awaitCond(Cluster(system).state.unreachable.isEmpty, 30 seconds)
+    awaitCond(Cluster(system).state.unreachable.isEmpty)
 
   private def waitForSurvivors(roleNames: RoleName*): Unit = roleNames.map(addressOf).foreach { address =>
-    awaitCond(Cluster(system).state.members.exists(_.address == address), 30 seconds)
+    awaitCond(Cluster(system).state.members.exists(_.address == address))
   }
 
   private def waitForUp(roleNames: RoleName*): Unit = roleNames.map(addressOf).foreach { address =>
-    awaitCond(Cluster(system).state.members.exists(m => m.address == address && m.status == Up), 30 seconds)
+    awaitCond(Cluster(system).state.members.exists(m => m.address == address && m.status == Up))
   }
 }

@@ -74,15 +74,19 @@ class Downer[A, Config](cluster: Cluster, strategy: ConfiguredStrategy[A, Config
    * Attemps to resolve a split-brain issue if there is one using
    * the static-quorum strategy.
    */
-  private def handleUnreachableNodes(worldView: WorldView): Unit =
-    strategy
+  private def handleUnreachableNodes(worldView: WorldView): Unit = {
+    val a = strategy
       .handle(worldView)
-      .fold(err => {
+
+    log.debug(s"DECISION $a")
+
+      a.fold(err => {
         log.error(s"Oh fuck... $err")
         throw new IllegalStateException(s"Oh fuck... $err")
       }, identity)
       .addressesToDown
       .foreach(Cluster(context.system).down)
+  }
 
   private def scheduleStabilityMessage(): Cancellable =
     context.system.scheduler.scheduleOnce(stableAfter, self, ClusterIsStable)
