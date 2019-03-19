@@ -40,7 +40,7 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
         Strategy[KeepReferee]
           .fromConfig[KeepReferee.Config]
           .map(Downer.props(Cluster(system), _, FiniteDuration(5, "seconds")))
-          .fold(throw new IllegalArgumentException("bla"), _.some)
+          .fold(err => throw new IllegalArgumentException(err.toString), _.some)
 
       case `staticQuorum` =>
         val a = Strategy[StaticQuorum]

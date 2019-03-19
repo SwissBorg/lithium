@@ -1,1 +1,1 @@
--Dconfig.resource=role_static_quorum_spec.conf
+-Dconfig.resource=staticquorum/role_static_quorum_spec.conf

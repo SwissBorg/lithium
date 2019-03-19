@@ -17,6 +17,7 @@ scalacOptions ++=
     "-language:existentials",
     "-language:higherKinds",
     "-language:implicitConversions",
+    "-language:postfixOps",
     "-language:experimental.macros",
     "-unchecked",
     "-Ypartial-unification",
@@ -71,7 +72,7 @@ lazy val root = (project in file("."))
   .settings(parallelExecution in Test := false)
 
 //wartremoverErrors in (Compile, compile) ++= Warts.allBut(Wart.Any, Wart.Nothing, Wart.ImplicitParameter, Wart.Recursion)
-testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "5")
+//testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "5")
 
 // SemanticDB
 addCompilerPlugin(scalafixSemanticdb)

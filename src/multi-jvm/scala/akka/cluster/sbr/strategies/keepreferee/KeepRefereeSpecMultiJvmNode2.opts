@@ -1,0 +1,2 @@
+-Dconfig.resource=keepreferee/keep_referee_spec.conf
+-Dakka.remote.netty.tcp.port=9992

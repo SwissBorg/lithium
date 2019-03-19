@@ -11,8 +11,11 @@ object KeepOldestView {
     val allNodesSortedByAge = worldView.allNodesWithRole(role).toList.sorted(Member.ageOrdering)
 
     val maybeKeepOldestView = for {
-      oldestNode   <- allNodesSortedByAge.headOption
+      oldestNode <- allNodesSortedByAge.headOption
+      _ = println(allNodesSortedByAge)
+      _ = println(s"OLDEST: $oldestNode")
       reachability <- worldView.reachabilityOf(oldestNode)
+      _ = println(s"REACHABILITY: $reachability")
     } yield
       reachability match {
         case Reachable =>
