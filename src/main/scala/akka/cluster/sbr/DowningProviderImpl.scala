@@ -56,7 +56,7 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
 }
 
 object DowningProviderImpl {
-  sealed abstract case class Config(activeStrategy: String, stableAfter: FiniteDuration, downAllWhenUnstable: Boolean)
+  sealed abstract case class Config(activeStrategy: String, stableAfter: FiniteDuration, downAllWhenUnstable: FiniteDuration)
 
   object Config {
     // TODO handle errors
@@ -65,7 +65,8 @@ object DowningProviderImpl {
         system.settings.config.getString("akka.cluster.split-brain-resolver.active-strategy"),
         FiniteDuration(system.settings.config.getDuration("akka.cluster.split-brain-resolver.stable-after").toMillis,
                        TimeUnit.MILLISECONDS),
-        false // TODO
+        FiniteDuration(system.settings.config.getDuration("akka.cluster.split-brain-resolver.down-all-when-unstable").toMillis,
+          TimeUnit.MILLISECONDS)// TODO
       ) {}
   }
 }
