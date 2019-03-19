@@ -1,4 +1,4 @@
-package akka.cluster.sbr.strategies.keepoldest
+package akka.cluster.sbr.strategies.keepoldest.three
 
 import akka.cluster.sbr.FiveNodeSpecConfig
 import com.typesafe.config.ConfigFactory

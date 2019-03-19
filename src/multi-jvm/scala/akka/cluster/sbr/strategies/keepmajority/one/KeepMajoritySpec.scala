@@ -1,4 +1,4 @@
-package akka.cluster.sbr.strategies.keepmajority
+package akka.cluster.sbr.strategies.keepmajority.one
 
 import akka.cluster.sbr.ThreeNodeSpec
 import akka.remote.transport.ThrottlerTransportAdapter.Direction

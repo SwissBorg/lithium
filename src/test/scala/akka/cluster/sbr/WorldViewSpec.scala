@@ -22,7 +22,7 @@ class WorldViewSpec extends MySpec {
     "2 - memberEvent" in {
       forAll { (worldView: WorldView, event: MemberEvent) =>
         event match {
-            // TODO double check
+          // TODO double check
           case _: MemberWeaklyUp | _: MemberDowned =>
             worldView.memberEvent(event) shouldEqual worldView
 

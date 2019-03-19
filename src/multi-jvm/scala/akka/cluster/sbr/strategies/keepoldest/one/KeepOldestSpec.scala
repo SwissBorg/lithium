@@ -1,24 +1,24 @@
-package akka.cluster.sbr.strategies.keepreferee
+package akka.cluster.sbr.strategies.keepoldest.one
 
 import akka.cluster.sbr.ThreeNodeSpec
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
 
-class KeepRefereeSpecMultiJvmNode1 extends KeepRefereeSpec
-class KeepRefereeSpecMultiJvmNode2 extends KeepRefereeSpec
-class KeepRefereeSpecMultiJvmNode3 extends KeepRefereeSpec
+class KeepOldestSpecMultiJvmNode1 extends KeepOldestSpec
+class KeepOldestSpecMultiJvmNode2 extends KeepOldestSpec
+class KeepOldestSpecMultiJvmNode3 extends KeepOldestSpec
 
-class KeepRefereeSpec extends ThreeNodeSpec("KeepReferee", KeepRefereeSpecConfig) {
+class KeepOldestSpec extends ThreeNodeSpec("KeepOldest", KeepOldestSpecConfig) {
   override def assertions(): Unit =
     "Bidirectional link failure" in within(30 seconds) {
       runOn(node1) {
-        // Kill link bi-directionally to node3
+        // Kill link to node1
         testConductor.blackhole(node2, node1, Direction.Both).await
         testConductor.blackhole(node3, node1, Direction.Both).await
       }
 
-      enterBarrier("node2-3-disconnected")
+      enterBarrier("node1-disconnected")
 
       runOn(node1) {
         waitForUp(node1)

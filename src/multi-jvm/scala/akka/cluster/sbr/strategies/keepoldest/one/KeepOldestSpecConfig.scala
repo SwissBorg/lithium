@@ -1,4 +1,4 @@
-package akka.cluster.sbr.strategies.keepoldest
+package akka.cluster.sbr.strategies.keepoldest.one
 
 import akka.cluster.sbr.ThreeNodeSpecConfig
 

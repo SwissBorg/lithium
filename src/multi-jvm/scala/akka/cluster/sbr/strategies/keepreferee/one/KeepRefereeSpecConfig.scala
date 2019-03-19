@@ -1,4 +1,4 @@
-package akka.cluster.sbr.strategies.keepreferee
+package akka.cluster.sbr.strategies.keepreferee.one
 
 import akka.cluster.sbr.ThreeNodeSpecConfig
 

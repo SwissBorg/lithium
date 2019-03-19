@@ -1,17 +1,19 @@
-package akka.cluster.sbr.strategies.keepmajority
+package akka.cluster.sbr.strategies.staticquorum.two
 
 import akka.cluster.sbr.FiveNodeSpec
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
-class KeepMajoritySpec2MultiJvmNode1 extends KeepMajoritySpec2
-class KeepMajoritySpec2MultiJvmNode2 extends KeepMajoritySpec2
-class KeepMajoritySpec2MultiJvmNode3 extends KeepMajoritySpec2
-class KeepMajoritySpec2MultiJvmNode4 extends KeepMajoritySpec2
-class KeepMajoritySpec2MultiJvmNode5 extends KeepMajoritySpec2
+import scala.concurrent.duration._
 
-class KeepMajoritySpec2 extends FiveNodeSpec("KeepMajority", KeepMajoritySpec2Config) {
+class StaticQuorumSpec2MultiJvmNode1 extends StaticQuorumSpec2
+class StaticQuorumSpec2MultiJvmNode2 extends StaticQuorumSpec2
+class StaticQuorumSpec2MultiJvmNode3 extends StaticQuorumSpec2
+class StaticQuorumSpec2MultiJvmNode4 extends StaticQuorumSpec2
+class StaticQuorumSpec2MultiJvmNode5 extends StaticQuorumSpec2
+
+class StaticQuorumSpec2 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Config) {
   override def assertions(): Unit =
-    "Three partitions, bidirectional link failure" in {
+    "Three partitions, bidirectional link failure" in within(30 seconds) {
       runOn(node1) {
         // Partition of node1, node2, node3
         // Partition of node 4

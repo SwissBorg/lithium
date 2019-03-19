@@ -1,6 +1,7 @@
-package akka.cluster.sbr.strategies.keepmajority
+package akka.cluster.sbr.strategies.keepmajority.three
 
 import akka.cluster.sbr.FiveNodeSpec
+import akka.cluster.sbr.util.linksToKillForPartitions
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
@@ -17,12 +18,9 @@ class RoleKeepMajoritySpec extends FiveNodeSpec("KeepMajority", RoleKeepMajority
       runOn(node1) {
         // Partition of node3, node4, and node 5.
         // Partition of node1 and node2.
-        testConductor.blackhole(node3, node2, Direction.Both).await
-        testConductor.blackhole(node1, node3, Direction.Both).await
-        testConductor.blackhole(node2, node4, Direction.Both).await
-        testConductor.blackhole(node2, node5, Direction.Both).await
-        testConductor.blackhole(node1, node4, Direction.Both).await
-        testConductor.blackhole(node1, node5, Direction.Both).await
+        linksToKillForPartitions(List(List(node1, node2), List(node3, node4, node5))).foreach {
+          case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
+        }
       }
 
       enterBarrier("links-failed")

@@ -1,4 +1,4 @@
-package akka.cluster.sbr.strategies.keepmajority
+package akka.cluster.sbr.strategies.keepmajority.three
 
 import akka.cluster.sbr.FiveNodeSpecConfig
 import com.typesafe.config.ConfigFactory
