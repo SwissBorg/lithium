@@ -79,7 +79,7 @@ final case class WorldView private[sbr] (private[sbr] val reachabilities: Sorted
     case MemberUp(member)     => becomeReachable(member)
     case MemberLeft(member)   => becomeReachable(member)
     case MemberExited(member) => becomeReachable(member)
-    case MemberDowned(member) => this // becomeReachable(member)
+    case MemberDowned(member) => this // becomeReachable(member) // TODO be sure
 
     // Weakly up members should not be counted as they are not visible from the other side.
     case MemberWeaklyUp(_) => this

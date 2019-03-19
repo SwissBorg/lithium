@@ -12,12 +12,21 @@ class ReachableNodesSpec extends MySpec {
             reachability.reachableNodesWithRole(role) shouldBe empty
 
           case Right(ReachableQuorum(reachableNodes)) =>
-            reachableNodes.length should be >= quorumSize.value
-            reachableNodes.toSortedSet shouldEqual reachability.reachableNodesWithRole(role)
+            val total =
+              if (role.nonEmpty) reachableNodes.filter(_.node.roles.contains(role)).size
+              else reachableNodes.length
+
+            total should be >= quorumSize.value
+
+            reachableNodes.toSortedSet shouldEqual reachability.reachableNodes
 
           case Right(ReachableSubQuorum(reachableNodes)) =>
-            reachableNodes.length should be < quorumSize.value
-            reachableNodes.toSortedSet shouldEqual reachability.reachableNodesWithRole(role)
+            val total =
+              if (role.nonEmpty) reachableNodes.filter(_.node.roles.contains(role)).size
+              else reachableNodes.length
+
+            total should be < quorumSize.value
+            reachableNodes.toSortedSet shouldEqual reachability.reachableNodes
         }
       }
     }
