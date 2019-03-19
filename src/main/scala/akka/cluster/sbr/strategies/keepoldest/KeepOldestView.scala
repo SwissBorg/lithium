@@ -16,7 +16,7 @@ object KeepOldestView {
     } yield
       reachability match {
         case Reachable =>
-          if (downIfAlone && worldView.reachableNodes.size > 1) OldestReachable
+          if (!downIfAlone || worldView.reachableNodes.size > 1) OldestReachable
           else OldestAlone
         case Unreachable => OldestUnreachable
       }

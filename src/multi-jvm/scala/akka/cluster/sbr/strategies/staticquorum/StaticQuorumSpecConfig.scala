@@ -1,5 +1,5 @@
 package akka.cluster.sbr.strategies.staticquorum
 
-import akka.cluster.sbr.ThreeNodeConfig
+import akka.cluster.sbr.ThreeNodeSpecConfig
 
-object StaticQuorumSpecConfig extends ThreeNodeConfig("static_quorum_spec.conf")
+object StaticQuorumSpecConfig extends ThreeNodeSpecConfig("static_quorum_spec.conf")

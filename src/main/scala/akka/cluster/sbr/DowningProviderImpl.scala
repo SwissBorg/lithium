@@ -1,16 +1,12 @@
 package akka.cluster.sbr
 
-import java.nio.file.Path
-
 import akka.actor.{ActorSystem, Props}
-import akka.cluster.sbr.DowningProviderImpl.Config
 import akka.cluster.sbr.strategies.keepmajority.KeepMajority
 import akka.cluster.sbr.strategies.keepoldest.KeepOldest
 import akka.cluster.sbr.strategies.keepreferee.KeepReferee
 import akka.cluster.sbr.strategies.staticquorum.StaticQuorum
 import akka.cluster.{Cluster, DowningProvider}
 import cats.implicits._
-import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -38,7 +34,7 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
         Strategy[KeepOldest]
           .fromConfig[KeepOldest.Config]
           .map(Downer.props(Cluster(system), _, FiniteDuration(5, "seconds")))
-          .fold(throw new IllegalArgumentException("bla"), _.some)
+          .fold(err => throw new IllegalArgumentException(err.toString), _.some)
 
       case `keepReferee` =>
         Strategy[KeepReferee]

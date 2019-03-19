@@ -6,4 +6,4 @@ class KeepMajoritySpecMultiJvmNode1 extends KeepMajoritySpec
 class KeepMajoritySpecMultiJvmNode2 extends KeepMajoritySpec
 class KeepMajoritySpecMultiJvmNode3 extends KeepMajoritySpec
 
-class KeepMajoritySpec extends ThreeNodeSpec(KeepMajoritySpecConfig)
+class KeepMajoritySpec extends ThreeNodeSpec("KeepMajority", KeepMajoritySpecConfig)

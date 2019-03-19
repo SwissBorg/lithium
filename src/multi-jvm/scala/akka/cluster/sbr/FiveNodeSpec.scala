@@ -11,7 +11,7 @@ import org.scalatest.concurrent.{Eventually, IntegrationPatience}
 
 import scala.concurrent.duration._
 
-abstract class FiveNodeSpec(config: FiveNodeConfig)
+abstract class FiveNodeSpec(name: String, config: FiveNodeSpecConfig)
     extends MultiNodeSpec(config)
     with STMultiNodeSpec
     with ImplicitSender
@@ -25,7 +25,7 @@ abstract class FiveNodeSpec(config: FiveNodeConfig)
 
   private def addressOf(roleName: RoleName): Address = addresses(roleName)
 
-  "An ActorInspectorManager" - {
+  s"$name" - {
     "1 - Start the 1st node" in within(30 seconds) {
       runOn(node1) {
         Cluster(system).join(addressOf(node1))
