@@ -1,5 +1,7 @@
 package akka.cluster.sbr
 
+import java.util.concurrent.TimeUnit
+
 import akka.actor.{ActorSystem, Props}
 import akka.cluster.sbr.strategies.keepmajority.KeepMajority
 import akka.cluster.sbr.strategies.keepoldest.KeepOldest
@@ -11,11 +13,11 @@ import cats.implicits._
 import scala.concurrent.duration.FiniteDuration
 
 class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
-  private val config         = system.settings.config
-  private val activeStrategy = config.getString("akka.cluster.split-brain-resolver.active-strategy")
+  import DowningProviderImpl._
 
-  override def downRemovalMargin: FiniteDuration = FiniteDuration(5, "seconds")
-  // config.stableAfter
+  private val config = Config(system)
+
+  override def downRemovalMargin: FiniteDuration = config.stableAfter
 
   override def downingActorProps: Option[Props] = {
     val keepMajority = Strategy.name[KeepMajority]
@@ -23,7 +25,7 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
     val keepReferee  = Strategy.name[KeepReferee]
     val staticQuorum = Strategy.name[StaticQuorum]
 
-    activeStrategy match {
+    config.activeStrategy match {
       case `keepMajority` =>
         Strategy[KeepMajority]
           .fromConfig[KeepMajority.Config]
@@ -55,9 +57,16 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
 }
 
 object DowningProviderImpl {
-  final case class Config private (activeStrategy: String)
+  sealed abstract case class Config(activeStrategy: String, stableAfter: FiniteDuration, downAllWhenUnstable: Boolean)
 
   object Config {
-    def apply(system: ActorSystem) = ???
+    // TODO handle errors
+    def apply(system: ActorSystem): Config =
+      new Config(
+        system.settings.config.getString("akka.cluster.split-brain-resolver.active-strategy"),
+        FiniteDuration(system.settings.config.getDuration("akka.cluster.split-brain-resolver.stable-after").toMillis,
+                       TimeUnit.MILLISECONDS),
+        false
+      ) {}
   }
 }
