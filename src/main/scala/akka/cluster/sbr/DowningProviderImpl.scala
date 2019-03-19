@@ -32,7 +32,7 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
         Strategy[KeepMajority]
           .fromConfig[KeepMajority.Config]
           .map(Downer.props(Cluster(system), _, FiniteDuration(5, "seconds")))
-          .fold(throw new IllegalArgumentException("bla"), _.some)
+          .fold(err => throw new IllegalArgumentException(err.toString), _.some)
 
       case `keepOldest` =>
         Strategy[KeepOldest]
