@@ -79,7 +79,7 @@ final case class WorldView private[sbr] (private[sbr] val reachabilities: Sorted
     case MemberUp(member)     => becomeReachable(member)
     case MemberLeft(member)   => becomeReachable(member)
     case MemberExited(member) => becomeReachable(member)
-    case MemberDowned(member) => becomeReachable(member)
+    case MemberDowned(member) => this // becomeReachable(member)
 
     // Weakly up members should not be counted as they are not visible from the other side.
     case MemberWeaklyUp(_) => this
@@ -100,14 +100,18 @@ final case class WorldView private[sbr] (private[sbr] val reachabilities: Sorted
     case ReachableMember(member)   => becomeReachable(member)
   }
 
-  private def remove(member: Member): WorldView = new WorldView(reachabilities - member)
+  private def remove(member: Member): WorldView =
+    new WorldView(reachabilities - member)
 
-  private def becomeUnreachable(member: Member): WorldView = new WorldView(reachabilities + (member -> Unreachable))
-  private def becomeReachable(member: Member): WorldView   = new WorldView(reachabilities + (member -> Reachable))
+  private def becomeUnreachable(member: Member): WorldView =
+    new WorldView(reachabilities + (member -> Unreachable))
+
+  private def becomeReachable(member: Member): WorldView =
+    new WorldView(reachabilities + (member -> Reachable))
 }
 
 object WorldView {
-  def apply(state: CurrentClusterState): WorldView = {
+  def apply(self: Member, state: CurrentClusterState): WorldView = {
     val unreachableMembers: SortedMap[Member, Unreachable.type] =
       state.unreachable
         .map(_ -> Unreachable)(collection.breakOut)
@@ -118,6 +122,6 @@ object WorldView {
         .filterNot(_.status == WeaklyUp)
         .map(_ -> Reachable)(collection.breakOut)
 
-    new WorldView(unreachableMembers ++ reachableMembers)
+    new WorldView(unreachableMembers ++ reachableMembers + (self -> Reachable))
   }
 }

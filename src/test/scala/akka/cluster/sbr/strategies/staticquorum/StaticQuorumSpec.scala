@@ -47,7 +47,7 @@ class StaticQuorumSpec extends MySpec {
     // TODO check if can really be handled
 //    "2 - should handle split during up-dissemination" in {
 //      forAll { scenario: UpDisseminationScenario =>
-//        implicit val _: Arbitrary[Config] = StaticQuorumSpec.arbConfig(scenario.clusterSize)
+//        implicit val _: Arbitrary[Config] = strategies.staticquorum.StaticQuorumSpec.arbConfig(scenario.clusterSize)
 //
 //        forAll { config: Config =>
 //          val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
@@ -67,7 +67,7 @@ object StaticQuorumSpec {
     for {
       quorumSize <- chooseNum(minQuorumSize, clusterSize.value)
       role       <- arbitrary[String]
-    } yield StaticQuorum.Config(refineV[Positive](quorumSize).right.get, role)
+    } yield StaticQuorum.Config(role, refineV[Positive](quorumSize).right.get)
   }
 
   def classifyNetwork(reachableNodes: ReachableNodes, unreachableNodes: UnreachableNodes)(prop: Prop): Prop = {
@@ -83,7 +83,7 @@ object StaticQuorumSpec {
     }
 
     val unreachableIsPotentialQuorum: Boolean = unreachableNodes match {
-      case _: StaticQuorumUnreachablePotentialQuorum => true
+      case _: UnreachablePotentialQuorum => true
       case _                                         => false
     }
 

@@ -9,27 +9,27 @@ import scala.collection.immutable.SortedSet
 sealed abstract private[staticquorum] class UnreachableNodes
 
 private[staticquorum] object UnreachableNodes {
-  def apply(reachability: WorldView, quorumSize: QuorumSize, role: String): UnreachableNodes = {
-    val unreachableNodes = reachability.unreachableNodesWithRole(role)
+  def apply(worldView: WorldView, quorumSize: QuorumSize, role: String): UnreachableNodes = {
+    val unreachableNodes = worldView.unreachableNodesWithRole(role)
 
     if (unreachableNodes.isEmpty) (new EmptyUnreachable() {})
     else {
       // We know `unreachableNodes` is non-empty.
-      val nonEmptyNodes = NonEmptySet.fromSetUnsafe(SortedSet.empty[UnreachableNode] ++ unreachableNodes)
+      val nonEmptyNodes = NonEmptySet.fromSetUnsafe(SortedSet.empty[UnreachableNode] ++ worldView.unreachableNodes)
 
       if (unreachableNodes.size >= quorumSize)
-        (new StaticQuorumUnreachablePotentialQuorum(nonEmptyNodes) {})
+        (new UnreachablePotentialQuorum(nonEmptyNodes) {})
       else
-        (new StaticQuorumUnreachableSubQuorum(nonEmptyNodes) {})
+        (new UnreachableSubQuorum(nonEmptyNodes) {})
     }
   }
 }
 
-sealed abstract private[staticquorum] case class StaticQuorumUnreachablePotentialQuorum(
+sealed abstract private[staticquorum] case class UnreachablePotentialQuorum(
   unreachableNodes: NonEmptySet[UnreachableNode]
 ) extends UnreachableNodes
 
-sealed abstract private[staticquorum] case class StaticQuorumUnreachableSubQuorum(
+sealed abstract private[staticquorum] case class UnreachableSubQuorum(
   unreachableNodes: NonEmptySet[UnreachableNode]
 ) extends UnreachableNodes
 

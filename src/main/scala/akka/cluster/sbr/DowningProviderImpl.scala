@@ -1,38 +1,37 @@
 package akka.cluster.sbr
 
-import akka.actor.{ActorLogging, ActorSystem, Props}
-import akka.cluster.{Cluster, DowningProvider}
+import java.nio.file.Path
+
+import akka.actor.{ActorSystem, Props}
+import akka.cluster.sbr.DowningProviderImpl.Config
 import akka.cluster.sbr.strategies.keepmajority.KeepMajority
 import akka.cluster.sbr.strategies.keepoldest.KeepOldest
 import akka.cluster.sbr.strategies.keepreferee.KeepReferee
 import akka.cluster.sbr.strategies.staticquorum.StaticQuorum
+import akka.cluster.{Cluster, DowningProvider}
 import cats.implicits._
 import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.duration.FiniteDuration
 
 class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
-  val conf = ConfigFactory.load()
+  private val config         = system.settings.config
+  private val activeStrategy = config.getString("akka.cluster.split-brain-resolver.active-strategy")
 
   override def downRemovalMargin: FiniteDuration = FiniteDuration(5, "seconds")
-//    conf.getString("akka.cluster.split-brain-resolver.stable-after")
+  // config.stableAfter
 
   override def downingActorProps: Option[Props] = {
-    val strategyName: String = conf.getString("akka.cluster.split-brain-resolver.active-strategy")
-
     val keepMajority = Strategy.name[KeepMajority]
     val keepOldest   = Strategy.name[KeepOldest]
     val keepReferee  = Strategy.name[KeepReferee]
     val staticQuorum = Strategy.name[StaticQuorum]
 
-    strategyName match {
+    activeStrategy match {
       case `keepMajority` =>
         Strategy[KeepMajority]
           .fromConfig[KeepMajority.Config]
-          .map(
-            Downer
-              .props(Cluster(system), _, FiniteDuration(5, "seconds"))
-          )
+          .map(Downer.props(Cluster(system), _, FiniteDuration(5, "seconds")))
           .fold(throw new IllegalArgumentException("bla"), _.some)
 
       case `keepOldest` =>
@@ -56,5 +55,13 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
 
       case _ => None
     }
+  }
+}
+
+object DowningProviderImpl {
+  final case class Config private (activeStrategy: String)
+
+  object Config {
+    def apply(system: ActorSystem) = ???
   }
 }

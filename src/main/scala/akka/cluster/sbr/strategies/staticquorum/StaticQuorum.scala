@@ -8,7 +8,7 @@ import eu.timepit.refined.pureconfig._ // DO NOT REMOVE
 final case class StaticQuorum()
 
 object StaticQuorum {
-  final case class Config(quorumSize: QuorumSize, role: String)
+  final case class Config(role: String, quorumSize: QuorumSize)
 
   object Config {
     implicit val configReader: ConfigReader[Config] = deriveReader[Config]
@@ -24,14 +24,14 @@ object StaticQuorum {
          *
          * Either way this happens when `quorumSize` is less than half of the cluster. That SHOULD be logged! TODO
          */
-        case (reachableQuorum: ReachableQuorum, _: StaticQuorumUnreachablePotentialQuorum) =>
+        case (reachableQuorum: ReachableQuorum, _: UnreachablePotentialQuorum) =>
           // Idle
           UnsafeDownReachable(reachableQuorum.reachableNodes)
 
         /**
          * This side is the quorum, the other side should be downed.
          */
-        case (_: ReachableQuorum, subQuorum: StaticQuorumUnreachableSubQuorum) =>
+        case (_: ReachableQuorum, subQuorum: UnreachableSubQuorum) =>
           DownUnreachable(subQuorum.unreachableNodes)
 
         /**
@@ -43,7 +43,7 @@ object StaticQuorum {
          * Potentially shuts down the cluster if there's
          * no quorum on the other side of the split.
          */
-        case (subQuorum: ReachableSubQuorum, _: StaticQuorumUnreachablePotentialQuorum) =>
+        case (subQuorum: ReachableSubQuorum, _: UnreachablePotentialQuorum) =>
           DownReachable(subQuorum.reachableNodes) // TODO create unsafe version?
 
         /**

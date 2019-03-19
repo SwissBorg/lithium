@@ -24,7 +24,7 @@ class Downer[A, Config](cluster: Cluster, strategy: ConfiguredStrategy[A, Config
    */
   private def waitingForSnapshot: Receive = {
     case state: CurrentClusterState =>
-      setStabilityTrigger(WorldView(state))
+      setStabilityTrigger(WorldView(cluster.selfMember, state))
     case _ => () // ignore // TODO needed?
   }
 
@@ -78,9 +78,9 @@ class Downer[A, Config](cluster: Cluster, strategy: ConfiguredStrategy[A, Config
     val a = strategy
       .handle(worldView)
 
-    log.debug(s"DECISION $a")
+    println(s"DECISION $a")
 
-      a.fold(err => {
+    a.fold(err => {
         log.error(s"Oh fuck... $err")
         throw new IllegalStateException(s"Oh fuck... $err")
       }, identity)

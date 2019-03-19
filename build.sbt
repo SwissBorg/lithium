@@ -75,3 +75,5 @@ testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "
 
 // SemanticDB
 addCompilerPlugin(scalafixSemanticdb)
+
+parallelExecution in MultiJvm := false

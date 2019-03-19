@@ -11,11 +11,11 @@ class UnreachableNodesSpec extends MySpec {
           case EmptyUnreachable() =>
             worldView.unreachableNodesWithRole(role) shouldBe empty
 
-          case StaticQuorumUnreachablePotentialQuorum(unreachableNodes) =>
+          case UnreachablePotentialQuorum(unreachableNodes) =>
             unreachableNodes.length should be >= quorumSize.value
             unreachableNodes.toSortedSet shouldEqual worldView.unreachableNodesWithRole(role)
 
-          case StaticQuorumUnreachableSubQuorum(unreachableNodes) =>
+          case UnreachableSubQuorum(unreachableNodes) =>
             unreachableNodes.length should be < quorumSize.value
             unreachableNodes.toSortedSet shouldEqual worldView.unreachableNodesWithRole(role)
         }

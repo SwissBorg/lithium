@@ -14,10 +14,11 @@ private[staticquorum] object ReachableNodes {
             role: String): Either[NoReachableNodesError.type, ReachableNodes] = {
     val reachableNodes = worldView.reachableNodesWithRole(role)
 
-    if (reachableNodes.isEmpty) Left(NoReachableNodesError)
-    else {
+    if (worldView.reachableNodes.isEmpty && reachableNodes.isEmpty) {
+      Left(NoReachableNodesError)
+    } else {
       // we know `reachableNodes` is non-empty
-      val nonEmptyNodes = NonEmptySet.fromSetUnsafe(SortedSet.empty[ReachableNode] ++ reachableNodes)
+      val nonEmptyNodes = NonEmptySet.fromSetUnsafe(SortedSet.empty[ReachableNode] ++ worldView.reachableNodes)
 
       if (reachableNodes.size >= quorumSize)
         Right(new ReachableQuorum(nonEmptyNodes) {})

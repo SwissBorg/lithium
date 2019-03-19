@@ -26,7 +26,7 @@ object Strategy {
     ): Either[ConfigReaderFailures, ConfiguredStrategy[A, Config]] =
       pureconfig
         .loadConfig[Config](s"akka.cluster.split-brain-resolver.${ev.name}")
-        .map(a => new ConfiguredStrategy[A, Config](a))
+        .map(new ConfiguredStrategy[A, Config](_))
 
     def noConfig(implicit ev: Aux[A, Unit]): ConfiguredStrategy[A, Unit] = new ConfiguredStrategy[A, Unit](())
   }
