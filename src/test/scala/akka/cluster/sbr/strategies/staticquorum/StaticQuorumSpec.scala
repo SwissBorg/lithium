@@ -47,7 +47,7 @@ class StaticQuorumSpec extends MySpec {
     // TODO check if can really be handled
 //    "2 - should handle split during up-dissemination" in {
 //      forAll { scenario: UpDisseminationScenario =>
-//        implicit val _: Arbitrary[Config] = strategies.staticquorum.StaticQuorumSpec.arbConfig(scenario.clusterSize)
+//        implicit val _: Arbitrary[Config] = akka.cluster.sbr.strategies.staticquorum.StaticQuorumSpec.arbConfig(scenario.clusterSize)
 //
 //        forAll { config: Config =>
 //          val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
@@ -84,7 +84,7 @@ object StaticQuorumSpec {
 
     val unreachableIsPotentialQuorum: Boolean = unreachableNodes match {
       case _: UnreachablePotentialQuorum => true
-      case _                                         => false
+      case _                             => false
     }
 
     classify(isNormal, "normal", "split-brain") {
