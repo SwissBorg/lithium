@@ -29,26 +29,25 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
       case `keepMajority` =>
         Strategy[KeepMajority]
           .fromConfig[KeepMajority.Config]
-          .map(Downer.props(Cluster(system), _, FiniteDuration(5, "seconds")))
+          .map(Downer.props(Cluster(system), _, config.stableAfter))
           .fold(err => throw new IllegalArgumentException(err.toString), _.some)
 
       case `keepOldest` =>
         Strategy[KeepOldest]
           .fromConfig[KeepOldest.Config]
-          .map(Downer.props(Cluster(system), _, FiniteDuration(5, "seconds")))
+          .map(Downer.props(Cluster(system), _, config.stableAfter))
           .fold(err => throw new IllegalArgumentException(err.toString), _.some)
 
       case `keepReferee` =>
         Strategy[KeepReferee]
           .fromConfig[KeepReferee.Config]
-          .map(Downer.props(Cluster(system), _, FiniteDuration(5, "seconds")))
+          .map(Downer.props(Cluster(system), _, config.stableAfter))
           .fold(err => throw new IllegalArgumentException(err.toString), _.some)
 
       case `staticQuorum` =>
-        val a = Strategy[StaticQuorum]
+        Strategy[StaticQuorum]
           .fromConfig[StaticQuorum.Config]
-
-        a.map(Downer.props(Cluster(system), _, FiniteDuration(5, "seconds")))
+          .map(Downer.props(Cluster(system), _, config.stableAfter))
           .fold(err => throw new IllegalArgumentException(err.toString), _.some)
 
       case _ => None
@@ -66,7 +65,7 @@ object DowningProviderImpl {
         system.settings.config.getString("akka.cluster.split-brain-resolver.active-strategy"),
         FiniteDuration(system.settings.config.getDuration("akka.cluster.split-brain-resolver.stable-after").toMillis,
                        TimeUnit.MILLISECONDS),
-        false
+        false // TODO
       ) {}
   }
 }
