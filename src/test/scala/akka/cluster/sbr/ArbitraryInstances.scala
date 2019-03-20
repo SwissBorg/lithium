@@ -123,6 +123,9 @@ trait ArbitraryInstances {
   implicit val arbReachableNode: Arbitrary[ReachableNode] =
     Arbitrary(arbMember.arbitrary.map(ReachableNode(_)))
 
+  implicit val arbReachableConsideredNode: Arbitrary[ReachableConsideredNode] =
+    Arbitrary(arbMember.arbitrary.map(ReachableConsideredNode(_)))
+
   implicit val arbUnreachableNode: Arbitrary[UnreachableNode] =
     Arbitrary(arbMember.arbitrary.map(UnreachableNode(_)))
 

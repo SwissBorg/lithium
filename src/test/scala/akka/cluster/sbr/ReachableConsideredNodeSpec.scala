@@ -3,10 +3,10 @@ package akka.cluster.sbr
 import akka.cluster.sbr.ArbitraryInstances._
 
 class ReachableConsideredNodeSpec extends MySpec {
-  "ReachableNode" - {
+  "ReachableConsideredNode" - {
     "1 - should not affect the order" in {
-      forAll { reachableNodes: List[ReachableNode] =>
-        reachableNodes.sorted.map(_.node) shouldBe reachableNodes.map(_.node).sorted
+      forAll { nodes: List[ReachableConsideredNode] =>
+        nodes.sorted.map(_.node) shouldBe nodes.map(_.node).sorted
       }
     }
   }
