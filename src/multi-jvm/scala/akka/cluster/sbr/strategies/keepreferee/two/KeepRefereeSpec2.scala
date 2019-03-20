@@ -14,7 +14,7 @@ class KeepRefereeSpec2MultiJvmNode5 extends KeepRefereeSpec2
 
 class KeepRefereeSpec2 extends FiveNodeSpec("KeepReferee", KeepRefereeSpec2Config) {
   override def assertions(): Unit =
-    "Three partitions, bidirectional link failure" in within(30 seconds) {
+    "Three partitions, bidirectional link failure" in within(60 seconds) {
       runOn(node1) {
         // Partition of node1, node2
         // Partition of node 3

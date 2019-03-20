@@ -29,14 +29,14 @@ object OldestRemovedScenario {
         .map { n =>
           if (n == 1)
             worldView
-              .memberEvent(MemberRemoved(oldestNode.copy(Removed), Exiting)) // info not disseminated before partition
+              .memberEvent(MemberRemoved(oldestNode.copy(Removed), Exiting)).toTry.get // info not disseminated before partition
           else if (n == 2)
-            worldView.reachabilityEvent(UnreachableMember(oldestNode)) // unreachable just after partition
+            worldView.reachabilityEvent(UnreachableMember(oldestNode)).toTry.get // unreachable just after partition
           else worldView
         }
         .map { worldView =>
           otherNodes.foldLeft[WorldView](worldView) {
-            case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node))
+            case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node)).toTry.get
           }
         }
     }

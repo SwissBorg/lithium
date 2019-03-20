@@ -8,6 +8,8 @@ import akka.remote.testkit.MultiNodeSpec
 import akka.testkit.ImplicitSender
 import org.scalatest.concurrent.{Eventually, IntegrationPatience}
 
+import scala.concurrent.duration._
+
 abstract class ThreeNodeSpec(name: String, config: ThreeNodeSpecConfig)
     extends MultiNodeSpec(config)
     with STMultiNodeSpec
@@ -24,7 +26,7 @@ abstract class ThreeNodeSpec(name: String, config: ThreeNodeSpecConfig)
   override def initialParticipants: Int = roles.size
 
   s"$name" - {
-    "Start the 1st node" in {
+    "Start the 1st node" in within(30 seconds) {
       runOn(node1) {
         Cluster(system).join(addressOf(node1))
         waitForUp(node1)
@@ -33,7 +35,7 @@ abstract class ThreeNodeSpec(name: String, config: ThreeNodeSpecConfig)
       enterBarrier("node1-up")
     }
 
-    "Start the 2nd node" in {
+    "Start the 2nd node" in within(30 seconds) {
       runOn(node2) {
         Cluster(system).join(addressOf(node1))
         waitForUp(node1, node2)
@@ -42,7 +44,7 @@ abstract class ThreeNodeSpec(name: String, config: ThreeNodeSpecConfig)
       enterBarrier("node2-up")
     }
 
-    "Start the 3rd node" in {
+    "Start the 3rd node" in within(30 seconds) {
       runOn(node3) {
         Cluster(system).join(addressOf(node1))
         waitForUp(node1, node2, node3)
@@ -55,6 +57,8 @@ abstract class ThreeNodeSpec(name: String, config: ThreeNodeSpecConfig)
   }
 
   private val addresses: Map[RoleName, Address] = roles.map(r => r -> node(r).address).toMap
+
+  addresses.foreach(println)
 
   private def addressOf(roleName: RoleName): Address = addresses(roleName)
 

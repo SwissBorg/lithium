@@ -13,7 +13,7 @@ class StaticQuorumSpec2MultiJvmNode5 extends StaticQuorumSpec2
 
 class StaticQuorumSpec2 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Config) {
   override def assertions(): Unit =
-    "Three partitions, bidirectional link failure" in within(30 seconds) {
+    "Three partitions, bidirectional link failure" in within(60 seconds) {
       runOn(node1) {
         // Partition of node1, node2, node3
         // Partition of node 4

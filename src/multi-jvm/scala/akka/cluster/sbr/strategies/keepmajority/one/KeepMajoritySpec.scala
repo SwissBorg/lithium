@@ -11,7 +11,7 @@ class KeepMajoritySpecMultiJvmNode3 extends KeepMajoritySpec
 
 class KeepMajoritySpec extends ThreeNodeSpec("KeepMajority", KeepMajoritySpecConfig) {
   override def assertions(): Unit = {
-    "Bidirectional link failure" in within(30 seconds) {
+    "Bidirectional link failure" in within(60 seconds) {
       runOn(node1) {
         // Kill link bi-directionally to node3
         testConductor.blackhole(node1, node3, Direction.Both).await

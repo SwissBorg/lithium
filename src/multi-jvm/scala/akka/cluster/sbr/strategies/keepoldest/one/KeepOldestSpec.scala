@@ -11,7 +11,7 @@ class KeepOldestSpecMultiJvmNode3 extends KeepOldestSpec
 
 class KeepOldestSpec extends ThreeNodeSpec("KeepOldest", KeepOldestSpecConfig) {
   override def assertions(): Unit =
-    "Bidirectional link failure" in within(30 seconds) {
+    "Bidirectional link failure" in within(60 seconds) {
       runOn(node1) {
         // Kill link to node1
         testConductor.blackhole(node2, node1, Direction.Both).await

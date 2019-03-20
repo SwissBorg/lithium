@@ -64,7 +64,7 @@ abstract class FiveNodeSpec(name: String, config: FiveNodeSpecConfig)
       enterBarrier("node4-up")
     }
 
-    "Start the 5th node" in within(60 seconds) {
+    "Start the 5th node" in within(30 seconds) {
       runOn(node5) {
         Cluster(system).join(addressOf(node1))
         waitForUp(node1, node2, node3, node4, node5)

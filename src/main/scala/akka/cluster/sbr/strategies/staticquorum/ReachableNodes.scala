@@ -2,6 +2,7 @@ package akka.cluster.sbr.strategies.staticquorum
 
 import akka.cluster.sbr.{ReachableNode, WorldView}
 import cats.data.NonEmptySet
+import cats.implicits._
 import eu.timepit.refined.auto._
 
 import scala.collection.immutable.SortedSet
@@ -15,15 +16,16 @@ private[staticquorum] object ReachableNodes {
     val reachableNodes = worldView.reachableNodesWithRole(role)
 
     if (worldView.reachableNodes.isEmpty && reachableNodes.isEmpty) {
-      Left(NoReachableNodesError)
+//      println(s"WV: $worldView")
+      NoReachableNodesError.asLeft
     } else {
       // we know `reachableNodes` is non-empty
       val nonEmptyNodes = NonEmptySet.fromSetUnsafe(SortedSet.empty[ReachableNode] ++ worldView.reachableNodes)
 
       if (reachableNodes.size >= quorumSize)
-        Right(new ReachableQuorum(nonEmptyNodes) {})
+        new ReachableQuorum(nonEmptyNodes) {}.asRight
       else
-        Right(new ReachableSubQuorum(nonEmptyNodes) {})
+        new ReachableSubQuorum(nonEmptyNodes) {}.asRight
     }
   }
 }

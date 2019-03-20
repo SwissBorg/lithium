@@ -32,7 +32,7 @@ object SymmetricSplitScenario {
       val otherNodes = allNodes -- partition
 
       otherNodes.foldLeft[WorldView](worldView) {
-        case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node))
+        case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node)).toTry.get
       }
     }
 

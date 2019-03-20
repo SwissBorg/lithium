@@ -26,7 +26,7 @@ private[keepmajority] object NodesMajority {
           .headOption
 
         reachability <- worldView
-          .reachabilityOf(lowestAddressNode)
+          .statusOf(lowestAddressNode)
       } yield
         reachability match {
           case Reachable   => ReachableLowestAddress(reachableNodes)

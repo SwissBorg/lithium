@@ -2,8 +2,9 @@ package akka.cluster.sbr.scenarios
 
 import akka.cluster.ClusterEvent.{MemberUp, UnreachableMember}
 import akka.cluster.Member
+import akka.cluster.MemberStatus.Up
 import akka.cluster.sbr.ArbitraryInstances._
-import akka.cluster.sbr.WorldView
+import akka.cluster.sbr.{Reachable, WorldView}
 import cats.data.{NonEmptyList, NonEmptySet}
 import org.scalacheck.Arbitrary
 import org.scalacheck.Gen.listOf
@@ -26,13 +27,13 @@ object UpDisseminationScenario {
       listOf(arbWeaklyUpMember.arbitrary)
         .map(_.foldLeft(worldView) {
           case (worldView, member) =>
-            worldView.memberEvent(MemberUp(member.copyUp(Integer.MAX_VALUE)))
+            worldView.copy(statuses = worldView.statuses + (member.copyUp(Integer.MAX_VALUE) -> Reachable))
         })
         .map { worldView =>
           val otherNodes = allNodes -- partition
 
           otherNodes.foldLeft[WorldView](worldView) {
-            case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node))
+            case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node)).toTry.get
           }
         }
     }

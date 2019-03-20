@@ -43,23 +43,27 @@ class Downer[A, Config](cluster: Cluster, strategy: ConfiguredStrategy[A, Config
   /**
    * Listens to cluster movements and resets the stability trigger when necessary.
    */
-  private def clusterMovement(reachability: WorldView, stabilityTrigger: Cancellable): Receive = {
+  private def clusterMovement(worldView: WorldView, stabilityTrigger: Cancellable): Receive = {
     case e: MemberEvent =>
-      val reachability0 = reachability.memberEvent(e)
-      // Only reset trigger if the event impacted the reachability.
-      if (reachability0 != reachability) {
-        resetStabilityTrigger(reachability0, stabilityTrigger)
-      }
-
-    case e: ReachabilityEvent => // TODO check what really should be counted
-      val reachability0 = reachability.reachabilityEvent(e)
+      val maybeWorldView = worldView.memberEvent(e)
 
       // Only reset trigger if the event impacted the reachability.
-      if (reachability0 != reachability) {
-        resetStabilityTrigger(reachability0, stabilityTrigger)
-      } else {
-        resetStabilityTrigger(reachability, stabilityTrigger)
-      }
+      maybeWorldView
+        .map { w =>
+          if (w != worldView) resetStabilityTrigger(w, stabilityTrigger)
+        }
+        .toTry
+        .get
+
+    case e: ReachabilityEvent =>
+      val maybeWorldView = worldView.reachabilityEvent(e)
+
+      maybeWorldView
+        .map { w =>
+          if (w != worldView) resetStabilityTrigger(w, stabilityTrigger)
+        }
+        .toTry
+        .get
   }
 
   private def setStabilityTrigger(reachability: WorldView): Unit =
@@ -81,8 +85,8 @@ class Downer[A, Config](cluster: Cluster, strategy: ConfiguredStrategy[A, Config
 //    println(s"DECISION $a")
 
     a.fold(err => {
-        log.error(s"Oh fuck... $err")
-        throw new IllegalStateException(s"Oh fuck... $err")
+        log.error(s"$err")
+        throw err
       }, identity)
       .addressesToDown
       .foreach(Cluster(context.system).down)

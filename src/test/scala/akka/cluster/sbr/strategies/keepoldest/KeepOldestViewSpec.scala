@@ -10,7 +10,7 @@ class KeepOldestViewSpec extends MySpec {
   "KeepOldestView" - {
     "1 - should instantiate the correct instance" in {
       forAll { (worldView: WorldView, config: Config) =>
-        val maybeOldestNode = worldView.reachabilities.toList
+        val maybeOldestNode = worldView.statuses.toList
           .filter { case (node, _) => if (config.role != "") node.roles.contains(config.role) else true }
           .sortBy(_._1)(Member.ageOrdering)
           .headOption
