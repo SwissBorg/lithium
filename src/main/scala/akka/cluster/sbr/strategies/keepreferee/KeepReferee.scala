@@ -1,7 +1,6 @@
 package akka.cluster.sbr.strategies.keepreferee
 
 import akka.cluster.sbr._
-import cats.data.NonEmptySet
 import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
@@ -27,14 +26,8 @@ object KeepReferee {
 
   def keepReferee(worldView: WorldView, config: Config): StrategyDecision =
     KeepRefereeView(worldView, config) match {
-      case RefereeReachable =>
-        NonEmptySet.fromSet(worldView.unreachableNodes).fold[StrategyDecision](Idle)(DownUnreachable)
-
-      case TooFewReachableNodes =>
-        NonEmptySet.fromSet(worldView.reachableNodes).fold[StrategyDecision](Idle)(DownReachable)
-
-      case RefereeUnreachable =>
-        NonEmptySet.fromSet(worldView.reachableNodes).fold[StrategyDecision](Idle)(DownReachable)
+      case RefereeReachable                          => DownUnreachable(worldView)
+      case TooFewReachableNodes | RefereeUnreachable => DownReachable(worldView)
     }
 
   implicit val keepRefereeStrategy: Strategy.Aux[KeepReferee, KeepReferee.Config] = new Strategy[KeepReferee] {

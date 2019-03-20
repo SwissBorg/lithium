@@ -8,10 +8,11 @@ sealed abstract private[keepreferee] class KeepRefereeView extends Product with 
 
 private[keepreferee] object KeepRefereeView {
   def apply(worldView: WorldView, config: Config): KeepRefereeView =
-    worldView.reachableNodes
+    worldView.reachableConsideredNodes
       .find(_.node.address.toString == config.address)
       .fold[KeepRefereeView](RefereeUnreachable) { _ =>
-        if (worldView.reachableNodes.size < config.downAllIfLessThanNodes) TooFewReachableNodes else RefereeReachable
+        if (worldView.reachableConsideredNodes.size < config.downAllIfLessThanNodes) TooFewReachableNodes
+        else RefereeReachable
       }
 }
 

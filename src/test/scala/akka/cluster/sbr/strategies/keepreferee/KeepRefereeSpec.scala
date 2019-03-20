@@ -14,7 +14,7 @@ class KeepRefereeSpec extends MySpec {
     "1 - should handle symmetric split scenarios" in {
       forAll { (scenario: SymmetricSplitScenario, downAllIfLessThanNodes: Int Refined Positive) =>
         // same referee for everyone
-        val referee = scenario.worldViews.head.allNodes.take(1).head.address.toString
+        val referee = scenario.worldViews.head.allConsideredNodes.take(1).head.address.toString
 
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
           Strategy[KeepReferee](worldView, Config(referee, downAllIfLessThanNodes))
@@ -28,7 +28,7 @@ class KeepRefereeSpec extends MySpec {
     "2 - should handle split during up-dissemination" in {
       forAll { (scenario: UpDisseminationScenario, downAllIfLessThanNodes: Int Refined Positive) =>
         // same referee for everyone
-        val referee = scenario.worldViews.head.allNodes.take(1).head.address.toString
+        val referee = scenario.worldViews.head.allConsideredNodes.take(1).head.address.toString
 
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
           Strategy[KeepReferee](worldView, Config(referee, downAllIfLessThanNodes))
@@ -42,7 +42,7 @@ class KeepRefereeSpec extends MySpec {
     "3 - should handle a split during the oldest-removed scenarios" in {
       forAll { (scenario: OldestRemovedScenario, downAllIfLessThanNodes: Int Refined Positive) =>
         // same referee for everyone
-        scenario.worldViews.head.allNodes
+        scenario.worldViews.head.allConsideredNodes
           .take(1)
           .headOption
           .map { referee =>

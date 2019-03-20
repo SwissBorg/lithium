@@ -14,21 +14,21 @@ class KeepRefereeViewSpec extends MySpec {
   "KeepRefereeView" - {
     "1 - should instantiate the correct instance" in {
       forAll { worldView: WorldView =>
-        whenever(worldView.allNodes.nonEmpty) {
+        whenever(worldView.allConsideredNodes.nonEmpty) {
           implicit val _: Arbitrary[Config] = arbConfig(worldView)
 
           forAll { config: Config =>
             KeepRefereeView(worldView, config) match {
               case RefereeReachable =>
-                worldView.reachableNodes.size should be >= config.downAllIfLessThanNodes.value
-                worldView.reachableNodes.find(_.node.address.toString == config.address) shouldBe defined
+                worldView.reachableConsideredNodes.size should be >= config.downAllIfLessThanNodes.value
+                worldView.reachableConsideredNodes.find(_.node.address.toString == config.address) shouldBe defined
 
               case TooFewReachableNodes =>
-                worldView.reachableNodes.size should be < config.downAllIfLessThanNodes.value
-                worldView.reachableNodes.find(_.node.address.toString == config.address) shouldBe defined
+                worldView.reachableConsideredNodes.size should be < config.downAllIfLessThanNodes.value
+                worldView.reachableConsideredNodes.find(_.node.address.toString == config.address) shouldBe defined
 
               case RefereeUnreachable =>
-                worldView.reachableNodes.find(_.node.address.toString == config.address) shouldBe empty
+                worldView.reachableConsideredNodes.find(_.node.address.toString == config.address) shouldBe empty
             }
           }
         }
@@ -41,7 +41,7 @@ object KeepRefereeViewSpec {
   // TODO pick arbitrary node?
   def arbConfig(worldView: WorldView): Arbitrary[Config] = Arbitrary {
     posNum[Int].map { downAllIfLessThanNodes =>
-      Config(worldView.allNodes.take(1).head.address.toString, refineV[Positive](downAllIfLessThanNodes).right.get)
+      Config(worldView.allConsideredNodes.take(1).head.address.toString, refineV[Positive](downAllIfLessThanNodes).right.get)
     }
   }
 }

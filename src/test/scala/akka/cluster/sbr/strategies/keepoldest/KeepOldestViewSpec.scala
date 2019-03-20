@@ -20,18 +20,18 @@ class KeepOldestViewSpec extends MySpec {
             case OldestReachable =>
               maybeOldestNode.fold(fail) { oldestNode =>
                 oldestNode._2 shouldBe Reachable
-                if (config.downIfAlone) worldView.reachableNodes.size should be > 1
+                if (config.downIfAlone) worldView.reachableConsideredNodes.size should be > 1
                 else succeed
               }
             case OldestAlone =>
               maybeOldestNode.fold(fail) { oldestNode =>
                 oldestNode._2 shouldBe Reachable
-                if (config.downIfAlone) worldView.reachableNodes.size shouldEqual 1
+                if (config.downIfAlone) worldView.reachableConsideredNodes.size shouldEqual 1
                 else succeed
               }
             case OldestUnreachable => maybeOldestNode.fold(fail)(_._2 shouldBe Unreachable)
           }
-          .fold(_ => if (worldView.allNodesWithRole(config.role).isEmpty) succeed else fail, identity)
+          .fold(_ => if (worldView.allConsideredNodesWithRole(config.role).isEmpty) succeed else fail, identity)
       }
     }
   }

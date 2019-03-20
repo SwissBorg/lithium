@@ -18,7 +18,7 @@ final case class WorldView private[sbr] (private[sbr] val self: Member,
   /**
    * All the nodes in the cluster.
    */
-  def allNodes: SortedSet[Member] =
+  def allConsideredNodes: SortedSet[Member] =
     SortedSet(statuses.collect {
       case (member, Reachable)   => member
       case (member, Unreachable) => member
@@ -28,28 +28,34 @@ final case class WorldView private[sbr] (private[sbr] val self: Member,
    * All the nodes in the cluster with the given role. If `role` is the empty
    * string all nodes will be returned.
    *
-   * @see [[allNodes]]
+   * @see [[allConsideredNodes]]
    */
-  def allNodesWithRole(role: String): SortedSet[Member] =
-    if (role != "") allNodes.filter(_.roles.contains(role)) else allNodes
+  def allConsideredNodesWithRole(role: String): SortedSet[Member] =
+    if (role != "") allConsideredNodes.filter(_.roles.contains(role)) else allConsideredNodes
 
   /**
    * Nodes that are reachable from the current node. Does not count weakly-up nodes
    * as they might not be visible from the other side of a potential split.
    */
-  def reachableNodes: SortedSet[ReachableNode] =
+  def reachableConsideredNodes: SortedSet[ReachableConsideredNode] =
     SortedSet(statuses.collect {
-      case (member, Reachable) => ReachableNode(member)
+      case (member, Reachable) => ReachableConsideredNode(member)
     }.toSeq: _*)
 
   /**
    * Reachable nodes with the given role. If `role` is the empty
    * string all reachable nodes will be returned.
    *
-   * @see [[reachableNodes]]
+   * @see [[reachableConsideredNodes]]
    */
-  def reachableNodesWithRole(role: String): SortedSet[ReachableNode] =
-    if (role != "") reachableNodes.filter(_.node.roles.contains(role)) else reachableNodes
+  def reachableConsideredNodesWithRole(role: String): SortedSet[ReachableConsideredNode] =
+    if (role != "") reachableConsideredNodes.filter(_.node.roles.contains(role)) else reachableConsideredNodes
+
+  def reachableNodes: SortedSet[ReachableNode] =
+    SortedSet(statuses.collect {
+      case (member, Reachable) => ReachableNode(member)
+      case (member, Staged)    => ReachableNode(member)
+    }.toSeq: _*)
 
   /**
    * Nodes that have been flagged as unreachable.

@@ -1,16 +1,12 @@
 package akka.cluster.sbr.strategies.downall
 
 import akka.cluster.sbr._
-import cats.data.NonEmptySet
 import cats.implicits._
 
 final case class DownAll()
 
 object DownAll {
-  def downAll(worldView: WorldView): StrategyDecision =
-    if (worldView.unreachableNodes.nonEmpty)
-      NonEmptySet.fromSet(worldView.reachableNodes).fold[StrategyDecision](Idle)(DownReachable)
-    else Idle
+  def downAll(worldView: WorldView): StrategyDecision = DownReachable(worldView)
 
   implicit val downAllStrategy: Strategy.Aux[DownAll, Unit] = new Strategy[DownAll] {
     override type Config = Unit

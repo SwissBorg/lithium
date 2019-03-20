@@ -2,50 +2,45 @@ package akka.cluster.sbr.strategies.keepmajority
 
 import akka.cluster.Member
 import akka.cluster.sbr._
-
-import scala.collection.immutable.SortedSet
+import cats.implicits._
 
 sealed abstract private[keepmajority] class NodesMajority extends Product with Serializable
 
 private[keepmajority] object NodesMajority {
-  def apply(worldView: WorldView, role: String): NodesMajority = {
-    val totalNodes = worldView.allNodesWithRole(role).size
+  def apply(worldView: WorldView, role: String): Either[NodesMajorityError, NodesMajority] = {
+    val totalNodes = worldView.allConsideredNodesWithRole(role).size
 
-    val majority         = if (totalNodes == 0) 1 else totalNodes / 2 + 1
-    val reachableNodes   = worldView.reachableNodesWithRole(role)
-    val unreachableNodes = worldView.unreachableNodesWithRole(role)
+    val majority                 = if (totalNodes == 0) 1 else totalNodes / 2 + 1
+    val reachableConsideredNodes = worldView.reachableConsideredNodesWithRole(role)
+    val unreachableNodes         = worldView.unreachableNodesWithRole(role)
 
-    if (reachableNodes.size >= majority) ReachableMajority(reachableNodes)
-    else if (unreachableNodes.size >= majority) UnreachableMajority(unreachableNodes)
-    else if (reachableNodes.size == unreachableNodes.size) {
+    if (reachableConsideredNodes.size >= majority) ReachableMajority.asRight
+    else if (unreachableNodes.size >= majority) UnreachableMajority.asRight
+    else if (reachableConsideredNodes.size == unreachableNodes.size) {
       (for {
         lowestAddressNode <- worldView
-          .allNodesWithRole(role)
+          .allConsideredNodesWithRole(role)
           .toList
           .sortBy(_.address)(Member.addressOrdering)
           .headOption
 
-        reachability <- worldView
-          .statusOf(lowestAddressNode)
+        reachability <- worldView.statusOf(lowestAddressNode)
       } yield
         reachability match {
-          case Reachable   => ReachableLowestAddress(reachableNodes)
-          case Unreachable => UnreachableLowestAddress(unreachableNodes)
-        }).getOrElse(NoMajority) // no reachable nor unreachable nodes
+          case Reachable   => ReachableLowestAddress.asRight
+          case Unreachable => UnreachableLowestAddress.asRight
+          case Staged      => LowestAddressIsStaged(lowestAddressNode).asLeft
+        }).getOrElse(NoMajority.asLeft) // no reachable nor unreachable nodes
 
-    } else NoMajority
+    } else NoMajority.asLeft
   }
+
+  sealed abstract class NodesMajorityError(message: String) extends Throwable(message)
+  final case class LowestAddressIsStaged(node: Member)      extends NodesMajorityError(s"$node")
+  final object NoMajority                                   extends NodesMajorityError("")
 }
 
-final private[keepmajority] case class ReachableMajority(reachableNodes: SortedSet[ReachableNode]) extends NodesMajority
-
-final private[keepmajority] case class UnreachableMajority(unreachableNodes: SortedSet[UnreachableNode])
-    extends NodesMajority
-
-final private[keepmajority] case class ReachableLowestAddress(reachableNodes: SortedSet[ReachableNode])
-    extends NodesMajority
-
-final private[keepmajority] case class UnreachableLowestAddress(unreachableNodes: SortedSet[UnreachableNode])
-    extends NodesMajority
-
-final private[keepmajority] case object NoMajority extends NodesMajority
+final private[keepmajority] case object ReachableMajority        extends NodesMajority
+final private[keepmajority] case object UnreachableMajority      extends NodesMajority
+final private[keepmajority] case object ReachableLowestAddress   extends NodesMajority
+final private[keepmajority] case object UnreachableLowestAddress extends NodesMajority

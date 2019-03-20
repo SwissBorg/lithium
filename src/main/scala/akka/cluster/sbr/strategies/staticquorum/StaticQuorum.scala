@@ -24,34 +24,30 @@ object StaticQuorum {
          *
          * Either way this happens when `quorumSize` is less than half of the cluster. That SHOULD be logged! TODO
          */
-        case (reachableQuorum: ReachableQuorum, _: UnreachablePotentialQuorum) =>
-          // Idle
-          UnsafeDownReachable(reachableQuorum.reachableNodes)
+        case (ReachableQuorum, UnreachablePotentialQuorum) => UnsafeDownReachable(worldView)
 
         /**
          * This side is the quorum, the other side should be downed.
          */
-        case (_: ReachableQuorum, subQuorum: UnreachableSubQuorum) =>
-          DownUnreachable(subQuorum.unreachableNodes)
+        case (ReachableQuorum, UnreachableSubQuorum) => DownUnreachable(worldView)
 
         /**
          * This side is a query and there are no unreachable nodes, nothing needs to be done.
          */
-        case (_: ReachableQuorum, _: EmptyUnreachable) => Idle
+        case (ReachableQuorum, EmptyUnreachable) => Idle
 
         /**
          * Potentially shuts down the cluster if there's
          * no quorum on the other side of the split.
          */
-        case (subQuorum: ReachableSubQuorum, _: UnreachablePotentialQuorum) =>
-          DownReachable(subQuorum.reachableNodes) // TODO create unsafe version?
+        case (ReachableSubQuorum, UnreachablePotentialQuorum) => DownReachable(worldView)
 
         /**
          * Both sides are not a quorum.
          *
          * Happens when to many nodes crash at the same time. The cluster will shutdown.
          */
-        case (subQuorum: ReachableSubQuorum, _) => DownReachable(subQuorum.reachableNodes)
+        case (ReachableSubQuorum, _) => DownReachable(worldView)
       }
     }
 

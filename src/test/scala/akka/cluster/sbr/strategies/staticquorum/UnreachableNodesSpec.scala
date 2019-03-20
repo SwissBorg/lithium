@@ -8,16 +8,14 @@ class UnreachableNodesSpec extends MySpec {
     "1 - should instantiate the correct instance" in {
       forAll { (worldView: WorldView, quorumSize: QuorumSize, role: String) =>
         UnreachableNodes(worldView, quorumSize, role) match {
-          case EmptyUnreachable() =>
+          case EmptyUnreachable =>
             worldView.unreachableNodesWithRole(role) shouldBe empty
 
-          case UnreachablePotentialQuorum(unreachableNodes) =>
-            unreachableNodes.length should be >= quorumSize.value
-            unreachableNodes.toSortedSet shouldEqual worldView.unreachableNodesWithRole(role)
+          case UnreachablePotentialQuorum =>
+            worldView.unreachableNodesWithRole(role).size should be >= quorumSize.value
 
-          case UnreachableSubQuorum(unreachableNodes) =>
-            unreachableNodes.length should be < quorumSize.value
-            unreachableNodes.toSortedSet shouldEqual worldView.unreachableNodesWithRole(role)
+          case UnreachableSubQuorum =>
+            worldView.unreachableNodesWithRole(role).size should be < quorumSize.value
         }
       }
     }

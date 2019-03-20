@@ -43,7 +43,7 @@ object OldestRemovedScenario {
 
     for {
       initWorldView <- arbHealthyWorldView.arbitrary
-      allNodes = NonEmptySet.fromSetUnsafe(initWorldView.allNodes)
+      allNodes = NonEmptySet.fromSetUnsafe(initWorldView.allConsideredNodes)
       partitions         <- splitCluster(allNodes)
       divergedWorldViews <- partitions.traverse(divergeWorldView(initWorldView, allNodes, _)).arbitrary
     } yield OldestRemovedScenario(divergedWorldViews, refineV[Positive](allNodes.length).right.get)

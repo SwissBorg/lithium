@@ -40,7 +40,7 @@ object SymmetricSplitScenario {
       healthyWorldView <- arbHealthyWorldView.arbitrary
 
       allNodes = NonEmptySet
-        .fromSetUnsafe(healthyWorldView.allNodes) // HealthyWorldView has at least one node and all are reachable
+        .fromSetUnsafe(healthyWorldView.allConsideredNodes) // HealthyWorldView has at least one node and all are reachable
 
       // Split the allNodes in `nSubCluster`.
       partitions <- splitCluster(allNodes)

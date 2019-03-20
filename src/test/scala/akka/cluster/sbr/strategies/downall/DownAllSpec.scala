@@ -11,13 +11,9 @@ class DownAllSpec extends MySpec {
     "1 - should always down nodes" in {
       forAll { worldView: WorldView =>
         Strategy[DownAll](worldView, ()).map {
-          case DownReachable(_) =>
-            if (worldView.unreachableNodes.nonEmpty) succeed
-            else fail
-          case Idle =>
-            if (worldView.reachableNodes.isEmpty || worldView.unreachableNodes.isEmpty) succeed
-            else fail
-          case _ => fail
+          case DownReachable(_) => succeed
+          case Idle             => succeed
+          case _                => fail
         }
       }
     }

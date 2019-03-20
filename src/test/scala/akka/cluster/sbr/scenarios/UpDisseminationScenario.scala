@@ -42,7 +42,7 @@ object UpDisseminationScenario {
       initWorldView <- arbUpNumberConsistentWorldView.arbitrary
 
       allNodes = NonEmptySet
-        .fromSetUnsafe(initWorldView.allNodes) // UpNumberConsistentWorldView has at least one node and all are reachable
+        .fromSetUnsafe(initWorldView.allConsideredNodes) // UpNumberConsistentWorldView has at least one node and all are reachable
 
       // Split the allNodes in `nSubCluster`.
       partitions <- splitCluster(allNodes)

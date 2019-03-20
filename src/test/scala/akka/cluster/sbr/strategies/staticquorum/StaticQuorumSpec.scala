@@ -73,18 +73,18 @@ object StaticQuorumSpec {
   def classifyNetwork(reachableNodes: ReachableNodes, unreachableNodes: UnreachableNodes)(prop: Prop): Prop = {
     val isNormal: Boolean =
       (reachableNodes, unreachableNodes) match {
-        case (_, _: EmptyUnreachable) => true
-        case _                        => false
+        case (_, EmptyUnreachable) => true
+        case _                     => false
       }
 
     val reachableIsQuorum: Boolean = reachableNodes match {
-      case _: ReachableQuorum    => true
-      case _: ReachableSubQuorum => false
+      case ReachableQuorum    => true
+      case ReachableSubQuorum => false
     }
 
     val unreachableIsPotentialQuorum: Boolean = unreachableNodes match {
-      case _: UnreachablePotentialQuorum => true
-      case _                             => false
+      case UnreachablePotentialQuorum => true
+      case _                          => false
     }
 
     classify(isNormal, "normal", "split-brain") {

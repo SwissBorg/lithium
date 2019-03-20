@@ -8,7 +8,7 @@ class WorldViewSpec extends MySpec {
   "WorldView" - {
     "1 - should not have a node simultaneously reachable and unreachable" in {
       forAll { worldView: WorldView =>
-        worldView.reachableNodes.map(_.node).intersect(worldView.unreachableNodes.map(_.node)) shouldBe empty
+        worldView.reachableConsideredNodes.map(_.node).intersect(worldView.unreachableNodes.map(_.node)) shouldBe empty
       }
     }
 
@@ -20,7 +20,7 @@ class WorldViewSpec extends MySpec {
               case Right(w) =>
                 if (worldView.self != member) {
                   w.statuses.keys should contain(member)
-                  w.reachableNodes shouldNot contain(ReachableNode(member))
+                  w.reachableConsideredNodes shouldNot contain(ReachableNode(member))
                   w.unreachableNodes shouldNot contain(UnreachableNode(member))
                 } else {
                   w shouldEqual worldView
@@ -45,7 +45,7 @@ class WorldViewSpec extends MySpec {
             val worldView0 = worldView.memberEvent(event) match {
               case Right(w) =>
                 w.statuses.keys should contain(member)
-                w.reachableNodes shouldNot contain(ReachableNode(member))
+                w.reachableConsideredNodes shouldNot contain(ReachableConsideredNode(member))
                 w.unreachableNodes shouldNot contain(UnreachableNode(member))
 
               case Left(err) => err shouldEqual NodeAlreadyCounted(member)
@@ -65,7 +65,7 @@ class WorldViewSpec extends MySpec {
           case MemberRemoved(member, _) =>
             worldView.memberEvent(event) match {
               case Right(w) =>
-                w.reachableNodes shouldNot contain(ReachableNode(member))
+                w.reachableConsideredNodes shouldNot contain(ReachableConsideredNode(member))
                 w.unreachableNodes shouldNot contain(UnreachableNode(member))
 
               case Left(err) => err shouldEqual UnknownNode(member)
@@ -74,7 +74,7 @@ class WorldViewSpec extends MySpec {
           case MemberUp(member) =>
             worldView.memberEvent(event) match {
               case Right(w) =>
-                w.reachableNodes should contain(ReachableNode(member))
+                w.reachableConsideredNodes should contain(ReachableConsideredNode(member))
                 w.unreachableNodes shouldNot contain(UnreachableNode(member))
 
               case Left(err) => err shouldEqual NodeAlreadyCounted(member)
@@ -89,13 +89,13 @@ class WorldViewSpec extends MySpec {
           case UnreachableMember(member) =>
             val worldView0 = worldView.copy(statuses = worldView.statuses + (member -> Reachable))
             val worldView1 = worldView0.reachabilityEvent(event).toTry.get
-            worldView1.reachableNodes shouldNot contain(ReachableNode(member))
+            worldView1.reachableConsideredNodes shouldNot contain(ReachableConsideredNode(member))
             worldView1.unreachableNodes should contain(UnreachableNode(member))
 
           case ReachableMember(member) =>
             val worldView0 = worldView.copy(statuses = worldView.statuses + (member -> Unreachable))
             val worldView1 = worldView0.reachabilityEvent(event).toTry.get
-            worldView1.reachableNodes should contain(ReachableNode(member))
+            worldView1.reachableConsideredNodes should contain(ReachableConsideredNode(member))
             worldView1.unreachableNodes shouldNot contain(UnreachableNode(member))
         }
       }
@@ -104,7 +104,7 @@ class WorldViewSpec extends MySpec {
     "4 - reachableNodes" in {
       forAll { worldView: WorldView =>
         (worldView.statuses.toList should contain)
-          .allElementsOf(worldView.reachableNodes.map(n => n.node -> Reachable))
+          .allElementsOf(worldView.reachableConsideredNodes.map(n => n.node -> Reachable))
       }
     }
 
@@ -117,17 +117,19 @@ class WorldViewSpec extends MySpec {
 
     "6 - allNodes" in {
       forAll { worldView: WorldView =>
-        (worldView.allNodes should contain)
-          .theSameElementsAs(worldView.reachableNodes.map(_.node) ++ worldView.unreachableNodes.map(_.node))
+        (worldView.allConsideredNodes should contain)
+          .theSameElementsAs(worldView.reachableConsideredNodes.map(_.node) ++ worldView.unreachableNodes.map(_.node))
       }
     }
 
     "7 - allNodesWithRole" in {
       forAll { (worldView: WorldView, role: String) =>
-        if (role == "") worldView.allNodesWithRole(role) shouldEqual worldView.allNodes
-        else (worldView.allNodes should contain).allElementsOf(worldView.allNodesWithRole(role))
+        if (role == "") worldView.allConsideredNodesWithRole(role) shouldEqual worldView.allConsideredNodes
+        else (worldView.allConsideredNodes should contain).allElementsOf(worldView.allConsideredNodesWithRole(role))
 
-        worldView.allNodesWithRole(role) shouldEqual (worldView.reachableNodesWithRole(role).map(_.node) ++ worldView
+        worldView.allConsideredNodesWithRole(role) shouldEqual (worldView
+          .reachableConsideredNodesWithRole(role)
+          .map(_.node) ++ worldView
           .unreachableNodesWithRole(role)
           .map(_.node))
       }
@@ -135,8 +137,10 @@ class WorldViewSpec extends MySpec {
 
     "8 - reachableNodesWithRole" in {
       forAll { (worldView: WorldView, role: String) =>
-        if (role == "") worldView.reachableNodesWithRole(role) shouldEqual worldView.reachableNodes
-        else (worldView.reachableNodes should contain).allElementsOf(worldView.reachableNodesWithRole(role))
+        if (role == "") worldView.reachableConsideredNodesWithRole(role) shouldEqual worldView.reachableConsideredNodes
+        else
+          (worldView.reachableConsideredNodes should contain)
+            .allElementsOf(worldView.reachableConsideredNodesWithRole(role))
       }
     }
 
@@ -157,7 +161,7 @@ class WorldViewSpec extends MySpec {
 
     "2 - should have at least a reachable node" in {
       forAll { worldView: HealthyWorldView =>
-        worldView.reachableNodes shouldBe 'nonEmpty
+        worldView.reachableConsideredNodes shouldBe 'nonEmpty
       }
 
     }

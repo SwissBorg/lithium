@@ -20,7 +20,7 @@ object RemainingPartitions {
     case _: UnsafeDownReachable => RemainingPartitions(0)
     case _: DownUnreachable     => RemainingPartitions(1)
     case _: Idle.type =>
-      if (worldView.reachableNodes.isEmpty) RemainingPartitions(0) // node is effectively down
+      if (worldView.reachableConsideredNodes.isEmpty) RemainingPartitions(0) // node is effectively down
       else RemainingPartitions(1)
   }
 

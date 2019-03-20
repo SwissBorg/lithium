@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.keepoldest
 
 import akka.cluster.sbr._
+import akka.cluster.sbr.strategies.keepoldest.KeepOldestView.KeepOldestViewError
 import cats.data.NonEmptySet
 import pureconfig.ConfigReader
 import pureconfig.generic.semiauto.deriveReader
@@ -20,14 +21,10 @@ object KeepOldest {
     implicit val configReader: ConfigReader[Config] = deriveReader[Config]
   }
 
-  def keepOldest(worldView: WorldView, config: Config): Either[Error.type, StrategyDecision] =
+  def keepOldest(worldView: WorldView, config: Config): Either[KeepOldestViewError, StrategyDecision] =
     KeepOldestView(worldView, config.downIfAlone, config.role).map {
-      case OldestReachable =>
-        NonEmptySet.fromSet(worldView.unreachableNodes).fold[StrategyDecision](Idle)(DownUnreachable)
-      case OldestAlone =>
-        NonEmptySet.fromSet(worldView.reachableNodes).fold[StrategyDecision](Idle)(DownReachable)
-      case OldestUnreachable =>
-        NonEmptySet.fromSet(worldView.reachableNodes).fold[StrategyDecision](Idle)(DownReachable)
+      case OldestReachable                 => DownUnreachable(worldView)
+      case OldestAlone | OldestUnreachable => DownReachable(worldView)
     }
 
   implicit val keepOldestStrategy: Strategy.Aux[KeepOldest, Config] = new Strategy[KeepOldest] {
