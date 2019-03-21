@@ -41,7 +41,8 @@ object KeepRefereeViewSpec {
   // TODO pick arbitrary node?
   def arbConfig(worldView: WorldView): Arbitrary[Config] = Arbitrary {
     posNum[Int].map { downAllIfLessThanNodes =>
-      Config(worldView.allConsideredNodes.take(1).head.address.toString, refineV[Positive](downAllIfLessThanNodes).right.get)
+      Config(worldView.allConsideredNodes.take(1).head.address.toString,
+             refineV[Positive](downAllIfLessThanNodes).right.get)
     }
   }
 }

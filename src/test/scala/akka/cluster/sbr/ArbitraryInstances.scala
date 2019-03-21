@@ -3,18 +3,21 @@ package akka.cluster.sbr
 import akka.actor.Address
 import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus._
+import akka.cluster.sbr.implicits._
 import akka.cluster.{Member, MemberStatus, UniqueAddress, Reachability => _}
+import cats.data.{NonEmptyMap, NonEmptySet}
+import cats.kernel.Order
 import org.scalacheck.Arbitrary
 import org.scalacheck.Arbitrary._
 import org.scalacheck.Gen._
 import shapeless.tag
 import shapeless.tag.@@
 
-import scala.collection.immutable.SortedMap
+import scala.collection.immutable.{SortedMap, SortedSet}
 
 object ArbitraryInstances extends ArbitraryInstances
 
-trait ArbitraryInstances {
+trait ArbitraryInstances extends ArbitraryInstances0 {
   sealed trait JoiningTag
   type JoiningMember = Member @@ JoiningTag
 
@@ -42,38 +45,6 @@ trait ArbitraryInstances {
   sealed trait UpNumberConsistentTag
   type UpNumberConsistentWorldView = WorldView @@ UpNumberConsistentTag
 
-  implicit val reachabilityEventldView: Arbitrary[WorldView] = Arbitrary {
-    for {
-      ms   <- arbitrary[Seq[(Member, Status)]]
-      self <- arbitrary[Member]
-    } yield WorldView(self, SortedMap((self -> Reachable) +: ms: _*))
-  }
-
-  implicit val arbHealthyWorldView: Arbitrary[HealthyWorldView] = Arbitrary(
-    for {
-      members <- arbitrary[Seq[Member]]
-      self    <- arbitrary[Member]
-      all       = (self +: members).map(_ -> Reachable)
-      worldView = WorldView(self, SortedMap(all: _*))
-    } yield tag[HealthyTag][WorldView](worldView)
-  )
-
-  implicit val arbUpNumberConsistentWorldView: Arbitrary[UpNumberConsistentWorldView] = Arbitrary {
-    for {
-      members <- arbitrary[Seq[WeaklyUpMember]]
-      self    <- arbitrary[WeaklyUpMember]
-
-      all = (self +: members).zipWithIndex.map {
-        case (weaklyUpMember, ix) => weaklyUpMember.copyUp(ix) -> Reachable
-      }
-
-      worldView = WorldView(self, SortedMap(all: _*))
-    } yield tag[UpNumberConsistentTag][WorldView](worldView)
-  }
-
-  implicit val arbReachability: Arbitrary[Status] =
-    Arbitrary(oneOf(Reachable, Unreachable))
-
   implicit val arbJoiningMember: Arbitrary[JoiningMember] = Arbitrary {
     val randJoiningMember = for {
       uniqueAddress <- arbitrary[UniqueAddress]
@@ -86,27 +57,27 @@ trait ArbitraryInstances {
   }
 
   implicit val arbWeaklyUpMember: Arbitrary[WeaklyUpMember] = Arbitrary(
-    arbitrary[JoiningMember].map(m => tag[WeaklyUpTag][Member](m.copy(WeaklyUp)))
+    arbJoiningMember.arbitrary.map(m => tag[WeaklyUpTag][Member](m.copy(WeaklyUp)))
   )
 
   implicit val arbUpMember: Arbitrary[UpMember] = Arbitrary(
-    arbitrary[JoiningMember].map(m => tag[UpTag][Member](m.copyUp(m.hashCode())))
+    arbJoiningMember.arbitrary.map(m => tag[UpTag][Member](m.copyUp(m.hashCode())))
   )
 
   implicit val arbLeavingMember: Arbitrary[LeavingMember] = Arbitrary(
-    arbitrary[JoiningMember].map(m => tag[LeavingTag][Member](m.copy(Leaving)))
+    arbJoiningMember.arbitrary.map(m => tag[LeavingTag][Member](m.copy(Leaving)))
   )
 
   implicit val arbDownMember: Arbitrary[DownMember] = Arbitrary(
-    arbitrary[JoiningMember].map(m => tag[DownTag][Member](m.copy(Down)))
+    arbJoiningMember.arbitrary.map(m => tag[DownTag][Member](m.copy(Down)))
   )
 
   implicit val arbRemovedMember: Arbitrary[RemovedMember] = Arbitrary(
-    arbitrary[JoiningMember].map(m => tag[RemovedTag][Member](m.copy(Removed)))
+    arbJoiningMember.arbitrary.map(m => tag[RemovedTag][Member](m.copy(Removed)))
   )
 
   implicit val arbExitingMember: Arbitrary[ExitingMember] = Arbitrary(
-    arbitrary[LeavingMember].map(m => tag[ExitingTag][Member](m.copy(Exiting)))
+    arbLeavingMember.arbitrary.map(m => tag[ExitingTag][Member](m.copy(Exiting)))
   )
 
   implicit val arbMember: Arbitrary[Member] = Arbitrary(
@@ -119,6 +90,32 @@ trait ArbitraryInstances {
       arbExitingMember.arbitrary
     )
   )
+
+  implicit val arbWorldView: Arbitrary[WorldView] = Arbitrary(
+    arbNonEmptyMap[Member, Status].arbitrary.map(nodes => WorldView(nodes.head._1, nodes.head._2, nodes.tail))
+  )
+
+  implicit val arbHealthyWorldView: Arbitrary[HealthyWorldView] = Arbitrary(
+    for {
+      nodes <- arbNonEmptySet[Member].arbitrary
+      worldView = WorldView(nodes.head, Reachable, otherStatuses = SortedMap(nodes.tail.map(_ -> Reachable).toSeq: _*))
+    } yield tag[HealthyTag][WorldView](worldView)
+  )
+
+  implicit val arbUpNumberConsistentWorldView: Arbitrary[UpNumberConsistentWorldView] = Arbitrary(
+    for {
+      nodes <- arbNonEmptySet[WeaklyUpMember](taggedOrder[Member, WeaklyUpTag], arbWeaklyUpMember).arbitrary
+
+      nodeStatuses = nodes.toNonEmptyList.zipWithIndex.map {
+        case (weaklyUpMember, ix) => weaklyUpMember.copyUp(ix) -> Reachable
+      }
+
+      worldView = WorldView(nodeStatuses.head._1, nodeStatuses.head._2, SortedMap(nodeStatuses.toList: _*))
+    } yield tag[UpNumberConsistentTag][WorldView](worldView)
+  )
+
+  implicit val arbReachability: Arbitrary[Status] =
+    Arbitrary(oneOf(Reachable, Unreachable))
 
   implicit val arbReachableNode: Arbitrary[ReachableNode] =
     Arbitrary(arbMember.arbitrary.map(ReachableNode(_)))
@@ -145,31 +142,31 @@ trait ArbitraryInstances {
     Arbitrary(oneOf[MemberStatus](WeaklyUp, WeaklyUp))
 
   implicit val arbMemberJoined: Arbitrary[MemberJoined] = Arbitrary(
-    arbitrary[JoiningMember].map(MemberJoined)
+    arbJoiningMember.arbitrary.map(MemberJoined)
   )
 
   implicit val arbMemberUp: Arbitrary[MemberUp] = Arbitrary(
-    arbitrary[UpMember].map(MemberUp)
+    arbUpMember.arbitrary.map(MemberUp)
   )
 
   implicit val arbMemberLeft: Arbitrary[MemberLeft] = Arbitrary(
-    arbitrary[LeavingMember].map(MemberLeft)
+    arbLeavingMember.arbitrary.map(MemberLeft)
   )
 
   implicit val arbMemberExited: Arbitrary[MemberExited] = Arbitrary(
-    arbitrary[ExitingMember].map(MemberExited)
+    arbExitingMember.arbitrary.map(MemberExited)
   )
 
   implicit val arbMemberDowned: Arbitrary[MemberDowned] = Arbitrary(
-    arbitrary[DownMember].map(MemberDowned)
+    arbDownMember.arbitrary.map(MemberDowned)
   )
 
   implicit val arbMemberWeaklyUp: Arbitrary[MemberWeaklyUp] = Arbitrary(
-    arbitrary[WeaklyUpMember].map(MemberWeaklyUp)
+    arbWeaklyUpMember.arbitrary.map(MemberWeaklyUp)
   )
 
   implicit val arbMemberRemoved: Arbitrary[MemberRemoved] = Arbitrary(
-    arbitrary[RemovedMember].map(MemberRemoved(_, Removed))
+    arbRemovedMember.arbitrary.map(MemberRemoved(_, Removed))
   )
 
   implicit val arbMemberEvent: Arbitrary[MemberEvent] = Arbitrary(
@@ -185,14 +182,34 @@ trait ArbitraryInstances {
   )
 
   implicit val arbUnreachableMember: Arbitrary[UnreachableMember] = Arbitrary(
-    arbitrary[Member].map(UnreachableMember)
+    arbMember.arbitrary.map(UnreachableMember)
   )
 
   implicit val arbReachableMember: Arbitrary[ReachableMember] = Arbitrary(
-    arbitrary[Member].map(ReachableMember)
+    arbMember.arbitrary.map(ReachableMember)
   )
 
   implicit val arbReachabilityEvent: Arbitrary[ReachabilityEvent] = Arbitrary(
-    oneOf(arbitrary[UnreachableMember], arbitrary[ReachableMember])
+    oneOf(arbUnreachableMember.arbitrary, arbReachableMember.arbitrary)
   )
+}
+
+trait ArbitraryInstances0 {
+  implicit def arbSortedSet[A: Arbitrary: Order]: Arbitrary[SortedSet[A]] =
+    Arbitrary(arbitrary[Set[A]].map(s => SortedSet.empty[A](implicitly[Order[A]].toOrdering) ++ s))
+
+  implicit def arbSortedMap[K: Arbitrary: Order, V: Arbitrary]: Arbitrary[SortedMap[K, V]] =
+    Arbitrary(arbitrary[Map[K, V]].map(s => SortedMap.empty[K, V](implicitly[Order[K]].toOrdering) ++ s))
+
+  implicit def arbNonEmptySet[A](implicit O: Order[A], A: Arbitrary[A]): Arbitrary[NonEmptySet[A]] =
+    Arbitrary(implicitly[Arbitrary[SortedSet[A]]].arbitrary.flatMap(fa => A.arbitrary.map(a => NonEmptySet(a, fa))))
+
+  implicit def arbNonEmptyMap[K, A](implicit O: Order[K],
+                                    A: Arbitrary[A],
+                                    K: Arbitrary[K]): Arbitrary[NonEmptyMap[K, A]] =
+    Arbitrary(for {
+      fa <- arbSortedMap[K, A].arbitrary
+      k  <- K.arbitrary
+      a  <- A.arbitrary
+    } yield NonEmptyMap((k, a), fa))
 }

@@ -12,7 +12,7 @@ import org.scalacheck.Gen._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
-import akka.cluster.sbr.implicits._
+import akka.cluster.sbr.testImplicits._
 
 final case class OldestRemovedScenario(worldViews: NonEmptyList[WorldView], clusterSize: Int Refined Positive)
 
@@ -28,14 +28,25 @@ object OldestRemovedScenario {
       chooseNum(1, 3)
         .map { n =>
           if (n == 1)
+            // Remove oldest node
             worldView
-              .memberEvent(MemberRemoved(oldestNode.copy(Removed), Exiting)).toTry.get // info not disseminated before partition
+              .memberEvent(MemberRemoved(oldestNode.copy(Removed), Exiting))
+              .getOrElse(worldView) // info not disseminated before partition
           else if (n == 2)
-            worldView.reachabilityEvent(UnreachableMember(oldestNode)).toTry.get // unreachable just after partition
+            // Oldest node is unreachable
+            worldView
+              .reachabilityEvent(UnreachableMember(oldestNode))
+              .getOrElse(worldView) // unreachable just after partition
           else worldView
         }
         .map { worldView =>
-          otherNodes.foldLeft[WorldView](worldView) {
+          // Change `self`
+          val worldView0 = worldView.copy(
+            self = partition.head,
+            otherStatuses = worldView.otherStatuses + (worldView.self -> worldView.selfStatus) - partition.head // add old self and remove new one
+          )
+
+          otherNodes.foldLeft[WorldView](worldView0) {
             case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node)).toTry.get
           }
         }
