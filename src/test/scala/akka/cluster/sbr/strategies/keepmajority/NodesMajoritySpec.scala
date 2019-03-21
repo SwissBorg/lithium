@@ -19,13 +19,13 @@ class NodesMajoritySpec extends MySpec {
               worldView.reachableConsideredNodesWithRole(config.role).size should be >= majority
 
             case ReachableLowestAddress =>
-              worldView.reachableConsideredNodesWithRole(config.role).size shouldEqual majority - 1
+              worldView.reachableConsideredNodesWithRole(config.role).size should ===(majority - 1)
 
             case UnreachableMajority =>
               worldView.unreachableNodesWithRole(config.role).size should be >= majority
 
             case UnreachableLowestAddress =>
-              worldView.unreachableNodesWithRole(config.role).size shouldEqual majority - 1
+              worldView.unreachableNodesWithRole(config.role).size should ===(majority - 1)
           }
           .handleError {
             case NoMajority =>

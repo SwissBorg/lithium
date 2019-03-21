@@ -16,7 +16,11 @@ object StaticQuorum {
 
   def staticQuorum(worldView: WorldView, config: Config): Either[Throwable, StrategyDecision] =
     ReachableNodes(worldView, config.quorumSize, config.role).map { reachableNodes =>
-      (reachableNodes, UnreachableNodes(worldView, config.quorumSize, config.role)) match {
+      val a = (reachableNodes, UnreachableNodes(worldView, config.quorumSize, config.role))
+
+      println(a)
+
+      a match {
 
         /**
          * If we decide DownReachable the entire cluster will shutdown. Always?

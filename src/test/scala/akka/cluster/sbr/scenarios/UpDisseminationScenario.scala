@@ -2,13 +2,12 @@ package akka.cluster.sbr.scenarios
 
 import akka.cluster.ClusterEvent.{MemberUp, UnreachableMember}
 import akka.cluster.Member
-import akka.cluster.MemberStatus.Up
 import akka.cluster.sbr.ArbitraryInstances._
-import akka.cluster.sbr.{Reachable, WorldView}
+import akka.cluster.sbr.{Reachable, Staged, Unreachable, WorldView}
+import akka.cluster.sbr.testImplicits._
 import cats.data.{NonEmptyList, NonEmptySet}
 import org.scalacheck.Arbitrary
 import org.scalacheck.Gen.listOf
-import akka.cluster.sbr.implicits._
 
 final case class UpDisseminationScenario(worldViews: NonEmptyList[WorldView])
 
@@ -24,15 +23,21 @@ object UpDisseminationScenario {
     def divergeWorldView(worldView: WorldView,
                          allNodes: NonEmptySet[Member],
                          partition: NonEmptySet[Member]): Arbitrary[WorldView] = Arbitrary {
-      listOf(arbWeaklyUpMember.arbitrary)
-        .map(_.foldLeft(worldView) {
-          case (worldView, member) =>
-            worldView.copy(statuses = worldView.statuses + (member.copyUp(Integer.MAX_VALUE) -> Reachable))
+      listOf(arbMemberUp.arbitrary)
+        .map(_.filter(e => worldView.statusOf(e.member).fold(false)(_ == Staged)).foldLeft(worldView) {
+          case (worldView, upEvent) =>
+            worldView.memberEvent(MemberUp(upEvent.member.copyUp(Integer.MAX_VALUE))).toTry.get
         })
         .map { worldView =>
           val otherNodes = allNodes -- partition
 
-          otherNodes.foldLeft[WorldView](worldView) {
+          // Change `self`
+          val worldView0 = worldView.copy(
+            self = partition.head,
+            otherStatuses = worldView.otherStatuses + (worldView.self -> worldView.selfStatus) - partition.head // add old self and remove new one
+          )
+
+          otherNodes.foldLeft[WorldView](worldView0) {
             case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node)).toTry.get
           }
         }

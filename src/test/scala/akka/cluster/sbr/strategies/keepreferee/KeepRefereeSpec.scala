@@ -42,12 +42,12 @@ class KeepRefereeSpec extends MySpec {
     "3 - should handle a split during the oldest-removed scenarios" in {
       forAll { (scenario: OldestRemovedScenario, downAllIfLessThanNodes: Int Refined Positive) =>
         // same referee for everyone
-        scenario.worldViews.head.allConsideredNodes
+        scenario.worldViews.head.reachableConsideredNodes
           .take(1)
           .headOption
           .map { referee =>
             val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-              Strategy[KeepReferee](worldView, Config(referee.address.toString, downAllIfLessThanNodes))
+              Strategy[KeepReferee](worldView, Config(referee.node.address.toString, downAllIfLessThanNodes))
                 .foldMap(RemainingPartitions.fromDecision(worldView))
             }
 

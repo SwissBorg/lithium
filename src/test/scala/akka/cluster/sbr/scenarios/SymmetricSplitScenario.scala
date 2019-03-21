@@ -31,7 +31,13 @@ object SymmetricSplitScenario {
                          partition: NonEmptySet[Member]): WorldView = {
       val otherNodes = allNodes -- partition
 
-      otherNodes.foldLeft[WorldView](worldView) {
+      // Change `self`
+      val worldView0 = worldView.copy(
+        self = partition.head,
+        otherStatuses = worldView.otherStatuses + (worldView.self -> worldView.selfStatus) - partition.head // add old self and remove new one
+      )
+
+      otherNodes.foldLeft[WorldView](worldView0) {
         case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node)).toTry.get
       }
     }
@@ -39,8 +45,7 @@ object SymmetricSplitScenario {
     for {
       healthyWorldView <- arbHealthyWorldView.arbitrary
 
-      allNodes = NonEmptySet
-        .fromSetUnsafe(healthyWorldView.allConsideredNodes) // HealthyWorldView has at least one node and all are reachable
+      allNodes = healthyWorldView.allStatuses.keys
 
       // Split the allNodes in `nSubCluster`.
       partitions <- splitCluster(allNodes)
