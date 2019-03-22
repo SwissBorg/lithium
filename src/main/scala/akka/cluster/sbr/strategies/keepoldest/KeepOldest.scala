@@ -2,34 +2,31 @@ package akka.cluster.sbr.strategies.keepoldest
 
 import akka.cluster.sbr._
 import akka.cluster.sbr.strategies.keepoldest.KeepOldestView.KeepOldestViewError
-import pureconfig.ConfigReader
-import pureconfig.generic.semiauto.deriveReader
 
-final case class KeepOldest()
+/**
+ * Strategy that will down a partition if it does NOT contain the oldest node.
+ *
+ * A `role` can be provided (@see [[akka.cluster.sbr.strategies.keepmajority.KeepMajority.Config]]
+ * to only take in account the nodes with that role in the decision. This can be useful if there
+ * are nodes that are more important than others.
+ *
+ *
+ */
+final case class KeepOldest(downIfAlone: Boolean, role: String)
 
 object KeepOldest {
-
-  /**
-   * The config for the [[KeepOldest]] strategy.
-   *
-   * @param downIfAlone down the oldest node if it is partitioned from all other nodes.
-   */
-  final case class Config(downIfAlone: Boolean, role: String)
-
-  object Config {
-    implicit val configReader: ConfigReader[Config] = deriveReader[Config]
-  }
-
-  def keepOldest(worldView: WorldView, config: Config): Either[KeepOldestViewError, StrategyDecision] =
-    KeepOldestView(worldView, config.downIfAlone, config.role).map {
+  def keepOldest(strategy: KeepOldest, worldView: WorldView): Either[KeepOldestViewError, StrategyDecision] =
+    KeepOldestView(worldView, strategy.downIfAlone, strategy.role).map {
       case OldestReachable                 => DownUnreachable(worldView)
       case OldestAlone | OldestUnreachable => DownReachable(worldView)
     }
 
-  implicit val keepOldestStrategy: Strategy.Aux[KeepOldest, Config] = new Strategy[KeepOldest] {
-    override type Config = KeepOldest.Config
-    override val name: String = "keep-oldest"
-    override def handle(worldView: WorldView, config: KeepOldest.Config): Either[Throwable, StrategyDecision] =
-      keepOldest(worldView, config)
+  implicit val keepOldestStrategy: Strategy[KeepOldest] = new Strategy[KeepOldest] {
+    override def handle(strategy: KeepOldest, worldView: WorldView): Either[Throwable, StrategyDecision] =
+      keepOldest(strategy, worldView)
   }
+
+  implicit val keepOldestStrategyReader: StrategyReader[KeepOldest] = StrategyReader.fromName("keep-oldest")
+
+//  implicit val keepOldestReader: ConfigReader[KeepOldest] = deriveReader[KeepOldest]
 }

@@ -3,13 +3,12 @@ package akka.cluster.sbr
 import akka.actor.{Actor, ActorLogging, Cancellable, Props}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
+import Strategy.StrategyOps
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
-class Downer[A, Config](cluster: Cluster, strategy: ConfiguredStrategy[A, Config], stableAfter: FiniteDuration)
-    extends Actor
-    with ActorLogging {
+class Downer[A: Strategy](cluster: Cluster, strategy: A, stableAfter: FiniteDuration) extends Actor with ActorLogging {
   import Downer._
 
   // TODO is this one ok?
@@ -79,8 +78,7 @@ class Downer[A, Config](cluster: Cluster, strategy: ConfiguredStrategy[A, Config
    * the static-quorum strategy.
    */
   private def handleUnreachableNodes(worldView: WorldView): Unit = {
-    val a = strategy
-      .handle(worldView)
+    val a = strategy.handle(worldView)
 
     println(s"DECISION $a")
 
@@ -106,7 +104,7 @@ class Downer[A, Config](cluster: Cluster, strategy: ConfiguredStrategy[A, Config
 }
 
 object Downer {
-  def props[A, Config](cluster: Cluster, strategy: ConfiguredStrategy[A, Config], stableAfter: FiniteDuration): Props =
+  def props[A: Strategy](cluster: Cluster, strategy: A, stableAfter: FiniteDuration): Props =
     Props(new Downer(cluster, strategy, stableAfter))
 
   final case object ClusterIsStable

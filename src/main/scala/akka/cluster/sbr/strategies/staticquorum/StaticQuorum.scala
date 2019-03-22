@@ -1,22 +1,13 @@
 package akka.cluster.sbr.strategies.staticquorum
 
 import akka.cluster.sbr._
-import pureconfig.ConfigReader
-import pureconfig.generic.semiauto._
-import eu.timepit.refined.pureconfig._ // DO NOT REMOVE
 
-final case class StaticQuorum()
+final case class StaticQuorum(role: String, quorumSize: QuorumSize)
 
 object StaticQuorum {
-  final case class Config(role: String, quorumSize: QuorumSize)
-
-  object Config {
-    implicit val configReader: ConfigReader[Config] = deriveReader[Config]
-  }
-
-  def staticQuorum(worldView: WorldView, config: Config): Either[Throwable, StrategyDecision] =
-    ReachableNodes(worldView, config.quorumSize, config.role).map { reachableNodes =>
-      val a = (reachableNodes, UnreachableNodes(worldView, config.quorumSize, config.role))
+  def staticQuorum(strategy: StaticQuorum, worldView: WorldView): Either[Throwable, StrategyDecision] =
+    ReachableNodes(worldView, strategy.quorumSize, strategy.role).map { reachableNodes =>
+      val a = (reachableNodes, UnreachableNodes(worldView, strategy.quorumSize, strategy.role))
 
 //      println(a)
 
@@ -55,10 +46,13 @@ object StaticQuorum {
       }
     }
 
-  implicit val staticQuorumStrategy: Strategy.Aux[StaticQuorum, StaticQuorum.Config] = new Strategy[StaticQuorum] {
-    override type Config = StaticQuorum.Config
-    override val name: String = "static-quorum"
-    override def handle(worldView: WorldView, config: Config): Either[Throwable, StrategyDecision] =
-      staticQuorum(worldView, config)
+  implicit val staticQuorumStrategy: Strategy[StaticQuorum] = new Strategy[StaticQuorum] {
+    override def handle(strategy: StaticQuorum, worldView: WorldView): Either[Throwable, StrategyDecision] =
+      staticQuorum(strategy, worldView)
   }
+
+  implicit val staticQuorumStrategyReader: StrategyReader[StaticQuorum] = StrategyReader.fromName("static-quorum")
+
+
+//  implicit val staticQuorumReader: ConfigReader[StaticQuorum] = deriveReader[StaticQuorum]
 }

@@ -1,17 +1,18 @@
 package akka.cluster.sbr.strategies.keepreferee
 
 import akka.cluster.sbr.WorldView
-import akka.cluster.sbr.strategies.keepreferee.KeepReferee.Config
+import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
+import eu.timepit.refined.numeric.Positive
 
 sealed abstract private[keepreferee] class KeepRefereeView extends Product with Serializable
 
 private[keepreferee] object KeepRefereeView {
-  def apply(worldView: WorldView, config: Config): KeepRefereeView =
+  def apply(worldView: WorldView, address: String, downAllIfLessThanNodes: Int Refined Positive): KeepRefereeView =
     worldView.reachableConsideredNodes
-      .find(_.node.address.toString == config.address)
+      .find(_.node.address.toString == address)
       .fold[KeepRefereeView](RefereeUnreachable) { _ =>
-        if (worldView.reachableConsideredNodes.size < config.downAllIfLessThanNodes) TooFewReachableNodes
+        if (worldView.reachableConsideredNodes.size < downAllIfLessThanNodes) TooFewReachableNodes
         else RefereeReachable
       }
 }

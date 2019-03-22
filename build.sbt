@@ -77,6 +77,6 @@ lazy val root = (project in file("."))
 testOptions in Test += Tests.Argument("-oF")
 
 // SemanticDB
-addCompilerPlugin(scalafixSemanticdb)
+//addCompilerPlugin(scalafixSemanticdb)
 
 parallelExecution in MultiJvm := false

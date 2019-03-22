@@ -1,14 +1,10 @@
 package akka.cluster.sbr
 
 import akka.cluster.ClusterEvent._
-import akka.cluster.Member
 import akka.cluster.sbr.ArbitraryInstances._
 import akka.cluster.sbr.WorldView._
 import akka.cluster.sbr.implicits._
 import cats.kernel.Eq
-import cats.implicits._
-
-import scala.collection.immutable.SortedSet
 
 class WorldViewSpec extends MySpec {
   "WorldView" - {
@@ -126,10 +122,10 @@ class WorldViewSpec extends MySpec {
     "3 - reachabilityEvent" in {
       forAll { (worldView: WorldView, event: ReachabilityEvent) =>
         event match {
-          case UnreachableMember(member) =>
+          case UnreachableMember(node) =>
             worldView.reachabilityEvent(event) match {
               case Right(w) =>
-                w.statusOf(event.member) should ===(Some(Unreachable))
+                w.statusOf(node) should ===(Some(Unreachable))
 
               case Left(IllegalUnreachable(node)) =>
                 event.member should ===(node)
@@ -143,10 +139,10 @@ class WorldViewSpec extends MySpec {
               case _ => fail
             }
 
-          case ReachableMember(member) =>
+          case ReachableMember(node) =>
             worldView.reachabilityEvent(event) match {
               case Right(w) =>
-                w.statusOf(event.member) should ===(Some(Reachable))
+                w.statusOf(node) should ===(Some(Reachable))
 
               case Left(err) =>
                 event.member should ===(err.node)

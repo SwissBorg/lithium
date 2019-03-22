@@ -1,10 +1,9 @@
 package akka.cluster.sbr.strategies.staticquorum
 
-import akka.cluster.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario}
+import akka.cluster.sbr.Strategy.StrategyOps
 import akka.cluster.sbr._
-import akka.cluster.sbr.strategies.staticquorum.StaticQuorum.Config
+import akka.cluster.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario}
 import akka.cluster.sbr.utils.RemainingPartitions
-import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
@@ -19,11 +18,11 @@ class StaticQuorumSpec extends MySpec {
   "StaticQuorum" - {
     "1 - should handle symmetric split scenarios with a correctly defined quorum size" in {
       forAll { scenario: SymmetricSplitScenario =>
-        implicit val _: Arbitrary[Config] = StaticQuorumSpec.arbConfig(scenario.clusterSize)
+        implicit val _: Arbitrary[StaticQuorum] = StaticQuorumSpec.arbStaticQuorum(scenario.clusterSize)
 
-        forAll { config: Config =>
+        forAll { staticQuorum: StaticQuorum =>
           val remainingSubClusters: RemainingPartitions = scenario.worldViews.foldMap { worldView =>
-            Strategy[StaticQuorum](worldView, config).foldMap(RemainingPartitions.fromDecision(worldView))
+            staticQuorum.handle(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
           }
 
           remainingSubClusters.n.value should be <= 1
@@ -33,11 +32,11 @@ class StaticQuorumSpec extends MySpec {
 
     "2 - should handle a split during the oldest-removed scenarios" in {
       forAll { scenario: OldestRemovedScenario =>
-        implicit val _: Arbitrary[Config] = StaticQuorumSpec.arbConfig(scenario.clusterSize)
+        implicit val _: Arbitrary[StaticQuorum] = StaticQuorumSpec.arbStaticQuorum(scenario.clusterSize)
 
-        forAll { config: Config =>
+        forAll { staticQuorum: StaticQuorum =>
           val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-            Strategy[StaticQuorum](worldView, config).foldMap(RemainingPartitions.fromDecision(worldView))
+            staticQuorum.handle(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
           }
 
           remainingSubClusters.n.value should be <= 1
@@ -62,12 +61,12 @@ class StaticQuorumSpec extends MySpec {
 }
 
 object StaticQuorumSpec {
-  private def arbConfig(clusterSize: Int Refined Positive): Arbitrary[StaticQuorum.Config] = Arbitrary {
+  private def arbStaticQuorum(clusterSize: Int Refined Positive): Arbitrary[StaticQuorum] = Arbitrary {
     val minQuorumSize = clusterSize / 2 + 1
     for {
       quorumSize <- chooseNum(minQuorumSize, clusterSize.value)
       role       <- arbitrary[String]
-    } yield StaticQuorum.Config(role, refineV[Positive](quorumSize).right.get)
+    } yield StaticQuorum(role, refineV[Positive](quorumSize).right.get)
   }
 
   def classifyNetwork(reachableNodes: ReachableNodes, unreachableNodes: UnreachableNodes)(prop: Prop): Prop = {

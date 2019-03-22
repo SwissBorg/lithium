@@ -1,10 +1,9 @@
 package akka.cluster.sbr.strategies.keepreferee
 
+import akka.cluster.sbr.MySpec
+import akka.cluster.sbr.Strategy.StrategyOps
 import akka.cluster.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario, UpDisseminationScenario}
-import akka.cluster.sbr.strategies.keepreferee.KeepReferee.Config
 import akka.cluster.sbr.utils.RemainingPartitions
-import akka.cluster.sbr.{MySpec, Strategy}
-import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.scalacheck.all._
@@ -17,7 +16,8 @@ class KeepRefereeSpec extends MySpec {
         val referee = scenario.worldViews.head.allConsideredNodes.take(1).head.address.toString
 
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          Strategy[KeepReferee](worldView, Config(referee, downAllIfLessThanNodes))
+          KeepReferee(referee, downAllIfLessThanNodes)
+            .handle(worldView)
             .foldMap(RemainingPartitions.fromDecision(worldView))
         }
 
@@ -31,7 +31,8 @@ class KeepRefereeSpec extends MySpec {
         val referee = scenario.worldViews.head.allConsideredNodes.take(1).head.address.toString
 
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          Strategy[KeepReferee](worldView, Config(referee, downAllIfLessThanNodes))
+          KeepReferee(referee, downAllIfLessThanNodes)
+            .handle(worldView)
             .foldMap(RemainingPartitions.fromDecision(worldView))
         }
 
@@ -47,7 +48,8 @@ class KeepRefereeSpec extends MySpec {
           .headOption
           .map { referee =>
             val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-              Strategy[KeepReferee](worldView, Config(referee.node.address.toString, downAllIfLessThanNodes))
+              KeepReferee(referee.node.address.toString, downAllIfLessThanNodes)
+                .handle(worldView)
                 .foldMap(RemainingPartitions.fromDecision(worldView))
             }
 

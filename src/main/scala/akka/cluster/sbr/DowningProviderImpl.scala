@@ -3,12 +3,16 @@ package akka.cluster.sbr
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorSystem, Props}
+import akka.cluster.sbr.StrategyReader.UnknownStrategy
+import akka.cluster.sbr.strategies.downall.DownAll
 import akka.cluster.sbr.strategies.keepmajority.KeepMajority
 import akka.cluster.sbr.strategies.keepoldest.KeepOldest
 import akka.cluster.sbr.strategies.keepreferee.KeepReferee
 import akka.cluster.sbr.strategies.staticquorum.StaticQuorum
 import akka.cluster.{Cluster, DowningProvider}
 import cats.implicits._
+import eu.timepit.refined.pureconfig._
+import pureconfig.generic.auto._
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -20,38 +24,36 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
   override def downRemovalMargin: FiniteDuration = config.stableAfter
 
   override def downingActorProps: Option[Props] = {
-    val keepMajority = Strategy.name[KeepMajority]
-    val keepOldest   = Strategy.name[KeepOldest]
-    val keepReferee  = Strategy.name[KeepReferee]
-    val staticQuorum = Strategy.name[StaticQuorum]
+    val keepMajority = StrategyReader[KeepMajority].name
+    val keepOldest   = StrategyReader[KeepOldest].name
+    val keepReferee  = StrategyReader[KeepReferee].name
+    val staticQuorum = StrategyReader[StaticQuorum].name
+    val downAll      = StrategyReader[DownAll.type].name
 
-    config.activeStrategy match {
+    val strategy = config.activeStrategy match {
       case `keepMajority` =>
-        Strategy[KeepMajority]
-          .fromConfig[KeepMajority.Config]
+        StrategyReader[KeepMajority].load
           .map(Downer.props(Cluster(system), _, config.stableAfter))
-          .fold(err => throw new IllegalArgumentException(err.toString), _.some)
 
       case `keepOldest` =>
-        Strategy[KeepOldest]
-          .fromConfig[KeepOldest.Config]
+        StrategyReader[KeepOldest].load
           .map(Downer.props(Cluster(system), _, config.stableAfter))
-          .fold(err => throw new IllegalArgumentException(err.toString), _.some)
 
       case `keepReferee` =>
-        Strategy[KeepReferee]
-          .fromConfig[KeepReferee.Config]
+        StrategyReader[KeepReferee].load
           .map(Downer.props(Cluster(system), _, config.stableAfter))
-          .fold(err => throw new IllegalArgumentException(err.toString), _.some)
 
       case `staticQuorum` =>
-        Strategy[StaticQuorum]
-          .fromConfig[StaticQuorum.Config]
+        StrategyReader[StaticQuorum].load
           .map(Downer.props(Cluster(system), _, config.stableAfter))
-          .fold(err => throw new IllegalArgumentException(err.toString), _.some)
 
-      case _ => None
+      case `downAll` =>
+        Downer.props(Cluster(system), DownAll, config.stableAfter).asRight
+
+      case unknownStrategy => UnknownStrategy(unknownStrategy).asLeft
     }
+
+    strategy.toTry.get.some
   }
 }
 

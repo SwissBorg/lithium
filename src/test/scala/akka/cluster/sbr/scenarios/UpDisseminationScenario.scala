@@ -3,8 +3,8 @@ package akka.cluster.sbr.scenarios
 import akka.cluster.ClusterEvent.{MemberUp, UnreachableMember}
 import akka.cluster.Member
 import akka.cluster.sbr.ArbitraryInstances._
-import akka.cluster.sbr.{Reachable, Staged, Unreachable, WorldView}
 import akka.cluster.sbr.testImplicits._
+import akka.cluster.sbr.{Staged, WorldView}
 import cats.data.{NonEmptyList, NonEmptySet}
 import org.scalacheck.Arbitrary
 import org.scalacheck.Gen.listOf

@@ -5,10 +5,8 @@ import cats.instances._
 import cats.syntax._
 import cats.tests.{StrictCatsEquality, TestSettings}
 import org.scalactic.anyvals._
-import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FreeSpec, Matchers}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-import org.typelevel.discipline.scalatest.Discipline
 
 trait MySpec
     extends FreeSpec
