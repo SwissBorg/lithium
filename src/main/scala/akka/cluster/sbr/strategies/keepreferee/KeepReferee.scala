@@ -23,6 +23,4 @@ object KeepReferee {
   }
 
   implicit val keepRefereeStrategyReader: StrategyReader[KeepReferee] = StrategyReader.fromName("keep-referee")
-
-//  implicit val keepRefereeReader: ConfigReader[KeepReferee] = deriveReader[KeepReferee]
 }

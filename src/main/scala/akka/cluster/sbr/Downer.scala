@@ -86,8 +86,8 @@ class Downer[A: Strategy](cluster: Cluster, strategy: A, stableAfter: FiniteDura
         log.error(s"$err")
         throw err
       }, identity)
-      .addressesToDown
-      .foreach(Cluster(context.system).down)
+      .nodesToDown
+      .foreach(node => Cluster(context.system).down(node.node.address))
   }
 
   private def scheduleStabilityMessage(): Cancellable =

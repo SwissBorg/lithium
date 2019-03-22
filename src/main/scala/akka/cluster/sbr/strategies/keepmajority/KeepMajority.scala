@@ -36,6 +36,4 @@ object KeepMajority {
   }
 
   implicit val keepMajorityStrategyReader: StrategyReader[KeepMajority] = StrategyReader.fromName("keep-majority")
-
-//  implicit val keepMajorityReader: ConfigReader[KeepMajority] = deriveReader[KeepMajority]
 }

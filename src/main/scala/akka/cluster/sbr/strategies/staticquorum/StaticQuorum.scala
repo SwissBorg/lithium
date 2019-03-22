@@ -52,7 +52,5 @@ object StaticQuorum {
   }
 
   implicit val staticQuorumStrategyReader: StrategyReader[StaticQuorum] = StrategyReader.fromName("static-quorum")
-
-
 //  implicit val staticQuorumReader: ConfigReader[StaticQuorum] = deriveReader[StaticQuorum]
 }

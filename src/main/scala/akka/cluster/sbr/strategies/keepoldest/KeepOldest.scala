@@ -27,6 +27,4 @@ object KeepOldest {
   }
 
   implicit val keepOldestStrategyReader: StrategyReader[KeepOldest] = StrategyReader.fromName("keep-oldest")
-
-//  implicit val keepOldestReader: ConfigReader[KeepOldest] = deriveReader[KeepOldest]
 }
