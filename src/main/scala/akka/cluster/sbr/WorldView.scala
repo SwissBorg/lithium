@@ -240,8 +240,9 @@ object WorldView {
         .diff(state.unreachable)
         .map { m =>
           m.status match {
-            case Joining | WeaklyUp => m -> Staged
-            case _                  => m -> Reachable
+            case Joining  => m -> Staged
+            case WeaklyUp => m -> WeaklyReachable
+            case _        => m -> Reachable
           }
         }(collection.breakOut)
 
