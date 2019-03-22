@@ -26,7 +26,7 @@ scalacOptions ++=
     "-Ywarn-value-discard",
     "-Xfuture",
     "-Yno-adapted-args",
-//    "-Xfatal-warnings",
+    "-Xfatal-warnings",
     "-deprecation"
   )
 

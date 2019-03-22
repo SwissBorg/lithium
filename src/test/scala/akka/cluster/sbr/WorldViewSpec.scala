@@ -35,7 +35,7 @@ class WorldViewSpec extends MySpec {
 
               case Left(err) =>
                 err match {
-                  case IllegalJoin(errMember) =>
+                  case IllegalTransition(errMember, _, Staged) =>
                     worldView.statusOf(event.member) should not be empty
                     worldView.self should !==(node)
                     node should ===(errMember)
@@ -56,44 +56,23 @@ class WorldViewSpec extends MySpec {
                 err.node should ===(node)
 
                 err match {
-                  case AlreadyWeaklyReachable(errNode) =>
-                    worldView.statusOf(errNode) should ===(Some(WeaklyReachable))
-
-                  case AlreadyReachable(errNode) =>
-                    worldView.statusOf(errNode) should ===(Some(Reachable))
+                  case IllegalTransition(errNode, from, WeaklyReachable) =>
+                    worldView.statusOf(errNode) should ===(Some(from))
 
                   case IllegalUnreachable(errNode) =>
                     worldView.self should ===(errNode)
                     worldView.statusOf(errNode) should ===(Some(Unreachable))
 
-                  case IllegalTransition(errNode) =>
+                  case UnknownNode(errNode) =>
+                    worldView.statusOf(errNode) shouldBe empty
                     worldView.self should !==(errNode)
-                    worldView.statusOf(errNode) should ===(Some(Unreachable))
-
-                  case NodeNotStaged(errNode) =>
-                    worldView.statusOf(event.member) shouldBe empty
-                    worldView.self should !==(node)
 
                   case _ => fail
                 }
             }
 
           case _: MemberLeft | _: MemberExited =>
-            worldView.memberEvent(event) match {
-              case Right(w) => w shouldEqual worldView
-              case Left(err) =>
-                worldView.statusOf(event.member) match {
-                  case Some(Staged) =>
-                    err should ===(NodeStillStaged(event.member))
-                    event.member should !==(worldView.self)
-
-                  case None =>
-                    err should ===(UnknownNode(event.member))
-                    event.member should !==(worldView.self)
-
-                  case _ => fail
-                }
-            }
+            worldView.memberEvent(event) should ===(worldView.asRight)
 
           case MemberDowned(member) =>
             worldView.memberEvent(event) match {
@@ -112,9 +91,12 @@ class WorldViewSpec extends MySpec {
                 node should ===(member)
                 node should ===(worldView.self)
 
-              case Left(err) =>
-                err should ===(UnknownNode(member))
+              case Left(UnknownNode(node)) =>
+                node should ===(member)
+                worldView.statusOf(node) shouldBe empty
                 event.member should !==(worldView.self)
+
+              case other => fail(s"$other")
             }
 
           case MemberUp(member) =>
@@ -123,9 +105,11 @@ class WorldViewSpec extends MySpec {
                 w.reachableConsideredNodes.contains(ReachableConsideredNode(member)) shouldBe true
                 w.unreachableNodes.contains(UnreachableNode(member)) shouldBe false
 
-              case Left(err) =>
-                err should ===(NodeAlreadyUp(member))
+              case Left(IllegalTransition(node, _, Reachable)) =>
+                node should ===(member)
                 event.member should !==(worldView.self)
+
+              case other => fail(s"$other")
             }
         }
       }
@@ -159,10 +143,9 @@ class WorldViewSpec extends MySpec {
               case Left(err) =>
                 event.member should ===(err.node)
                 err match {
-                  case UnknownNode(node)          => worldView.allStatuses.contains(node) shouldBe false
-                  case AlreadyReachable(node) => worldView.statusOf(node) should ===(Some(Reachable))
-                  case NodeStillStaged(node)      => worldView.statusOf(node) should ===(Some(Staged))
-                  case _                          => fail
+                  case UnknownNode(node)                     => worldView.allStatuses.contains(node) shouldBe false
+                  case IllegalTransition(node, _, Reachable) => worldView.statusOf(node).isDefined shouldBe true
+                  case _                                     => fail
                 }
             }
 

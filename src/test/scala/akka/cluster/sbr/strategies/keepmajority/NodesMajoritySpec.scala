@@ -3,7 +3,7 @@ package akka.cluster.sbr.strategies.keepmajority
 import akka.cluster.sbr.{MySpec, WorldView}
 import akka.cluster.sbr.strategies.keepmajority.ArbitraryInstances._
 import akka.cluster.sbr.strategies.keepmajority.KeepMajority.Config
-import akka.cluster.sbr.strategies.keepmajority.NodesMajority.{LowestAddressIsStaged, NoMajority}
+import akka.cluster.sbr.strategies.keepmajority.NodesMajority.{LowestAddressIsNotConsidered, NoMajority}
 import cats.implicits._
 
 class NodesMajoritySpec extends MySpec {
@@ -33,7 +33,7 @@ class NodesMajoritySpec extends MySpec {
                   worldView.unreachableNodesWithRole(config.role).size < majority) succeed
               else fail
 
-            case LowestAddressIsStaged(node) => fail // "should" never happen
+            case LowestAddressIsNotConsidered(node) => fail // "should" never happen
           }
       }
     }

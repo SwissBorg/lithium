@@ -94,7 +94,7 @@ final case class WorldView private[sbr] (private[sbr] val self: Member,
       case MemberJoined(node)              => join(node)
       case MemberWeaklyUp(node)            => weaklyUp(node)
       case MemberUp(member)                => up(member)
-      case _: MemberLeft | _: MemberExited => prepareRemove(event.member)
+      case _: MemberLeft | _: MemberExited => this.asRight
       case MemberDowned(member)            => down(member)
       case MemberRemoved(member, _)        => remove(member)
     }
@@ -148,21 +148,6 @@ final case class WorldView private[sbr] (private[sbr] val self: Member,
 
         case status @ (WeaklyReachable | Reachable | Unreachable) =>
           IllegalTransition(node, status, WeaklyReachable).asLeft
-      }
-    }
-
-  /**
-   * Effectively checks that the `node` is in the current status before removing
-   * it when it moves to the `Removed` state.
-   */
-  private def prepareRemove(node: Member): Either[WorldViewError, WorldView] =
-    if (node === self) {
-      this.asRight // todo can it?
-    } else {
-      statusOf(node).fold[Either[WorldViewError, WorldView]](UnknownNode(node).asLeft) {
-        case Staged      => NodeStillStaged(node).asLeft
-        case Reachable   => this.asRight
-        case Unreachable => this.asRight
       }
     }
 
@@ -263,7 +248,6 @@ object WorldView {
     implicit val worldViewErrorEq: Eq[WorldViewError] = new Eq[WorldViewError] {
       override def eqv(x: WorldViewError, y: WorldViewError): Boolean = (x, y) match {
         case (_: UnknownNode, _: UnknownNode)                           => x.node === y.node
-        case (_: NodeStillStaged, _: NodeStillStaged)                   => x.node === y.node
         case (_: NodeAlreadyUp, _: NodeAlreadyUp)                       => x.node === y.node
         case (_: IllegalUnreachable, _: IllegalUnreachable)             => x.node === y.node
         case (_: CannotRemoveSelf, _: CannotRemoveSelf)                 => x.node === y.node
@@ -275,7 +259,6 @@ object WorldView {
   }
 
   final case class UnknownNode(node: Member)              extends WorldViewError(s"$node")
-  final case class NodeStillStaged(node: Member)          extends WorldViewError(s"$node")
   final case class NodeAlreadyUp(node: Member)            extends WorldViewError(s"$node")
   final case class NodeNotStaged(node: Member)            extends WorldViewError(s"$node")
   final case class IllegalUnreachable(node: Member)       extends WorldViewError(s"$node")

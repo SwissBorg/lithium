@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.keepmajority.one
 
 import akka.cluster.sbr.ThreeNodeSpec
+import akka.cluster.sbr.util.linksToKillForPartitions
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
@@ -14,8 +15,9 @@ class KeepMajoritySpec extends ThreeNodeSpec("KeepMajority", KeepMajoritySpecCon
     "Bidirectional link failure" in within(60 seconds) {
       runOn(node1) {
         // Kill link bi-directionally to node3
-        testConductor.blackhole(node1, node3, Direction.Both).await
-        testConductor.blackhole(node2, node3, Direction.Both).await
+        linksToKillForPartitions(List(node1, node2) :: List(node3) :: Nil).foreach {
+          case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
+        }
       }
 
       enterBarrier("node3-disconnected")
@@ -37,7 +39,7 @@ class KeepMajoritySpec extends ThreeNodeSpec("KeepMajority", KeepMajoritySpecCon
 
     "Complete bidirectional link failure" in within(30 seconds) {
       runOn(node1) {
-        testConductor.blackhole(node1, node2, Direction.Both).await
+        val _ = testConductor.blackhole(node1, node2, Direction.Both).await
       }
 
       enterBarrier("all-disconnected")

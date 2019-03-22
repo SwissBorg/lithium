@@ -17,12 +17,9 @@ class RoleKeepOldestSpec extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecCo
       runOn(node1) {
         // Partition of node3, node4, and node 5.
         // Partition of node1 and node2.
-        testConductor.blackhole(node3, node2, Direction.Both).await
-        testConductor.blackhole(node1, node3, Direction.Both).await
-        testConductor.blackhole(node2, node4, Direction.Both).await
-        testConductor.blackhole(node2, node5, Direction.Both).await
-        testConductor.blackhole(node1, node4, Direction.Both).await
-        testConductor.blackhole(node1, node5, Direction.Both).await
+        akka.cluster.sbr.util.linksToKillForPartitions(List(node1, node2) :: List(node3, node4, node5) :: Nil).foreach {
+          case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
+        }
       }
 
       enterBarrier("links-failed")

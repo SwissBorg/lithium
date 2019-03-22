@@ -22,7 +22,7 @@ class UtilSpec extends MySpec {
 
         forAll { res: NonEmptyList[NonEmptySet[Int]] =>
           if (parts.value >= 0 && parts.value <= (tail.size + 1)) {
-            (res.toList should have).size(parts.value)
+            (res.toList should have).length(parts.value.toLong)
             res.foldMap(_.toSortedSet) should ===(nes.toSortedSet)
           } else res should ===(NonEmptyList.of(nes))
         }

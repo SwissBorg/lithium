@@ -24,11 +24,14 @@ object KeepReferee {
     implicit val configReader: ConfigReader[Config] = deriveReader[Config]
   }
 
-  def keepReferee(worldView: WorldView, config: Config): StrategyDecision =
-    KeepRefereeView(worldView, config) match {
+  def keepReferee(worldView: WorldView, config: Config): StrategyDecision = {
+    val a = KeepRefereeView(worldView, config)
+    println(a)
+    a match {
       case RefereeReachable                          => DownUnreachable(worldView)
       case TooFewReachableNodes | RefereeUnreachable => DownReachable(worldView)
     }
+  }
 
   implicit val keepRefereeStrategy: Strategy.Aux[KeepReferee, KeepReferee.Config] = new Strategy[KeepReferee] {
     override type Config = KeepReferee.Config

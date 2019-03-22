@@ -14,8 +14,9 @@ class KeepOldestSpec extends ThreeNodeSpec("KeepOldest", KeepOldestSpecConfig) {
     "Bidirectional link failure" in within(60 seconds) {
       runOn(node1) {
         // Kill link to node1
-        testConductor.blackhole(node2, node1, Direction.Both).await
-        testConductor.blackhole(node3, node1, Direction.Both).await
+        akka.cluster.sbr.util.linksToKillForPartitions(List(node1, node2) :: List(node3) :: Nil).foreach {
+          case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
+        }
       }
 
       enterBarrier("node1-disconnected")

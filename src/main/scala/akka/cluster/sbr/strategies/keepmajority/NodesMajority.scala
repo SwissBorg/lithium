@@ -27,17 +27,17 @@ private[keepmajority] object NodesMajority {
         reachability <- worldView.statusOf(lowestAddressNode)
       } yield
         reachability match {
-          case Reachable   => ReachableLowestAddress.asRight
-          case Unreachable => UnreachableLowestAddress.asRight
-          case Staged      => LowestAddressIsStaged(lowestAddressNode).asLeft
+          case Reachable                => ReachableLowestAddress.asRight
+          case Unreachable              => UnreachableLowestAddress.asRight
+          case Staged | WeaklyReachable => LowestAddressIsNotConsidered(lowestAddressNode).asLeft
         }).getOrElse(NoMajority.asLeft) // no reachable nor unreachable nodes
 
     } else NoMajority.asLeft
   }
 
-  sealed abstract class NodesMajorityError(message: String) extends Throwable(message)
-  final case class LowestAddressIsStaged(node: Member)      extends NodesMajorityError(s"$node")
-  final object NoMajority                                   extends NodesMajorityError("")
+  sealed abstract class NodesMajorityError(message: String)   extends Throwable(message)
+  final case class LowestAddressIsNotConsidered(node: Member) extends NodesMajorityError(s"$node")
+  final object NoMajority                                     extends NodesMajorityError("")
 }
 
 final private[keepmajority] case object ReachableMajority        extends NodesMajority

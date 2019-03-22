@@ -18,15 +18,11 @@ class StaticQuorumSpec2 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Co
         // Partition of node1, node2, node3
         // Partition of node 4
         // Partition of node 5
-        testConductor.blackhole(node1, node4, Direction.Both).await
-        testConductor.blackhole(node2, node4, Direction.Both).await
-        testConductor.blackhole(node3, node4, Direction.Both).await
-
-        testConductor.blackhole(node1, node5, Direction.Both).await
-        testConductor.blackhole(node2, node5, Direction.Both).await
-        testConductor.blackhole(node3, node5, Direction.Both).await
-
-        testConductor.blackhole(node4, node5, Direction.Both).await
+        akka.cluster.sbr.util
+          .linksToKillForPartitions(List(node1, node2, node3) :: List(node4) :: List(node5) :: Nil)
+          .foreach {
+            case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
+          }
       }
 
       enterBarrier("links-failed")
