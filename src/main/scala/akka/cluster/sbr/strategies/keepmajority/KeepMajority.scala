@@ -1,8 +1,7 @@
 package akka.cluster.sbr.strategies.keepmajority
 
 import akka.cluster.sbr._
-import akka.cluster.sbr.strategies.keepmajority.NodesMajority.{LowestAddressIsNotConsidered, NoMajority, NodesMajorityError}
-import cats.data.NonEmptySet
+import akka.cluster.sbr.strategies.keepmajority.NodesMajority.{NoMajority, NodesMajorityError}
 import cats.implicits._
 import pureconfig.ConfigReader
 import pureconfig.generic.semiauto.deriveReader

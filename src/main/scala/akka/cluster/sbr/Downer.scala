@@ -82,7 +82,7 @@ class Downer[A, Config](cluster: Cluster, strategy: ConfiguredStrategy[A, Config
     val a = strategy
       .handle(worldView)
 
-    println(s"DECISION $a")
+//    println(s"DECISION $a")
 
     a.fold(err => {
         log.error(s"$err")

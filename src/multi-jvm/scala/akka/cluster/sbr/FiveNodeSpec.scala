@@ -19,11 +19,11 @@ abstract class FiveNodeSpec(name: String, config: FiveNodeSpecConfig)
 
   def assertions(): Unit
 
-  protected val node1 = config.node1
-  protected val node2 = config.node2
-  protected val node3 = config.node3
-  protected val node4 = config.node4
-  protected val node5 = config.node5
+  protected val node1: RoleName = config.node1
+  protected val node2: RoleName = config.node2
+  protected val node3: RoleName = config.node3
+  protected val node4: RoleName = config.node4
+  protected val node5: RoleName = config.node5
 
   override def initialParticipants: Int = roles.size
 

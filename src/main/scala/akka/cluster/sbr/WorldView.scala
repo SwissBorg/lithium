@@ -17,7 +17,6 @@ import scala.collection.immutable.{SortedMap, SortedSet}
 final case class WorldView private[sbr] (private[sbr] val self: Member,
                                          private[sbr] val selfStatus: Status,
                                          private[sbr] val otherStatuses: SortedMap[Member, Status]) {
-
   import WorldView._
 
   /**
@@ -94,7 +93,7 @@ final case class WorldView private[sbr] (private[sbr] val self: Member,
       case MemberJoined(node)              => join(node)
       case MemberWeaklyUp(node)            => weaklyUp(node)
       case MemberUp(member)                => up(member)
-      case _: MemberLeft | _: MemberExited => this.asRight
+      case _: MemberLeft | _: MemberExited => leftOrExited(event.member)
       case MemberDowned(member)            => down(member)
       case MemberRemoved(member, _)        => remove(member)
     }
@@ -117,8 +116,7 @@ final case class WorldView private[sbr] (private[sbr] val self: Member,
    */
   private def join(node: Member): Either[IllegalTransition, WorldView] =
     if (node === self) {
-      // `self` is added at construction
-      this.asRight
+      copy(self = node).asRight
     } else {
       statusOf(node)
         .fold[Either[IllegalTransition, WorldView]](copy(otherStatuses = otherStatuses + (node -> Staged)).asRight)(
@@ -137,7 +135,7 @@ final case class WorldView private[sbr] (private[sbr] val self: Member,
   private def weaklyUp(node: Member): Either[WorldViewError, WorldView] =
     if (node === self) {
       selfStatus match {
-        case Staged                      => copy(selfStatus = WeaklyReachable).asRight
+        case Staged                      => copy(self = node, selfStatus = WeaklyReachable).asRight
         case WeaklyReachable | Reachable => IllegalTransition(node, selfStatus, WeaklyReachable).asLeft
         case Unreachable                 => IllegalUnreachable(node).asLeft
       }
@@ -162,13 +160,25 @@ final case class WorldView private[sbr] (private[sbr] val self: Member,
    */
   private def up(node: Member): Either[WorldViewError, WorldView] =
     if (node === self) {
-      copy(selfStatus = Reachable).asRight
+      copy(self = node, selfStatus = Reachable).asRight
     } else {
       statusOf(node)
         .fold[Either[WorldViewError, WorldView]](copy(otherStatuses = otherStatuses + (node -> Reachable)).asRight) { // todo check if node other than self can become directly up
           case Staged | WeaklyReachable           => copy(otherStatuses = otherStatuses + (node -> Reachable)).asRight
           case status @ (Reachable | Unreachable) => IllegalTransition(node, status, Reachable).asLeft
         }
+    }
+
+  /**
+   * Updates the member.
+   */
+  private def leftOrExited(node: Member): Either[UnknownNode, WorldView] =
+    if (node === self) {
+      copy(self = node).asRight
+    } else {
+      statusOf(node).fold[Either[UnknownNode, WorldView]](UnknownNode(node).asLeft)(
+        status => copy(otherStatuses = otherStatuses + (node -> status)).asRight
+      )
     }
 
   /**

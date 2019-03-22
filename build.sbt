@@ -22,6 +22,7 @@ scalacOptions ++=
     "-unchecked",
     "-Ypartial-unification",
     "-Ywarn-dead-code",
+    "-Ywarn-unused",
     "-Ywarn-numeric-widen",
     "-Ywarn-value-discard",
     "-Xfuture",

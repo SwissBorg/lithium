@@ -26,6 +26,11 @@ class KeepRefereeSpec extends ThreeNodeSpec("KeepReferee", KeepRefereeSpecConfig
         waitToBecomeUnreachable(node2, node3)
       }
 
+      runOn(node2, node3) {
+        waitForUp(node2, node3)
+        waitToBecomeUnreachable(node1)
+      }
+
       enterBarrier("node2-3-unreachable")
 
       runOn(node1) {

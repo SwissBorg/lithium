@@ -26,7 +26,7 @@ object KeepReferee {
 
   def keepReferee(worldView: WorldView, config: Config): StrategyDecision = {
     val a = KeepRefereeView(worldView, config)
-    println(a)
+//    println(a)
     a match {
       case RefereeReachable                          => DownUnreachable(worldView)
       case TooFewReachableNodes | RefereeUnreachable => DownReachable(worldView)

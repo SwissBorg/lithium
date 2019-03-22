@@ -12,7 +12,7 @@ object KeepOldestView {
 
     for {
       oldestNode <- allNodesSortedByAge.headOption
-//      _ = println(allNodesSortedByAge)
+//      _ = println(allNodesSortedByAge.map(m => s"${m.upNumber}-${m.address.host}-${m.address.port}"))
 //      _ = println(s"OLDEST: $oldestNode")
       reachability <- worldView.statusOf(oldestNode)
 //      _ = println(s"REACHABILITY: $reachability")

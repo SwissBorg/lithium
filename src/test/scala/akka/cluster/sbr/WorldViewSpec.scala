@@ -72,7 +72,15 @@ class WorldViewSpec extends MySpec {
             }
 
           case _: MemberLeft | _: MemberExited =>
-            worldView.memberEvent(event) should ===(worldView.asRight)
+            worldView.memberEvent(event) match {
+              case Right(w) => w should ===(worldView)
+
+              case Left(UnknownNode(node)) =>
+                node should ===(event.member)
+                worldView.statusOf(node).isEmpty shouldBe true
+
+              case _ => fail
+            }
 
           case MemberDowned(member) =>
             worldView.memberEvent(event) match {

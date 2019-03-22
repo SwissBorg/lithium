@@ -2,7 +2,6 @@ package akka.cluster.sbr.strategies.keepoldest
 
 import akka.cluster.sbr._
 import akka.cluster.sbr.strategies.keepoldest.KeepOldestView.KeepOldestViewError
-import cats.data.NonEmptySet
 import pureconfig.ConfigReader
 import pureconfig.generic.semiauto.deriveReader
 
