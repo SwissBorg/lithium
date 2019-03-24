@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.keepreferee
 
 import akka.cluster.sbr._
+import akka.cluster.sbr.strategy.Strategy
 import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive

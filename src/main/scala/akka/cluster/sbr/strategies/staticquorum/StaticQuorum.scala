@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.staticquorum
 
 import akka.cluster.sbr._
+import akka.cluster.sbr.strategy.Strategy
 
 final case class StaticQuorum(role: String, quorumSize: QuorumSize)
 

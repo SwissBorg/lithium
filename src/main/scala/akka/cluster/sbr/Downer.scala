@@ -3,7 +3,10 @@ package akka.cluster.sbr
 import akka.actor.{Actor, ActorLogging, Cancellable, Props}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
-import Strategy.StrategyOps
+import akka.cluster.sbr.strategy.auto._
+import akka.cluster.sbr.strategy.Strategy.StrategyOps
+import akka.cluster.sbr.strategies.indirected.Indirected
+import akka.cluster.sbr.strategy.Strategy
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
@@ -78,7 +81,7 @@ class Downer[A: Strategy](cluster: Cluster, strategy: A, stableAfter: FiniteDura
    * the static-quorum strategy.
    */
   private def handleUnreachableNodes(worldView: WorldView): Unit = {
-    val a = strategy.handle(worldView)
+    val a = (strategy, Indirected).handle(worldView)
 
     println(s"DECISION $a")
 

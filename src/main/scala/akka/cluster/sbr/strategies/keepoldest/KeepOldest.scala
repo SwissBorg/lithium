@@ -2,6 +2,7 @@ package akka.cluster.sbr.strategies.keepoldest
 
 import akka.cluster.sbr._
 import akka.cluster.sbr.strategies.keepoldest.KeepOldestView.KeepOldestViewError
+import akka.cluster.sbr.strategy.Strategy
 
 /**
  * Strategy that will down a partition if it does NOT contain the oldest node.

@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.downall
 
 import akka.cluster.sbr._
+import akka.cluster.sbr.strategy.Strategy
 import cats.implicits._
 
 /**

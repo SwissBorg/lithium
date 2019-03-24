@@ -2,6 +2,7 @@ package akka.cluster.sbr.strategies.keepmajority
 
 import akka.cluster.sbr._
 import akka.cluster.sbr.strategies.keepmajority.KeepMajorityView.NoMajority
+import akka.cluster.sbr.strategy.Strategy
 import cats.implicits._
 
 /**
