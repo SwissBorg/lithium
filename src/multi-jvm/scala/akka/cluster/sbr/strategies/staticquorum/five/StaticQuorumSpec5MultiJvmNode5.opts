@@ -1,0 +1,2 @@
+-Dconfig.resource=staticquorum/static_quorum_spec_2.conf
+-Dakka.remote.netty.tcp.port=9991
