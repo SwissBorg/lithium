@@ -12,14 +12,22 @@ class KeepRefereeSpec2MultiJvmNode3 extends KeepRefereeSpec2
 class KeepRefereeSpec2MultiJvmNode4 extends KeepRefereeSpec2
 class KeepRefereeSpec2MultiJvmNode5 extends KeepRefereeSpec2
 
+/**
+ * Creates the partitions:
+ *   (1) node1, node2
+ *   (2) node3
+ *   (3) node4
+ *   (4) node5
+ *
+ * (1) should survive as it contains the referee.
+ * (2) should down itself as it does not contain the referee.
+ * (3) should down itself as it does not contain the referee.
+ * (4) should down itself as it does not contain the referee.
+ */
 class KeepRefereeSpec2 extends FiveNodeSpec("KeepReferee", KeepRefereeSpec2Config) {
   override def assertions(): Unit =
     "Three partitions, bidirectional link failure" in within(60 seconds) {
       runOn(node1) {
-        // Partition of node1 and node2 <- survive (contains referee)
-        // Partition of node 3          <- killed
-        // Partition of node 4          <- killed
-        // Partition of node 5          <- killed
         linksToKillForPartitions(List(List(node1, node2), List(node3), List(node4), List(node5))).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
         }

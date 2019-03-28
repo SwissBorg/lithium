@@ -9,6 +9,14 @@ class StaticQuorumSpecMultiJvmNode1 extends StaticQuorumSpec
 class StaticQuorumSpecMultiJvmNode2 extends StaticQuorumSpec
 class StaticQuorumSpecMultiJvmNode3 extends StaticQuorumSpec
 
+/**
+ * Creates the partitions:
+ *   (1) node1, node2
+ *   (2) node3
+ *
+ * (1) should survive as it is a quorum.
+ * (2) should down itself as it is not a quorum.
+ */
 class StaticQuorumSpec extends ThreeNodeSpec("StaticQuorum", StaticQuorumSpecConfig) {
   override def assertions(): Unit =
     "Bidirectional link failure" in within(60 seconds) {

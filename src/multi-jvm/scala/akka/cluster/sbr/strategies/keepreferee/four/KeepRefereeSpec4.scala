@@ -11,6 +11,12 @@ class KeepRefereeSpec4MultiJvmNode3 extends KeepRefereeSpec4
 class KeepRefereeSpec4MultiJvmNode4 extends KeepRefereeSpec4
 class KeepRefereeSpec4MultiJvmNode5 extends KeepRefereeSpec4
 
+/**
+ * Node4 and node5 are indirectly connected in a five node cluster
+ *
+ * Node4 and node5 should down themselves as they are indirectly connected.
+ * The three other nodes survive as they can reach the referee.
+ */
 class KeepRefereeSpec4 extends FiveNodeSpec("KeepReferee", KeepRefereeSpec4Config) {
   override def assertions(): Unit =
     "Unidirectional link failure" in within(60 seconds) {
@@ -50,16 +56,10 @@ class KeepRefereeSpec4 extends FiveNodeSpec("KeepReferee", KeepRefereeSpec4Confi
 
       enterBarrier("node1-2-3-ok")
 
-      runOn(node4) {
+      runOn(node4, node5) {
         waitForSelfDowning
       }
 
-      enterBarrier("node4-suicide")
-
-      runOn(node5) {
-        waitForSelfDowning
-      }
-
-      enterBarrier("node5-suicide")
+      enterBarrier("node4-5-suicide")
     }
 }

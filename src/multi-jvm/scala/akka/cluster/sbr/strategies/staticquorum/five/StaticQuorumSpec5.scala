@@ -11,6 +11,12 @@ class StaticQuorumSpec5MultiJvmNode3 extends StaticQuorumSpec5
 class StaticQuorumSpec5MultiJvmNode4 extends StaticQuorumSpec5
 class StaticQuorumSpec5MultiJvmNode5 extends StaticQuorumSpec5
 
+/**
+ * Node4 and node5 are indirectly connected in a five node cluster
+ *
+ * Node4 and node5 should down themselves as they are indirectly connected.
+ * The three other nodes survive as they form a quorum.
+ */
 class StaticQuorumSpec5 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec5Config) {
   override def assertions(): Unit =
     "Unidirectional link failure" in within(60 seconds) {
@@ -49,16 +55,10 @@ class StaticQuorumSpec5 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec5Co
 
       enterBarrier("node1-2-3-ok")
 
-      runOn(node4) {
+      runOn(node4, node5) {
         waitForSelfDowning
       }
 
-      enterBarrier("node4-suicide")
-
-      runOn(node5) {
-        waitForSelfDowning
-      }
-
-      enterBarrier("node5-suicide")
+      enterBarrier("node4-5-suicide")
     }
 }

@@ -9,12 +9,16 @@ class KeepOldestSpec4MultiJvmNode1 extends KeepOldestSpec4
 class KeepOldestSpec4MultiJvmNode2 extends KeepOldestSpec4
 class KeepOldestSpec4MultiJvmNode3 extends KeepOldestSpec4
 
+/**
+ * Node1 and node2 are indirectly connected in a three node cluster
+ *
+ * Node1 and node2 should down themselves as they are indirectly connected.
+ * Node3 should down itself as its not the oldest.
+ */
 class KeepOldestSpec4 extends ThreeNodeSpec("KeepOldest", KeepOldestSpec4Config) {
   override def assertions(): Unit =
     "Unidirectional link failure" in within(60 seconds) {
       runOn(node1) {
-        // Node1 cannot receive node2 messages
-        // The cluster will shut down as node1 is the oldest but indirectly connected.
         val _ = testConductor.blackhole(node1, node2, Direction.Receive).await
       }
 

@@ -11,6 +11,14 @@ class RoleKeepOldestSpecMultiJvmNode3 extends RoleKeepOldestSpec
 class RoleKeepOldestSpecMultiJvmNode4 extends RoleKeepOldestSpec
 class RoleKeepOldestSpecMultiJvmNode5 extends RoleKeepOldestSpec
 
+/**
+ * Creates the partitions:
+ *   (1) node1, node2
+ *   (2) node3, node4, node5
+ *
+ * (1) should survive as it contains the oldest node within the given role.
+ * (2) should down itself as it does not contain the oldest node within the given role.
+ */
 class RoleKeepOldestSpec extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecConfig) {
   override def assertions(): Unit =
     "Bidirectional link failure" in within(60 seconds) {

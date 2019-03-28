@@ -9,12 +9,18 @@ class KeepOldestSpecMultiJvmNode1 extends KeepOldestSpec
 class KeepOldestSpecMultiJvmNode2 extends KeepOldestSpec
 class KeepOldestSpecMultiJvmNode3 extends KeepOldestSpec
 
+/**
+  * Creates the partitions:
+  *   (1) node1
+  *   (2) node2, node3
+  *
+  * (1) should survive as it contains the oldest.
+  * (2) should down itself as it does not contain the oldest.
+  */
 class KeepOldestSpec extends ThreeNodeSpec("KeepOldest", KeepOldestSpecConfig) {
   override def assertions(): Unit =
     "Bidirectional link failure" in within(60 seconds) {
       runOn(node1) {
-        // Partition with node1           <- survive (contains oldest)
-        // Partition with node2 and node3 <- killed
         akka.cluster.sbr.util.linksToKillForPartitions(List(node1) :: List(node2, node3) :: Nil).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
         }

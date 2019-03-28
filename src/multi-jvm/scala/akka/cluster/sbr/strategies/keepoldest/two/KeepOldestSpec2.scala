@@ -12,13 +12,20 @@ class KeepOldestSpec2MultiJvmNode3 extends KeepOldestSpec2
 class KeepOldestSpec2MultiJvmNode4 extends KeepOldestSpec2
 class KeepOldestSpec2MultiJvmNode5 extends KeepOldestSpec2
 
+/**
+ * Creates the partitions:
+ *   (1) node1
+ *   (2) node2, node3
+ *   (3) node4, node5
+ *
+ * (1) should survive as it contains the oldest.
+ * (2) should down itself as it does not contain the oldest.
+ * (3) should down itself as it does not contain the oldest.
+ */
 class KeepOldestSpec2 extends FiveNodeSpec("KeepOldest", KeepOldestSpec2Config) {
   override def assertions(): Unit =
     "Three partitions, bidirectional link failure" in within(60 seconds) {
       runOn(node1) {
-        // Partition with node1            <- survive (contains oldest)
-        // Partition with node2 and node3  <- killed
-        // Partition with node4 and node 5 <- killed
         linksToKillForPartitions(List(node1) :: List(node2, node3) :: List(node4, node5) :: Nil).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
         }
