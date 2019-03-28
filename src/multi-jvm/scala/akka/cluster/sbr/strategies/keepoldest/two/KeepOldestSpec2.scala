@@ -16,9 +16,9 @@ class KeepOldestSpec2 extends FiveNodeSpec("KeepOldest", KeepOldestSpec2Config) 
   override def assertions(): Unit =
     "Three partitions, bidirectional link failure" in within(60 seconds) {
       runOn(node1) {
-        // Partition containing node1
-        // Partition containing node2 and node3
-        // Partition containing node4 and node 5
+        // Partition with node1            <- survive (contains oldest)
+        // Partition with node2 and node3  <- killed
+        // Partition with node4 and node 5 <- killed
         linksToKillForPartitions(List(node1) :: List(node2, node3) :: List(node4, node5) :: Nil).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
         }
@@ -48,10 +48,16 @@ class KeepOldestSpec2 extends FiveNodeSpec("KeepOldest", KeepOldestSpec2Config) 
       enterBarrier("node1-2-3-unreachable")
 
       runOn(node1) {
-        waitForUnreachableHandling()
         waitForSurvivors(node1)
+        waitForDownOrGone(node2, node3, node4, node5)
       }
 
       enterBarrier("node2-3-4-5-downed")
+
+      runOn(node2, node3, node4, node5) {
+        waitForSelfDowning
+      }
+
+      enterBarrier("node2-3-4-5-suicide")
     }
 }

@@ -16,8 +16,8 @@ class RoleKeepMajoritySpec extends FiveNodeSpec("KeepMajority", RoleKeepMajority
   override def assertions(): Unit =
     "Bidirectional link failure" in within(60 seconds) {
       runOn(node1) {
-        // Partition of node3, node4, and node 5.
-        // Partition of node1 and node2.
+        // Partition with node1 and node2          <- survive (majority given role)
+        // Partition with node3, node4, and node 5 <- killed
         linksToKillForPartitions(List(List(node1, node2), List(node3, node4, node5))).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
         }
@@ -37,13 +37,19 @@ class RoleKeepMajoritySpec extends FiveNodeSpec("KeepMajority", RoleKeepMajority
         waitToBecomeUnreachable(node3, node4, node5)
       }
 
-      enterBarrier("node-3-4-5-unreachable")
+      enterBarrier("node3-4-5-unreachable")
 
       runOn(node1, node2) {
-        waitForUnreachableHandling()
         waitForSurvivors(node1, node2)
+        waitForDownOrGone(node3, node4, node5)
       }
 
-      enterBarrier("node-3-4-5-downed")
+      enterBarrier("node3-4-5-downed")
+
+      runOn(node3, node4, node5) {
+        waitForSelfDowning
+      }
+
+      enterBarrier("node3-4-5-suicde")
     }
 }

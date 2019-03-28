@@ -15,9 +15,9 @@ class StaticQuorumSpec2 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Co
   override def assertions(): Unit =
     "Three partitions, bidirectional link failure" in within(60 seconds) {
       runOn(node1) {
-        // Partition of node1, node2, node3
-        // Partition of node 4
-        // Partition of node 5
+        // Partition of node1, node2, node3 <- survives
+        // Partition of node 4              <- killed
+        // Partition of node 5              <- killed
         akka.cluster.sbr.util
           .linksToKillForPartitions(List(node1, node2, node3) :: List(node4) :: List(node5) :: Nil)
           .foreach {
@@ -49,10 +49,16 @@ class StaticQuorumSpec2 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Co
       enterBarrier("node1-2-3-4-unreachable")
 
       runOn(node1, node2, node3) {
-        waitForUnreachableHandling()
         waitForSurvivors(node1, node2, node3)
+        waitForDownOrGone(node4, node5)
       }
 
       enterBarrier("node4-5-downed")
+
+      runOn(node4, node5) {
+        waitForSelfDowning
+      }
+
+      enterBarrier("node4-5-self-downed")
     }
 }

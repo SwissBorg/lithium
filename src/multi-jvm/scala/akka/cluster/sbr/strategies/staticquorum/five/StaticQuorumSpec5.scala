@@ -1,6 +1,5 @@
 package akka.cluster.sbr.strategies.staticquorum.five
 
-import akka.cluster.Cluster
 import akka.cluster.sbr.FiveNodeSpec
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
@@ -44,14 +43,22 @@ class StaticQuorumSpec5 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec5Co
       enterBarrier("node4-5-unreachable")
 
       runOn(node1, node2, node3) {
-        waitForUnreachableHandling()
         waitForSurvivors(node1, node2, node3)
+        waitForDownOrGone(node4, node5)
       }
 
-      enterBarrier("node4-5-downed")
+      enterBarrier("node1-2-3-ok")
 
-      runOn(node1, node2, node3, node4, node5) {
-        println(s"AAA-${Cluster(system).state.members}")
+      runOn(node4) {
+        waitForSelfDowning
       }
+
+      enterBarrier("node4-suicide")
+
+      runOn(node5) {
+        waitForSelfDowning
+      }
+
+      enterBarrier("node5-suicide")
     }
 }

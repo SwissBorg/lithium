@@ -13,7 +13,8 @@ class KeepRefereeSpec extends ThreeNodeSpec("KeepReferee", KeepRefereeSpecConfig
   override def assertions(): Unit =
     "Bidirectional link failure" in within(60 seconds) {
       runOn(node1) {
-        // Kill link bi-directionally to node3
+        // Partition with node1           <- survive (contains referee)
+        // Partiion with node2 and node3  <- killed
         akka.cluster.sbr.util.linksToKillForPartitions(List(node1) :: List(node2, node3) :: Nil).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
         }
@@ -34,10 +35,16 @@ class KeepRefereeSpec extends ThreeNodeSpec("KeepReferee", KeepRefereeSpecConfig
       enterBarrier("node2-3-unreachable")
 
       runOn(node1) {
-        waitForUnreachableHandling()
         waitForSurvivors(node1)
+        waitForDownOrGone(node2, node3)
       }
 
       enterBarrier("node2-3-downed")
+
+      runOn(node2, node3) {
+        waitForSelfDowning
+      }
+
+      enterBarrier("node-2-3-suicide")
     }
 }

@@ -39,11 +39,10 @@ class StaticQuorumSpec4 extends ThreeNodeSpec("StaticQuorum", StaticQuorumSpec4C
 
       enterBarrier("node3-unreachable")
 
-      runOn(node1, node2) {
-        waitForUnreachableHandling()
-        waitForSurvivors(node1, node2)
+      runOn(node1, node2, node3) {
+        waitForSelfDowning
       }
 
-      enterBarrier("node3-downed")
+      enterBarrier("node1-2-3-suicide")
     }
 }
