@@ -22,7 +22,7 @@ class StaticQuorumSpec extends MySpec {
 
         forAll { staticQuorum: StaticQuorum =>
           val remainingSubClusters: RemainingPartitions = scenario.worldViews.foldMap { worldView =>
-            staticQuorum.handle(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+            staticQuorum.takeDecision(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
           }
 
           remainingSubClusters.n.value should be <= 1
@@ -36,7 +36,7 @@ class StaticQuorumSpec extends MySpec {
 
         forAll { staticQuorum: StaticQuorum =>
           val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-            staticQuorum.handle(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+            staticQuorum.takeDecision(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
           }
 
           remainingSubClusters.n.value should be <= 1

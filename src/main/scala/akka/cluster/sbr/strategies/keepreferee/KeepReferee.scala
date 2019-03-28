@@ -19,7 +19,7 @@ object KeepReferee {
   }
 
   implicit val keepRefereeStrategy: Strategy[KeepReferee] = new Strategy[KeepReferee] {
-    override def handle(strategy: KeepReferee, worldView: WorldView): Either[Throwable, StrategyDecision] =
+    override def takeDecision(strategy: KeepReferee, worldView: WorldView): Either[Throwable, StrategyDecision] =
       keepReferee(strategy, worldView).asRight
   }
 

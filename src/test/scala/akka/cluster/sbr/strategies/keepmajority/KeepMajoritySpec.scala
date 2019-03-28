@@ -11,7 +11,7 @@ class KeepMajoritySpec extends MySpec {
     "1 - should handle symmetric split scenarios" in {
       forAll { (scenario: SymmetricSplitScenario, keepMajority: KeepMajority) =>
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          keepMajority.handle(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+          keepMajority.takeDecision(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
         }
 
         remainingSubClusters.n.value should be <= 1
@@ -21,7 +21,7 @@ class KeepMajoritySpec extends MySpec {
     "2 - should handle a split during the oldest-removed scenarios" in {
       forAll { (scenario: OldestRemovedScenario, keepMajority: KeepMajority) =>
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          keepMajority.handle(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+          keepMajority.takeDecision(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
         }
 
         remainingSubClusters.n.value should be <= 1

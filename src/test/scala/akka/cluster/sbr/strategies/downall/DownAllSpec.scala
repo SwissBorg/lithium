@@ -10,7 +10,7 @@ class DownAllSpec extends MySpec {
   "DownAll" - {
     "1 - should always down nodes" in {
       forAll { worldView: WorldView =>
-        DownAll.handle(worldView).map {
+        DownAll.takeDecision(worldView).map {
           case DownReachable(_) => succeed
           case Idle             => succeed
           case _                => fail
@@ -21,7 +21,7 @@ class DownAllSpec extends MySpec {
     "2 - should handle symmetric split scenarios" in {
       forAll { scenario: SymmetricSplitScenario =>
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          DownAll.handle(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+          DownAll.takeDecision(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
         }
 
         remainingSubClusters.n.value should be <= 1
@@ -31,7 +31,7 @@ class DownAllSpec extends MySpec {
     "3 - should handle a split during up-dissemination scenarios" in {
       forAll { scenario: UpDisseminationScenario =>
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          DownAll.handle(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+          DownAll.takeDecision(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
         }
 
         remainingSubClusters.n.value should be <= 1
@@ -41,7 +41,7 @@ class DownAllSpec extends MySpec {
     "4 - should handle a split during the oldest-removed scenarios" in {
       forAll { scenario: OldestRemovedScenario =>
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          DownAll.handle(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+          DownAll.takeDecision(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
         }
 
         remainingSubClusters.n.value should be <= 1

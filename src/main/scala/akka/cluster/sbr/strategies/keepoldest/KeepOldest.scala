@@ -23,7 +23,7 @@ object KeepOldest {
     }
 
   implicit val keepOldestStrategy: Strategy[KeepOldest] = new Strategy[KeepOldest] {
-    override def handle(strategy: KeepOldest, worldView: WorldView): Either[Throwable, StrategyDecision] =
+    override def takeDecision(strategy: KeepOldest, worldView: WorldView): Either[Throwable, StrategyDecision] =
       keepOldest(strategy, worldView)
   }
 

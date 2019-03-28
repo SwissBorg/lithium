@@ -203,46 +203,48 @@ class Downer[A: Strategy](cluster: Cluster,
   /**
    * Runs [[strategy]] with the strategy to remove indirectly connected nodes.
    */
-  private def runStrategy(worldView: WorldView): Unit = {
-    val a = Or(strategy, Indirected).handle(worldView)
-    println(s"LEADER ${cluster.state.leader}")
-
-    runOnLeader {
-      println(s"WV: $worldView")
-      println(s"DECISION $a")
-
-      a.fold(err => {
-          log.error(s"$err")
-          throw err
-        }, identity)
-        .nodesToDown
-        .foreach(node => Cluster(context.system).down(node.node.address))
-    }
-  }
+  private def runStrategy(worldView: WorldView): Unit =
+    Or(strategy, Indirected)
+      .takeDecision(worldView)
+      .leftMap { err =>
+        log.error(s"$err")
+        err
+      }
+      .foreach(executeDecision)
 
   /**
    * Downs all the nodes in the cluster.
    */
   private def downAllNodes(worldView: WorldView): Unit =
-    runOnLeader {
-      DownAll
-        .handle(worldView)
-        .map(_.nodesToDown.foreach(node => Cluster(context.system).down(node.node.address)))
-        .leftMap { err =>
-          log.error(s"$err")
-          err
-        }
-        .toTry
-        .get
-    }
+    DownAll
+      .takeDecision(worldView)
+      .leftMap { err =>
+        log.error(s"$err")
+        err
+      }
+      .foreach(executeDecision)
 
-  private def runOnLeader(f: => Unit): Unit =
+  /**
+   * Executes the decision.
+   *
+   * If the current node is the leader all the nodes referred in the decision
+   * will be downed. Otherwise, if it is not the leader or none exists, and refers to itself.
+   * It will down the current node. Else, no node will be downed.
+   *
+   * In short, the leader can down anyone. Other nodes are only allowed to down themselves.
+   */
+  private def executeDecision(decision: StrategyDecision): Unit =
     if (cluster.state.leader.contains(cluster.selfAddress)) {
-      f
-    } else if (cluster.state.leader.nonEmpty) {
-      println("Node is not the leader.")
+      val nodesToDown = decision.nodesToDown
+      println(s"Downing nodes: $nodesToDown")
+      nodesToDown.foreach(node => cluster.down(node.node.address))
     } else {
-      println("There is no leader for this partition.")
+      if (decision.nodesToDown.map(_.node).contains(cluster.selfMember)) {
+        println(s"Downing self: $cluster.selfMember")
+        cluster.down(cluster.selfAddress)
+      } else {
+        println("Non-leader cannot down other nodes.")
+      }
     }
 
   private def scheduleStabilityTrigger(): Cancellable =

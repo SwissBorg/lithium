@@ -6,7 +6,7 @@ import cats.implicits._
 
 final case object Indirected {
   implicit val indirectedStrategy: Strategy[Indirected.type] = new Strategy[Indirected.type] {
-    override def handle(strategy: Indirected.type, worldView: WorldView): Either[Throwable, StrategyDecision] = {
+    override def takeDecision(strategy: Indirected.type, worldView: WorldView): Either[Throwable, StrategyDecision] = {
       val decision =
         if (worldView.selfStatus === Unreachable) {
           DownSelf(worldView)

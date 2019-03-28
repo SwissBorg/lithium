@@ -22,7 +22,7 @@ object KeepMajority {
    * This can be useful if there are nodes that are more important than others.
    */
   implicit val keepMajorityStrategy: Strategy[KeepMajority] = new Strategy[KeepMajority] {
-    override def handle(strategy: KeepMajority, worldView: WorldView): Either[Throwable, StrategyDecision] =
+    override def takeDecision(strategy: KeepMajority, worldView: WorldView): Either[Throwable, StrategyDecision] =
       KeepMajorityView(worldView, strategy.role)
         .map {
           // Survive if this partition is a majority or contains the lowest address...

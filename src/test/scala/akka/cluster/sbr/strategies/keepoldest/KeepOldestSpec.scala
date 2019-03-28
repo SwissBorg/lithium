@@ -11,7 +11,7 @@ class KeepOldestSpec extends MySpec {
     "1 - should handle symmetric split scenarios" in {
       forAll { (scenario: SymmetricSplitScenario, keepOldest: KeepOldest) =>
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          keepOldest.handle(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+          keepOldest.takeDecision(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
         }
 
         remainingSubClusters.n.value should be <= 1
@@ -21,7 +21,7 @@ class KeepOldestSpec extends MySpec {
     "2 - should handle split during up-dissemination" in {
       forAll { (scenario: UpDisseminationScenario, keepOldest: KeepOldest) =>
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          keepOldest.handle(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+          keepOldest.takeDecision(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
         }
 
         remainingSubClusters.n.value should be <= 1

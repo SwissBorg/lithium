@@ -48,7 +48,7 @@ object StaticQuorum {
     }
 
   implicit val staticQuorumStrategy: Strategy[StaticQuorum] = new Strategy[StaticQuorum] {
-    override def handle(strategy: StaticQuorum, worldView: WorldView): Either[Throwable, StrategyDecision] =
+    override def takeDecision(strategy: StaticQuorum, worldView: WorldView): Either[Throwable, StrategyDecision] =
       staticQuorum(strategy, worldView)
   }
 

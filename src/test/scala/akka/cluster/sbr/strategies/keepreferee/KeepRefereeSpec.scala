@@ -17,7 +17,7 @@ class KeepRefereeSpec extends MySpec {
 
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
           KeepReferee(referee, downAllIfLessThanNodes)
-            .handle(worldView)
+            .takeDecision(worldView)
             .foldMap(RemainingPartitions.fromDecision(worldView))
         }
 
@@ -32,7 +32,7 @@ class KeepRefereeSpec extends MySpec {
 
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
           KeepReferee(referee, downAllIfLessThanNodes)
-            .handle(worldView)
+            .takeDecision(worldView)
             .foldMap(RemainingPartitions.fromDecision(worldView))
         }
 
@@ -49,7 +49,7 @@ class KeepRefereeSpec extends MySpec {
           .map { referee =>
             val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
               KeepReferee(referee.node.address.toString, downAllIfLessThanNodes)
-                .handle(worldView)
+                .takeDecision(worldView)
                 .foldMap(RemainingPartitions.fromDecision(worldView))
             }
 

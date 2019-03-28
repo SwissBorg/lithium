@@ -11,7 +11,7 @@ import cats.implicits._
  */
 final case object DownAll {
   implicit val downAllStrategy: Strategy[DownAll.type] = new Strategy[DownAll.type] {
-    override def handle(strategy: DownAll.type, worldView: WorldView): Either[Throwable, StrategyDecision] =
+    override def takeDecision(strategy: DownAll.type, worldView: WorldView): Either[Throwable, StrategyDecision] =
       DownReachable(worldView).asRight
   }
 
