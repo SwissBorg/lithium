@@ -14,6 +14,7 @@ final case object Indirected {
           Idle
         }
 
+      println(s"ID: $decision")
       decision.asRight
     }
   }

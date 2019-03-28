@@ -1,7 +1,7 @@
 package akka.cluster.sbr.strategies.keepreferee
 
 import akka.cluster.sbr.MySpec
-import akka.cluster.sbr.Strategy.StrategyOps
+import akka.cluster.sbr.strategy.ops._
 import akka.cluster.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario, UpDisseminationScenario}
 import akka.cluster.sbr.utils.RemainingPartitions
 import eu.timepit.refined.api.Refined

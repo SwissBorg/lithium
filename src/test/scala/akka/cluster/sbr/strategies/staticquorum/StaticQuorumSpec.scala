@@ -1,6 +1,6 @@
 package akka.cluster.sbr.strategies.staticquorum
 
-import akka.cluster.sbr.Strategy.StrategyOps
+import akka.cluster.sbr.strategy.ops._
 import akka.cluster.sbr._
 import akka.cluster.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario}
 import akka.cluster.sbr.utils.RemainingPartitions

@@ -101,10 +101,12 @@ final case class WorldView private[sbr] (private[sbr] val self: Member,
   /**
    * Updates the reachability given the reachability event.
    */
-  def reachabilityEvent(event: ReachabilityEvent): Either[WorldViewError, WorldView] = event match {
-    case UnreachableMember(member) => becomeUnreachable(member)
-    case ReachableMember(member)   => becomeReachable(member)
-  }
+  def reachabilityEvent(event: ReachabilityEvent): Either[WorldViewError, WorldView] =
+//    println(s"EVENT: $event")
+    event match {
+      case UnreachableMember(member) => becomeUnreachable(member)
+      case ReachableMember(member)   => becomeReachable(member)
+    }
 
   /**
    * Stages the `node`.
@@ -198,7 +200,7 @@ final case class WorldView private[sbr] (private[sbr] val self: Member,
    */
   private def becomeUnreachable(node: Member): Either[WorldViewError, WorldView] =
     if (node === self) {
-      IllegalUnreachable(node).asLeft
+      copy(self = node, selfStatus = Unreachable).asRight
     } else if (allStatuses.contains(node)) {
       copy(otherStatuses = otherStatuses + (node -> Unreachable)).asRight
     } else {
@@ -246,9 +248,13 @@ object WorldView {
           }
         }(collection.breakOut)
 
-    WorldView(self,
-              reachableMembers.getOrElse(self, Staged),
-              unreachableMembers ++ reachableMembers.filterKeys(_ === self)) // Self is added separately
+    val a = WorldView(self,
+                      reachableMembers.getOrElse(self, Staged),
+                      unreachableMembers ++ reachableMembers.filterKeys(_ =!= self)) // Self is added separately]
+
+    println(s"INIT $a")
+
+    a
   }
 
   sealed abstract class WorldViewError(message: String) extends Throwable(message) {

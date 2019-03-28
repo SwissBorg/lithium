@@ -1,7 +1,7 @@
 package akka.cluster.sbr.strategies.downall
 
 import akka.cluster.sbr.ArbitraryInstances._
-import akka.cluster.sbr.Strategy.StrategyOps
+import akka.cluster.sbr.strategy.ops._
 import akka.cluster.sbr._
 import akka.cluster.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario, UpDisseminationScenario}
 import akka.cluster.sbr.utils.RemainingPartitions

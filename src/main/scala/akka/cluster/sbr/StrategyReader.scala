@@ -8,7 +8,7 @@ trait StrategyReader[A] {
   import StrategyReader._
 
   val name: String
-  final def load(implicit R: Derivation[ConfigReader[A]]): Either[ConfigReaderError, A] =
+  def load(implicit R: Derivation[ConfigReader[A]]): Either[ConfigReaderError, A] =
     pureconfig
       .loadConfig[A](s"akka.cluster.split-brain-resolver.$name")
       .leftMap(ConfigReaderError)

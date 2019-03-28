@@ -8,9 +8,4 @@ trait Strategy[A] {
 
 object Strategy {
   def apply[A](implicit ev: Strategy[A]): Strategy[A] = ev
-
-  implicit class StrategyOps[A: Strategy](private val a: A) {
-    def handle(worldView: WorldView): Either[Throwable, StrategyDecision] =
-      Strategy[A].handle(a, worldView)
-  }
 }

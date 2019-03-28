@@ -10,11 +10,9 @@ import cats.implicits._
  * This strategy is useful when the cluster is unstable. todo add more info
  */
 final case object DownAll {
-  def downAll(worldView: WorldView): StrategyDecision = DownReachable(worldView)
-
   implicit val downAllStrategy: Strategy[DownAll.type] = new Strategy[DownAll.type] {
     override def handle(strategy: DownAll.type, worldView: WorldView): Either[Throwable, StrategyDecision] =
-      downAll(worldView).asRight
+      DownReachable(worldView).asRight
   }
 
   implicit val downAllStrategyReader: StrategyReader[DownAll.type] = StrategyReader.fromName("down-all")

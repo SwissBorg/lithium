@@ -30,9 +30,11 @@ object StrategyDecision {
     override def empty: StrategyDecision = Idle
 
     override def combine(x: StrategyDecision, y: StrategyDecision): StrategyDecision = (x, y) match {
-      case (Idle, y) => y
-      case (x, Idle) => x
-      case (x, y)    => DownThese(x, y)
+      case (Idle, y)        => y
+      case (x, Idle)        => x
+      case (_, y: DownSelf) => y
+      case (x: DownSelf, _) => x
+      case (x, y)           => DownThese(x, y)
     }
   }
 }

@@ -127,10 +127,6 @@ class WorldViewSpec extends MySpec {
               case Right(w) =>
                 w.statusOf(node) should ===(Some(Unreachable))
 
-              case Left(IllegalUnreachable(node)) =>
-                event.member should ===(node)
-                event.member should ===(worldView.self)
-
               case Left(UnknownNode(node)) =>
                 event.member should ===(node)
                 event.member should !==(worldView.self)
@@ -224,18 +220,10 @@ class WorldViewSpec extends MySpec {
         else assert(worldView.unreachableNodesWithRole(role).forall(worldView.unreachableNodes.contains))
       }
     }
-  }
 
-  "HealthyWorldView" - {
-    "1 - should not have unreachable nodes" in {
-      forAll { worldView: HealthyWorldView =>
-        worldView.unreachableNodes shouldBe empty
-      }
-    }
-
-    "2 - should have at least a reachable node" in {
-      forAll { worldView: HealthyWorldView =>
-        worldView.reachableConsideredNodes shouldBe 'nonEmpty
+    "10 - otherStatuses should not contain the self node" in {
+      forAll { worldView: WorldView =>
+        worldView.otherStatuses.contains(worldView.self) shouldBe false
       }
     }
   }

@@ -1,7 +1,7 @@
 package akka.cluster.sbr.strategies.keepoldest
 
 import akka.cluster.sbr.MySpec
-import akka.cluster.sbr.Strategy.StrategyOps
+import akka.cluster.sbr.strategy.ops._
 import akka.cluster.sbr.scenarios.{SymmetricSplitScenario, UpDisseminationScenario}
 import akka.cluster.sbr.strategies.keepoldest.ArbitraryInstances._
 import akka.cluster.sbr.utils.RemainingPartitions
