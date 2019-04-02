@@ -27,7 +27,7 @@ private[keepmajority] object KeepMajorityView {
 
     if (reachableConsideredNodes.size >= majority) ReachableMajority.asRight
     else if (unreachableNodes.size >= majority) UnreachableMajority.asRight
-    else if (reachableConsideredNodes.size == unreachableNodes.size) {
+    else if (reachableConsideredNodes.size === unreachableNodes.size) {
       // check if the node with the lowest address is in this partition
       (for {
         // lowest address node in the cluster

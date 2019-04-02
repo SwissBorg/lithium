@@ -8,6 +8,7 @@ import akka.cluster.sbr.{Staged, WorldView}
 import cats.data.{NonEmptyList, NonEmptySet}
 import org.scalacheck.Arbitrary
 import org.scalacheck.Gen.listOf
+import cats.implicits._
 
 final case class UpDisseminationScenario(worldViews: NonEmptyList[WorldView])
 
@@ -24,7 +25,7 @@ object UpDisseminationScenario {
                          allNodes: NonEmptySet[Member],
                          partition: NonEmptySet[Member]): Arbitrary[WorldView] = Arbitrary {
       listOf(arbMemberUp.arbitrary)
-        .map(_.filter(e => worldView.statusOf(e.member).fold(false)(_ == Staged)).foldLeft(worldView) {
+        .map(_.filter(e => worldView.statusOf(e.member).fold(false)(_ === Staged)).foldLeft(worldView) {
           case (worldView, upEvent) =>
             worldView.memberEvent(MemberUp(upEvent.member.copyUp(Integer.MAX_VALUE))).toTry.get
         })

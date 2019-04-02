@@ -2,14 +2,19 @@ package akka.cluster.sbr
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-import akka.actor.{Actor, ActorLogging, Cancellable, Props}
-import akka.cluster.Cluster
+import akka.actor.Actor.Receive
+import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Address, Cancellable, Props}
+import akka.cluster.{Cluster, Member}
 import akka.cluster.ClusterEvent._
 import akka.cluster.pubsub.DistributedPubSub
-import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Subscribe}
-import akka.cluster.sbr.strategies.Or
+import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Put, Send, Subscribe}
+import akka.cluster.sbr.NoUnreachableNodesState.{OnReachable, OnUnreachable}
+import akka.cluster.sbr.UnreachableNodesState.{OnMemberEvent, OnNoUnreachableNodes, OnUnreachableNodes}
+
+import scala.collection.SortedSet
+//import akka.cluster.sbr.strategies.Or
 import akka.cluster.sbr.strategies.downall.DownAll
-import akka.cluster.sbr.strategies.indirected.Indirected
+//import akka.cluster.sbr.strategies.indirected.Indirected
 import akka.cluster.sbr.strategy.Strategy
 import akka.cluster.sbr.strategy.ops._
 import akka.cluster.sbr.implicits._
@@ -37,7 +42,7 @@ class Downer[A: Strategy](cluster: Cluster,
   // a node that has been detected as unreachable will never receive an unreachability
   // event in his name.
   private val mediator = DistributedPubSub(cluster.system).mediator
-  mediator ! Subscribe("info", self)
+  mediator ! Subscribe(cluster.selfAddress.toString, context.self)
 
   override def receive: Receive = waitingForSnapshot
 
@@ -53,13 +58,18 @@ class Downer[A: Strategy](cluster: Cluster,
       if (worldView.unreachableNodes.nonEmpty) {
         context.become(
           hasUnreachableNodes(
-            worldView,
-            scheduleStabilityTrigger(),
-            scheduleInstabilityTrigger() // cluster has already an unreachable node
+            UnreachableNodesState(
+              worldView,
+              scheduleStabilityTrigger(),
+              scheduleInstabilityTrigger(), // cluster has already an unreachable node
+              worldView.unreachableNodes.foldLeft(Snitches(mediator ! Publish(_, _))) {
+                case (snitches, node) => snitches.snitch(UnreachableMember(node.member))
+              }
+            )
           )
         )
       } else {
-        context.become(noUnreachableNodes(worldView, scheduleStabilityTrigger()))
+        context.become(noUnreachableNodes(NoUnreachableNodesState(worldView, Snitches(mediator ! Publish(_, _)))))
       }
 
     case _ => () // ignore // TODO needed?
@@ -70,143 +80,75 @@ class Downer[A: Strategy](cluster: Cluster,
    *
    * At this point the unstability message has not been scheduled yet.
    *
-   * @param worldView        the current world view
-   * @param stabilityTrigger the handle to the stability trigger
    */
-  private def noUnreachableNodes(worldView: WorldView, stabilityTrigger: Cancellable): Receive = {
+  private def noUnreachableNodes(s: NoUnreachableNodesState): Receive = {
     case ClusterIsStable =>
       println("noUnreachableNodes")
-      runStrategy(worldView)
-      context.become(noUnreachableNodes(worldView, scheduleStabilityTrigger()))
+      println(s"BLA: ${cluster.state.unreachable}")
+      runStrategy(s.worldView)
+//      context.become(noUnreachableNodes(s.copy(stabilityTrigger = scheduleStabilityTrigger()))
 
     case e: MemberEvent =>
       println(s"EVENT0: $e")
-      onMemberEvent(worldView, e) { w =>
-        context.become(
-          noUnreachableNodes(
-            w,
-            if (w === worldView) stabilityTrigger else resetStabilityTrigger(stabilityTrigger)
-          )
-        )
-      }
+      context.become(s.onMemberEvent(e)(noUnreachableNodes))
 
     case e: UnreachableMember =>
-      mediator ! Publish("info", Wrapper(e))
-
       println(s"EVENT0: $e")
-      onReachabilityEvent(worldView, e) { w =>
-        context.become(
-          hasUnreachableNodes(
-            w,
-            if (w === worldView) stabilityTrigger else resetStabilityTrigger(stabilityTrigger),
-            scheduleInstabilityTrigger()
-          )
-        )
-      }
 
-    case e: ReachableMember =>
-      println(s"EVENT0: $e")
-      onReachabilityEvent(worldView, e) { w =>
-        context.become(
-          noUnreachableNodes(
-            w,
-            if (w === worldView) stabilityTrigger else resetStabilityTrigger(stabilityTrigger)
-          )
+      context.become(
+        s.onReachabilityEvent(e)(
+          OnUnreachable(hasUnreachableNodes,
+                        scheduleInstabilityTrigger,
+                        scheduleInstabilityTrigger,
+                        mediator ! Publish(_, _)),
+          OnReachable(noUnreachableNodes)
         )
-      }
-
-    case Wrapper(e: UnreachableMember) =>
-      if (e.member === cluster.selfMember) {
-        onReachabilityEvent(worldView, e) { w =>
-          context.become(
-            noUnreachableNodes(
-              w,
-              if (w === worldView) stabilityTrigger else resetStabilityTrigger(stabilityTrigger)
-            )
-          )
-        }
-      }
+      )
   }
 
   /**
    * Actor's state when the cluster contains at least one unstable node.
    *
-   * @param worldView          the current world view
-   * @param stabilityTrigger   the handle to the stability trigger
-   * @param unstabilityTrigger the handle to the stability trigger
    */
-  private def hasUnreachableNodes(worldView: WorldView,
-                                  stabilityTrigger: Cancellable,
-                                  unstabilityTrigger: Cancellable): Receive = {
+  private def hasUnreachableNodes(s: UnreachableNodesState): Receive = {
     case ClusterIsStable =>
       println("hasUnreachableNodes")
-      runStrategy(worldView)
+      println(s"BLA: ${cluster.state.unreachable}")
+      runStrategy(s.worldView)
       // Does not directly assume all the unreachable nodes have been handled.
-      context.become(hasUnreachableNodes(worldView, scheduleStabilityTrigger(), unstabilityTrigger))
+      context.become(hasUnreachableNodes(s.copy(stabilityTrigger = scheduleStabilityTrigger())))
 
     case ClusterIsUnstable =>
-      unstabilityTrigger.cancel() // also cancel the related timeout
-      downAllNodes(worldView)
+      s.instabilityTrigger.cancel() // also cancel the related timeout
+      downAllNodes(s.worldView)
       // Not strictly necessary, the cluster should be down at this point.
-      context.become(noUnreachableNodes(worldView, resetStabilityTrigger(stabilityTrigger)))
+      context.become(
+        noUnreachableNodes(
+          s.copy(stabilityTrigger = resetStabilityTrigger(s.stabilityTrigger), snitches = s.snitches.cancelAll())
+        )
+      )
 
     case e: MemberEvent =>
       println(s"EVENT1: $e")
-      onMemberEvent(worldView, e)(updateState(worldView, stabilityTrigger, unstabilityTrigger))
+      context.become(s.onMemberEvent(e)(OnMemberEvent(hasUnreachableNodes, resetStabilityTrigger)))
 
-    case e: UnreachableMember =>
-      mediator ! Publish("info", Wrapper(e)) // to detect indirectly connected nodes.
+    case e: ReachabilityEvent =>
       println(s"EVENT1: $e")
-      onReachabilityEvent(worldView, e)(updateState(worldView, stabilityTrigger, unstabilityTrigger))
-
-    case e: ReachableMember =>
-      println(s"EVENT1: $e")
-      onReachabilityEvent(worldView, e)(updateState(worldView, stabilityTrigger, unstabilityTrigger))
-
-    case Wrapper(e: UnreachableMember) =>
-      if (e.member === cluster.selfMember) {
-        onReachabilityEvent(worldView, e)(updateState(worldView, stabilityTrigger, unstabilityTrigger))
-      }
-  }
-
-  /**
-   * Applies `onUpdatedWorldView` on the new world view generated by the event.
-   *
-   * @param worldView          the current world view
-   * @param e                  the event
-   * @param onUpdatedWorldView the function to execute on the new world view
-   */
-  private def onMemberEvent(worldView: WorldView, e: MemberEvent)(onUpdatedWorldView: WorldView => Unit): Unit =
-    worldView.memberEvent(e).map(onUpdatedWorldView).toTry.get
-
-  /**
-   * Applies `onUpdatedWorldView` on the new world view generated by the event.
-   *
-   * @param worldView          the current world view
-   * @param e                  the event
-   * @param onUpdatedWorldView the function to execute on the new world view
-   */
-  private def onReachabilityEvent(worldView: WorldView,
-                                  e: ReachabilityEvent)(onUpdatedWorldView: WorldView => Unit): Unit =
-    worldView.reachabilityEvent(e).map(onUpdatedWorldView).toTry.get
-
-  private def updateState(oldWorldView: WorldView, stabilityTrigger: Cancellable, unstabilityTrigger: Cancellable)(
-    newWorldView: WorldView
-  ): Unit =
-    context.become(
-      hasUnreachableNodes(
-        newWorldView,
-        if (newWorldView === oldWorldView) stabilityTrigger else resetStabilityTrigger(stabilityTrigger),
-        if (newWorldView.unreachableNodes.nonEmpty) unstabilityTrigger else resetUnstabilityTrigger(unstabilityTrigger)
+      context.become(
+        s.onReachabilityEvent(e)(
+          OnNoUnreachableNodes(noUnreachableNodes, _.cancel()),
+          OnUnreachableNodes(hasUnreachableNodes, resetStabilityTrigger)
+        )
       )
-    )
+  }
 
   /**
    * Runs [[strategy]] with the strategy to remove indirectly connected nodes.
    */
   private def runStrategy(worldView: WorldView): Unit = {
     println(s"WV: $worldView")
-    Or(strategy, Indirected)
+//    Or(strategy, Indirected)
+    strategy
       .takeDecision(worldView)
       .leftMap { err =>
         log.error(s"$err")
@@ -236,21 +178,20 @@ class Downer[A: Strategy](cluster: Cluster,
    *
    * In short, the leader can down anyone. Other nodes are only allowed to down themselves.
    */
-  private def executeDecision(decision: StrategyDecision): Unit = {
+  private def executeDecision(decision: StrategyDecision): Unit =
     println(s"DECISION: $decision")
-    if (cluster.state.leader.contains(cluster.selfAddress)) {
-      val nodesToDown = decision.nodesToDown
-      println(s"Downing nodes: $nodesToDown")
-      nodesToDown.foreach(node => cluster.down(node.node.address))
-    } else {
-      if (decision.nodesToDown.map(_.node).contains(cluster.selfMember)) {
-        println(s"Downing self: $cluster.selfMember")
-        cluster.down(cluster.selfAddress)
-      } else {
-        println("Non-leader cannot down other nodes.")
-      }
-    }
-  }
+//    if (cluster.state.leader.contains(cluster.selfAddress)) {
+//      val nodesToDown = decision.nodesToDown
+//      println(s"Downing nodes: $nodesToDown")
+//      nodesToDown.foreach(node => cluster.down(node.member.address))
+//    } else {
+//      if (decision.nodesToDown.map(_.member).contains(cluster.selfMember)) {
+//        println(s"Downing self: $cluster.selfMember")
+//        cluster.down(cluster.selfAddress)
+//      } else {
+//        println("Non-leader cannot down other nodes.")
+//      }
+//    }
 
   private def scheduleStabilityTrigger(): Cancellable =
     context.system.scheduler.scheduleOnce(stableAfter, self, ClusterIsStable)
@@ -289,22 +230,18 @@ class Downer[A: Strategy](cluster: Cluster,
    * @param instabilityTrigger the trigger to reset
    * @return the new handle
    */
-  private def resetUnstabilityTrigger(instabilityTrigger: Cancellable): Cancellable = {
+  private def resetInstabilityTrigger(instabilityTrigger: Cancellable): Cancellable = {
     instabilityTrigger.cancel()
     scheduleInstabilityTrigger()
   }
 
-  override def preStart(): Unit = {
-    println(s"GLOB: ${cluster.selfAddress.hasGlobalScope}")
-
+  override def preStart(): Unit =
     cluster.subscribe(self,
                       InitialStateAsSnapshot,
                       classOf[akka.cluster.ClusterEvent.MemberEvent],
                       classOf[akka.cluster.ClusterEvent.ReachabilityEvent])
-  }
 
-  override def postStop(): Unit =
-    cluster.unsubscribe(self)
+  override def postStop(): Unit = cluster.unsubscribe(self)
 }
 
 object Downer {
@@ -318,5 +255,17 @@ object Downer {
   final case object ClusterIsUnstable
   final case object ClusterIsUnstableTimeout
 
-  final case class Wrapper(e: ReachabilityEvent)
+  sealed abstract class Snitch {
+    val ackN: Long
+  }
+
+  final case class SecondGuessUnreachableRequest(member: Member, ackN: Long) extends Snitch {
+    def respond: SecondGuessResponse = SecondGuessResponse(member, ackN)
+  }
+
+  final case class SecondGuessReachableRequest(member: Member, ackN: Long) extends Snitch {
+    def respond: SecondGuessResponse = SecondGuessResponse(member, ackN)
+  }
+
+  final case class SecondGuessResponse(member: Member, ackN: Long) extends Snitch
 }

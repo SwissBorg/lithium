@@ -27,12 +27,12 @@ object OldestRemovedScenario {
 
       chooseNum(1, 3)
         .map { n =>
-          if (n == 1)
+          if (n === 1)
             // Remove oldest node
             worldView
               .memberEvent(MemberRemoved(oldestNode.copy(Removed), Exiting))
               .getOrElse(worldView) // info not disseminated before partition
-          else if (n == 2)
+          else if (n === 2)
             // Oldest node is unreachable
             worldView
               .reachabilityEvent(UnreachableMember(oldestNode))

@@ -53,7 +53,7 @@ final case class WorldView private[sbr] (private[sbr] val self: Member,
    * @see [[reachableConsideredNodes]]
    */
   def reachableConsideredNodesWithRole(role: String): SortedSet[ReachableConsideredNode] =
-    if (role != "") reachableConsideredNodes.filter(_.node.roles.contains(role)) else reachableConsideredNodes
+    if (role != "") reachableConsideredNodes.filter(_.member.roles.contains(role)) else reachableConsideredNodes
 
   def reachableNodes: SortedSet[ReachableNode] =
     SortedSet(allStatuses.toSortedMap.collect {
@@ -77,7 +77,7 @@ final case class WorldView private[sbr] (private[sbr] val self: Member,
    * @see [[unreachableNodes]]
    */
   def unreachableNodesWithRole(role: String): SortedSet[UnreachableNode] =
-    if (role != "") unreachableNodes.filter(_.node.roles.contains(role)) else unreachableNodes
+    if (role != "") unreachableNodes.filter(_.member.roles.contains(role)) else unreachableNodes
 
   /**
    * The reachability of the `member`.

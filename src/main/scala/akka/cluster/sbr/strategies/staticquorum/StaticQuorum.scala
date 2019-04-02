@@ -20,7 +20,7 @@ object StaticQuorum {
          *
          * Either way this happens when `quorumSize` is less than half of the cluster. That SHOULD be logged! TODO
          */
-        case (ReachableQuorum, UnreachablePotentialQuorum) => UnsafeDownReachable(worldView)
+        case (ReachableQuorum, UnreachablePotentialQuorum) => DownReachable(worldView)
 
         /**
          * This side is the quorum, the other side should be downed.

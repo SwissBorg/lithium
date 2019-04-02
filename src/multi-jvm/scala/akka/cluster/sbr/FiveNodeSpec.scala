@@ -81,18 +81,18 @@ abstract class FiveNodeSpec(name: String, config: FiveNodeSpecConfig)
   private def addressOf(roleName: RoleName): Address = addresses(roleName)
 
   protected def waitToBecomeUnreachable(roleNames: RoleName*): Unit = roleNames.map(addressOf).foreach { address =>
-    awaitCond(Cluster(system).state.unreachable.exists(_.address == address))
+    awaitCond(Cluster(system).state.unreachable.exists(_.address === address))
   }
 
   protected def waitForUnreachableHandling(): Unit =
     awaitCond(Cluster(system).state.unreachable.isEmpty)
 
   protected def waitForSurvivors(roleNames: RoleName*): Unit = roleNames.map(addressOf).foreach { address =>
-    awaitCond(Cluster(system).state.members.exists(_.address == address))
+    awaitCond(Cluster(system).state.members.exists(_.address === address))
   }
 
   protected def waitForUp(roleNames: RoleName*): Unit = roleNames.map(addressOf).foreach { address =>
-    awaitCond(Cluster(system).state.members.exists(m => m.address == address && m.status == Up))
+    awaitCond(Cluster(system).state.members.exists(m => m.address === address && m.status === Up))
   }
 
   protected def waitForSelfDowning(implicit system: ActorSystem): Unit = {

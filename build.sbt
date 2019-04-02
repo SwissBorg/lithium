@@ -27,7 +27,7 @@ scalacOptions ++=
     "-Ywarn-value-discard",
     "-Xfuture",
     "-Yno-adapted-args",
-    "-Xfatal-warnings",
+//    "-Xfatal-warnings",
     "-deprecation"
   )
 
@@ -78,5 +78,7 @@ testOptions in Test += Tests.Argument("-oF")
 
 // SemanticDB
 //addCompilerPlugin(scalafixSemanticdb)
+
+coverageEnabled := true
 
 parallelExecution in MultiJvm := false

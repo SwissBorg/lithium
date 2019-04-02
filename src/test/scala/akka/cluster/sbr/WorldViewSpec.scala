@@ -10,7 +10,7 @@ class WorldViewSpec extends MySpec {
   "WorldView" - {
     "1 - should not have a node simultaneously reachable and unreachable" in {
       forAll { worldView: WorldView =>
-        worldView.reachableConsideredNodes.map(_.node).intersect(worldView.unreachableNodes.map(_.node)) shouldBe empty
+        worldView.reachableConsideredNodes.map(_.member).intersect(worldView.unreachableNodes.map(_.member)) shouldBe empty
       }
     }
 
@@ -157,7 +157,7 @@ class WorldViewSpec extends MySpec {
       forAll { worldView: WorldView =>
         assert(
           worldView.reachableConsideredNodes
-            .forall(n => worldView.allStatuses.lookup(n.node).exists(Eq[Status].eqv(_, Reachable)))
+            .forall(n => worldView.allStatuses.lookup(n.member).exists(Eq[Status].eqv(_, Reachable)))
         )
       }
     }
@@ -166,7 +166,7 @@ class WorldViewSpec extends MySpec {
       forAll { worldView: WorldView =>
         assert(
           worldView.unreachableNodes.forall(
-            n => worldView.allStatuses.lookup(n.node).exists(Eq[Status].eqv(_, Unreachable))
+            n => worldView.allStatuses.lookup(n.member).exists(Eq[Status].eqv(_, Unreachable))
           )
         )
       }
@@ -176,32 +176,32 @@ class WorldViewSpec extends MySpec {
       forAll { worldView: WorldView =>
         assert(
           worldView.allConsideredNodes
-            .forall((worldView.reachableConsideredNodes.map(_.node) ++ worldView.unreachableNodes.map(_.node)).contains)
+            .forall((worldView.reachableConsideredNodes.map(_.member) ++ worldView.unreachableNodes.map(_.member)).contains)
         )
       }
     }
 
     "7 - allNodesWithRole" in {
       forAll { (worldView: WorldView, role: String) =>
-        if (role == "") worldView.allConsideredNodesWithRole(role) should ===(worldView.allConsideredNodes)
+        if (role === "") worldView.allConsideredNodesWithRole(role) should ===(worldView.allConsideredNodes)
         else assert(worldView.allConsideredNodesWithRole(role).forall(worldView.allConsideredNodes.contains))
 
         worldView.allConsideredNodesWithRole(role) should ===(
           worldView
             .reachableConsideredNodesWithRole(role)
-            .map(_.node) ++ worldView
+            .map(_.member) ++ worldView
             .unreachableNodesWithRole(role)
-            .map(_.node)
+            .map(_.member)
         )
       }
     }
 
     "8 - reachableNodesWithRole" in {
       forAll { (worldView: WorldView, role: String) =>
-        if (role == "")
-          worldView.reachableConsideredNodesWithRole(role).map(_.node) should ===(
-            worldView.reachableConsideredNodes.map(_.node)
-          ) // todo NOT MAP
+        if (role === "")
+          worldView.reachableConsideredNodesWithRole(role).map(_.member) should ===(
+            worldView.reachableConsideredNodes.map(_.member)
+          )
         else
           assert(
             worldView
@@ -213,10 +213,10 @@ class WorldViewSpec extends MySpec {
 
     "9 - unreachableNodesWithRole" in {
       forAll { (worldView: WorldView, role: String) =>
-        if (role == "")
+        if (role === "")
           worldView
             .unreachableNodesWithRole(role)
-            .map(_.node) should ===(worldView.unreachableNodes.map(_.node)) // todo NOT MAP
+            .map(_.member) should ===(worldView.unreachableNodes.map(_.member))
         else assert(worldView.unreachableNodesWithRole(role).forall(worldView.unreachableNodes.contains))
       }
     }

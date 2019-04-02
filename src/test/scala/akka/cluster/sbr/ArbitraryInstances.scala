@@ -126,6 +126,9 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
   implicit val arbUnreachableNode: Arbitrary[UnreachableNode] =
     Arbitrary(arbMember.arbitrary.map(UnreachableNode(_)))
 
+  implicit val arbIndirectlyConnectedNode: Arbitrary[IndirectlyConnectedNode] =
+    Arbitrary(arbMember.arbitrary.map(IndirectlyConnectedNode(_)))
+
   implicit val arbUniqueAddress: Arbitrary[UniqueAddress] =
     Arbitrary(for {
       address <- arbitrary[Address]
@@ -191,6 +194,25 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
 
   implicit val arbReachabilityEvent: Arbitrary[ReachabilityEvent] = Arbitrary(
     oneOf(arbUnreachableMember.arbitrary, arbReachableMember.arbitrary)
+  )
+
+  implicit val arbDownReachable: Arbitrary[DownReachable] = Arbitrary(arbWorldView.arbitrary.map(DownReachable(_)))
+
+  implicit val arbDownUnreachable: Arbitrary[DownUnreachable] = Arbitrary(
+    arbWorldView.arbitrary.map(DownUnreachable(_))
+  )
+
+  implicit val arbDownSelf: Arbitrary[DownSelf] = Arbitrary(arbWorldView.arbitrary.map(DownSelf(_)))
+
+  implicit val arbDownThese: Arbitrary[DownThese] = Arbitrary(
+    for {
+      decision1 <- oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary, arbDownSelf.arbitrary) // todo also gen downtheses?
+      decision2 <- oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary, arbDownSelf.arbitrary)
+    } yield DownThese(decision1, decision2)
+  )
+
+  implicit val arbStrategyDecision: Arbitrary[StrategyDecision] = Arbitrary(
+    oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary, arbDownSelf.arbitrary, arbDownThese.arbitrary)
   )
 }
 

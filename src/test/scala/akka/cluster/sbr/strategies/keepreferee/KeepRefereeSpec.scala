@@ -48,7 +48,7 @@ class KeepRefereeSpec extends MySpec {
           .headOption
           .map { referee =>
             val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-              KeepReferee(referee.node.address.toString, downAllIfLessThanNodes)
+              KeepReferee(referee.member.address.toString, downAllIfLessThanNodes)
                 .takeDecision(worldView)
                 .foldMap(RemainingPartitions.fromDecision(worldView))
             }
