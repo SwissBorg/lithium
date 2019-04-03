@@ -1,10 +1,10 @@
 package akka.cluster.sbr
 
 import akka.actor.{ActorContext, ActorRef, Address, Cancellable}
-import akka.cluster.ClusterEvent.{ReachabilityEvent, ReachableMember, UnreachableMember}
-import akka.cluster.{Cluster, Member}
+import akka.cluster.ClusterEvent.ReachabilityEvent
 import akka.cluster.sbr.Downer.{Snitch, SnitchRequest}
 import akka.cluster.sbr.Snitches.Work
+import akka.cluster.{Cluster, Member}
 import cats.effect.SyncIO
 import cats.implicits._
 

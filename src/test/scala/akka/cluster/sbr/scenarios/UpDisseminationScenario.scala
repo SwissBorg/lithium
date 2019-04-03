@@ -27,7 +27,7 @@ object UpDisseminationScenario {
       listOf(arbMemberUp.arbitrary)
         .map(_.filter(e => worldView.statusOf(e.member).fold(false)(_ === Staged)).foldLeft(worldView) {
           case (worldView, upEvent) =>
-            worldView.memberEvent(MemberUp(upEvent.member.copyUp(Integer.MAX_VALUE))).toTry.get
+            worldView.memberEvent(MemberUp(upEvent.member.copyUp(Integer.MAX_VALUE)))
         })
         .map { worldView =>
           val otherNodes = allNodes -- partition
@@ -39,7 +39,7 @@ object UpDisseminationScenario {
           )
 
           otherNodes.foldLeft[WorldView](worldView0) {
-            case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node)).toTry.get
+            case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node))
           }
         }
     }

@@ -3,19 +3,17 @@ package akka.cluster.sbr
 import java.util.concurrent.atomic.AtomicBoolean
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, Props}
+import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Subscribe}
 import akka.cluster.sbr.strategies.Or
 import akka.cluster.sbr.strategies.indirected.Indirected
-import akka.cluster.{Cluster, Member}
 import cats.effect.SyncIO
-//import akka.cluster.sbr.strategies.Or
 import akka.cluster.sbr.strategies.downall.DownAll
-//import akka.cluster.sbr.strategies.indirected.Indirected
+import akka.cluster.sbr.implicits._
 import akka.cluster.sbr.strategy.Strategy
 import akka.cluster.sbr.strategy.ops._
-import akka.cluster.sbr.implicits._
 import cats.implicits._
 
 import scala.concurrent.ExecutionContext
@@ -91,7 +89,7 @@ class Downer[A: Strategy](cluster: Cluster,
     case e: MemberEvent =>
       println(s"EVENT0: $e")
       for {
-        worldView <- SyncIO.fromEither(worldView.memberEvent(e))
+        worldView <- SyncIO.pure(worldView.memberEvent(e))
         _         <- become(noUnreachableNodes(worldView, snitches))
       } yield ()
 
@@ -99,7 +97,7 @@ class Downer[A: Strategy](cluster: Cluster,
       println(s"EVENT0: $e")
 
       for {
-        worldView   <- SyncIO.fromEither(worldView.reachabilityEvent(e))
+        worldView   <- SyncIO.pure(worldView.reachabilityEvent(e))
         stability   <- scheduleStability
         instability <- scheduleInstability
         snitches    <- snitches.snitch(e, cluster)
@@ -110,7 +108,7 @@ class Downer[A: Strategy](cluster: Cluster,
       println(s"EVENT0: $e")
 
       for {
-        worldView <- SyncIO.fromEither(worldView.reachabilityEvent(e))
+        worldView <- SyncIO.pure(worldView.reachabilityEvent(e))
         snitches  <- snitches.snitch(e, cluster)
         _         <- become(noUnreachableNodes(worldView, snitches))
       } yield ()
@@ -120,7 +118,7 @@ class Downer[A: Strategy](cluster: Cluster,
       if (event.member === cluster.selfMember) {
         for {
           _         <- SyncIO(snitcher ! r.respond)
-          worldView <- SyncIO.fromEither(worldView.reachabilityEvent(event))
+          worldView <- SyncIO.pure(worldView.reachabilityEvent(event))
 
           _ <- if (worldView.unreachableNodes.isEmpty) {
             become(noUnreachableNodes(worldView, snitches))
@@ -180,7 +178,7 @@ class Downer[A: Strategy](cluster: Cluster,
       println(s"EVENT1: $e")
 
       for {
-        worldView0 <- SyncIO.fromEither(worldView.memberEvent(e))
+        worldView0 <- SyncIO.pure(worldView.memberEvent(e))
         stability  <- resetWhen(!worldView0.isStableChange(worldView))(stability, scheduleStability)
         _          <- become(hasUnreachableNodes(worldView0, stability, instability, snitches))
       } yield ()
@@ -189,7 +187,7 @@ class Downer[A: Strategy](cluster: Cluster,
       println(s"EVENT1: $e")
 
       for {
-        worldView0 <- SyncIO.fromEither(worldView.reachabilityEvent(e))
+        worldView0 <- SyncIO.pure(worldView.reachabilityEvent(e))
         snitches   <- snitches.snitch(e, cluster)
         _ <- if (worldView0.unreachableNodes.isEmpty) {
           for {
@@ -207,7 +205,7 @@ class Downer[A: Strategy](cluster: Cluster,
       if (event.member === cluster.selfMember) {
         for {
           _          <- SyncIO(snitcher ! r.respond)
-          worldView0 <- SyncIO.fromEither(worldView.reachabilityEvent(event))
+          worldView0 <- SyncIO.pure(worldView.reachabilityEvent(event))
 
           _ <- if (worldView0.unreachableNodes.isEmpty) {
             for {

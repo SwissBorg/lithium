@@ -39,7 +39,7 @@ class StaticQuorumSpec4 extends ThreeNodeSpec("StaticQuorum", StaticQuorumSpec4C
       }
 
       runOn(node1) {
-        waitToBecomeUnreachable(node2, node3)
+        waitToBecomeUnreachable(node1, node2, node3)
       }
 
       enterBarrier("node3-unreachable")

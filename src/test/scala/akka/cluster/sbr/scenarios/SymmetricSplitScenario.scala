@@ -38,7 +38,7 @@ object SymmetricSplitScenario {
       )
 
       otherNodes.foldLeft[WorldView](worldView0) {
-        case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node)).toTry.get
+        case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node))
       }
     }
 
