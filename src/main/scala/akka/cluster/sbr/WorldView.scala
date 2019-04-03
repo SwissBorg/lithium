@@ -108,6 +108,9 @@ final case class WorldView private[sbr] (private[sbr] val self: Member,
       case ReachableMember(member)   => becomeReachable(member)
     }
 
+  // todo
+  def isStableChange(oldWorldView: WorldView): Boolean = (oldWorldView.unreachableNodes -- unreachableNodes).isEmpty
+
   /**
    * Stages the `node`.
    *
@@ -200,6 +203,7 @@ final case class WorldView private[sbr] (private[sbr] val self: Member,
    */
   private def becomeUnreachable(node: Member): Either[WorldViewError, WorldView] =
     if (node === self) {
+      println("HAHAHA")
       copy(self = node, selfStatus = Unreachable).asRight
     } else if (allStatuses.contains(node)) {
       copy(otherStatuses = otherStatuses + (node -> Unreachable)).asRight

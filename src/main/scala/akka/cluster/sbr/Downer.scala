@@ -2,16 +2,14 @@ package akka.cluster.sbr
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-import akka.actor.Actor.Receive
-import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Address, Cancellable, Props}
-import akka.cluster.{Cluster, Member}
+import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, Props}
 import akka.cluster.ClusterEvent._
 import akka.cluster.pubsub.DistributedPubSub
-import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Put, Send, Subscribe}
-import akka.cluster.sbr.NoUnreachableNodesState.{OnReachable, OnUnreachable}
-import akka.cluster.sbr.UnreachableNodesState.{OnMemberEvent, OnNoUnreachableNodes, OnUnreachableNodes}
-
-import scala.collection.SortedSet
+import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Subscribe}
+import akka.cluster.sbr.strategies.Or
+import akka.cluster.sbr.strategies.indirected.Indirected
+import akka.cluster.{Cluster, Member}
+import cats.effect.SyncIO
 //import akka.cluster.sbr.strategies.Or
 import akka.cluster.sbr.strategies.downall.DownAll
 //import akka.cluster.sbr.strategies.indirected.Indirected
@@ -55,25 +53,33 @@ class Downer[A: Strategy](cluster: Cluster,
     case state: CurrentClusterState =>
       val worldView = WorldView(cluster.selfMember, state)
 
-      if (worldView.unreachableNodes.nonEmpty) {
-        context.become(
+      val res = if (worldView.unreachableNodes.nonEmpty) {
+        become(
           hasUnreachableNodes(
-            UnreachableNodesState(
-              worldView,
-              scheduleStabilityTrigger(),
-              scheduleInstabilityTrigger(), // cluster has already an unreachable node
-              worldView.unreachableNodes.foldLeft(Snitches(mediator ! Publish(_, _))) {
-                case (snitches, node) => snitches.snitch(UnreachableMember(node.member))
+            worldView,
+            scheduleStability.unsafeRunSync(),
+            scheduleInstability.unsafeRunSync(),
+            worldView.unreachableNodes
+              .foldLeft(SyncIO.pure(Snitches(publish))) {
+                case (snitches, node) =>
+                  snitches.flatMap(_.snitch(UnreachableMember(node.member), cluster)) // todo correct?
               }
-            )
+              .unsafeRunSync()
           )
         )
       } else {
-        context.become(noUnreachableNodes(NoUnreachableNodesState(worldView, Snitches(mediator ! Publish(_, _)))))
+        become(noUnreachableNodes(worldView, Snitches(publish)))
       }
+
+      res.unsafeRunSync()
 
     case _ => () // ignore // TODO needed?
   }
+
+  private def publish[A](topic: String, a: A): SyncIO[Unit] = SyncIO(mediator ! Publish(topic, a))
+
+  type IOReceive = PartialFunction[Any, SyncIO[Unit]]
+  def become(receive: IOReceive): SyncIO[Unit] = SyncIO(context.become(receive.andThen(_.unsafeRunSync())))
 
   /**
    * Actor's state when the cluster has no unstable nodes.
@@ -81,93 +87,172 @@ class Downer[A: Strategy](cluster: Cluster,
    * At this point the unstability message has not been scheduled yet.
    *
    */
-  private def noUnreachableNodes(s: NoUnreachableNodesState): Receive = {
-    case ClusterIsStable =>
-      println("noUnreachableNodes")
-      println(s"BLA: ${cluster.state.unreachable}")
-      runStrategy(s.worldView)
-//      context.become(noUnreachableNodes(s.copy(stabilityTrigger = scheduleStabilityTrigger()))
-
+  private def noUnreachableNodes(worldView: WorldView, snitches: Snitches): IOReceive = {
     case e: MemberEvent =>
       println(s"EVENT0: $e")
-      context.become(s.onMemberEvent(e)(noUnreachableNodes))
+      for {
+        worldView <- SyncIO.fromEither(worldView.memberEvent(e))
+        _         <- become(noUnreachableNodes(worldView, snitches))
+      } yield ()
 
     case e: UnreachableMember =>
       println(s"EVENT0: $e")
 
-      context.become(
-        s.onReachabilityEvent(e)(
-          OnUnreachable(hasUnreachableNodes,
-                        scheduleInstabilityTrigger,
-                        scheduleInstabilityTrigger,
-                        mediator ! Publish(_, _)),
-          OnReachable(noUnreachableNodes)
-        )
-      )
+      for {
+        worldView   <- SyncIO.fromEither(worldView.reachabilityEvent(e))
+        stability   <- scheduleStability
+        instability <- scheduleInstability
+        snitches    <- snitches.snitch(e, cluster)
+        _           <- become(hasUnreachableNodes(worldView, stability, instability, snitches))
+      } yield ()
+
+    case e: ReachableMember =>
+      println(s"EVENT0: $e")
+
+      for {
+        worldView <- SyncIO.fromEither(worldView.reachabilityEvent(e))
+        snitches  <- snitches.snitch(e, cluster)
+        _         <- become(noUnreachableNodes(worldView, snitches))
+      } yield ()
+
+    case r @ SnitchRequest(event, snitcher, _) =>
+      println(s"REQUEST: $r")
+      if (event.member === cluster.selfMember) {
+        for {
+          _         <- SyncIO(snitcher ! r.respond)
+          worldView <- SyncIO.fromEither(worldView.reachabilityEvent(event))
+
+          _ <- if (worldView.unreachableNodes.isEmpty) {
+            become(noUnreachableNodes(worldView, snitches))
+          } else {
+            for {
+              stability   <- scheduleStability
+              instability <- scheduleInstability
+              _           <- become(hasUnreachableNodes(worldView, stability, instability, snitches))
+            } yield ()
+          }
+        } yield ()
+      } else {
+        SyncIO.unit
+      }
+
+    case s @ SnitchResponse(event, ackN) =>
+      println(s"RESPONSE: $s")
+      for {
+        snitches <- snitches.response(event.member, ackN)
+        _        <- become(noUnreachableNodes(worldView, snitches))
+      } yield ()
   }
+
+  private def cancel(cancellable: Cancellable): SyncIO[Unit] = SyncIO(cancellable.cancel()).void
+
+  def resetWhen(p: Boolean)(cancellable: Cancellable, start: SyncIO[Cancellable]): SyncIO[Cancellable] =
+    if (p) cancel(cancellable) >> start
+    else SyncIO.pure(cancellable)
 
   /**
    * Actor's state when the cluster contains at least one unstable node.
    *
    */
-  private def hasUnreachableNodes(s: UnreachableNodesState): Receive = {
+  private def hasUnreachableNodes(worldView: WorldView,
+                                  stability: Cancellable,
+                                  instability: Cancellable,
+                                  snitches: Snitches): IOReceive = {
     case ClusterIsStable =>
       println("hasUnreachableNodes")
-      println(s"BLA: ${cluster.state.unreachable}")
-      runStrategy(s.worldView)
-      // Does not directly assume all the unreachable nodes have been handled.
-      context.become(hasUnreachableNodes(s.copy(stabilityTrigger = scheduleStabilityTrigger())))
+
+      for {
+        instability <- cancel(instability) >> scheduleInstability
+        stability   <- cancel(stability) >> scheduleStability
+        _           <- runStrategy(worldView)
+        _           <- become(hasUnreachableNodes(worldView, stability, instability, snitches)) // todo maybe not retrigger timeouts
+      } yield ()
 
     case ClusterIsUnstable =>
-      s.instabilityTrigger.cancel() // also cancel the related timeout
-      downAllNodes(s.worldView)
-      // Not strictly necessary, the cluster should be down at this point.
-      context.become(
-        noUnreachableNodes(
-          s.copy(stabilityTrigger = resetStabilityTrigger(s.stabilityTrigger), snitches = s.snitches.cancelAll())
-        )
-      )
+      for {
+        instability <- cancel(instability) >> scheduleInstability
+        stability   <- cancel(stability) >> scheduleStability
+        _           <- downAllNodes(worldView)
+        _           <- become(hasUnreachableNodes(worldView, stability, instability, snitches)) // todo maybe not retrigger timeouts
+      } yield ()
 
     case e: MemberEvent =>
       println(s"EVENT1: $e")
-      context.become(s.onMemberEvent(e)(OnMemberEvent(hasUnreachableNodes, resetStabilityTrigger)))
+
+      for {
+        worldView0 <- SyncIO.fromEither(worldView.memberEvent(e))
+        stability  <- resetWhen(!worldView0.isStableChange(worldView))(stability, scheduleStability)
+        _          <- become(hasUnreachableNodes(worldView0, stability, instability, snitches))
+      } yield ()
 
     case e: ReachabilityEvent =>
       println(s"EVENT1: $e")
-      context.become(
-        s.onReachabilityEvent(e)(
-          OnNoUnreachableNodes(noUnreachableNodes, _.cancel()),
-          OnUnreachableNodes(hasUnreachableNodes, resetStabilityTrigger)
-        )
-      )
+
+      for {
+        worldView0 <- SyncIO.fromEither(worldView.reachabilityEvent(e))
+        snitches   <- snitches.snitch(e, cluster)
+        _ <- if (worldView0.unreachableNodes.isEmpty) {
+          for {
+            _ <- cancel(instability)
+            _ <- cancel(stability)
+            _ <- become(noUnreachableNodes(worldView0, snitches))
+          } yield ()
+        } else {
+          become(hasUnreachableNodes(worldView0, stability, instability, snitches))
+        }
+      } yield ()
+
+    case r @ SnitchRequest(event, snitcher, _) =>
+      println(s"REQUEST: $r")
+      if (event.member === cluster.selfMember) {
+        for {
+          _          <- SyncIO(snitcher ! r.respond)
+          worldView0 <- SyncIO.fromEither(worldView.reachabilityEvent(event))
+
+          _ <- if (worldView0.unreachableNodes.isEmpty) {
+            for {
+              _ <- cancel(stability)
+              _ <- cancel(instability)
+              _ <- become(noUnreachableNodes(worldView0, snitches))
+            } yield ()
+          } else {
+            for {
+              stability <- resetWhen(!worldView0.isStableChange(worldView))(stability, scheduleStability)
+              _         <- become(hasUnreachableNodes(worldView0, stability, instability, snitches))
+            } yield ()
+          }
+        } yield ()
+      } else {
+        SyncIO.unit
+      }
+
+    case s @ SnitchResponse(event, ackN) =>
+      println(s"RESPONSE: $s")
+      for {
+        snitches <- snitches.response(event.member, ackN)
+        _        <- become(hasUnreachableNodes(worldView, stability, instability, snitches))
+      } yield ()
   }
 
   /**
    * Runs [[strategy]] with the strategy to remove indirectly connected nodes.
    */
-  private def runStrategy(worldView: WorldView): Unit = {
+  private def runStrategy(worldView: WorldView): SyncIO[Unit] = {
     println(s"WV: $worldView")
-//    Or(strategy, Indirected)
-    strategy
-      .takeDecision(worldView)
-      .leftMap { err =>
-        log.error(s"$err")
-        err
-      }
-      .foreach(executeDecision)
+    for {
+      decision <- SyncIO.fromEither(Or(strategy, Indirected).takeDecision(worldView))
+      _        <- executeDecision(decision)
+    } yield ()
   }
 
   /**
    * Downs all the nodes in the cluster.
    */
-  private def downAllNodes(worldView: WorldView): Unit =
-    DownAll
-      .takeDecision(worldView)
-      .leftMap { err =>
-        log.error(s"$err")
-        err
-      }
-      .foreach(executeDecision)
+  private def downAllNodes(worldView: WorldView): SyncIO[Unit] =
+    for {
+      decision <- SyncIO.fromEither(DownAll.takeDecision(worldView))
+      _        <- executeDecision(decision)
+    } yield ()
 
   /**
    * Executes the decision.
@@ -178,23 +263,24 @@ class Downer[A: Strategy](cluster: Cluster,
    *
    * In short, the leader can down anyone. Other nodes are only allowed to down themselves.
    */
-  private def executeDecision(decision: StrategyDecision): Unit =
+  private def executeDecision(decision: StrategyDecision): SyncIO[Unit] = SyncIO {
     println(s"DECISION: $decision")
-//    if (cluster.state.leader.contains(cluster.selfAddress)) {
-//      val nodesToDown = decision.nodesToDown
-//      println(s"Downing nodes: $nodesToDown")
-//      nodesToDown.foreach(node => cluster.down(node.member.address))
-//    } else {
-//      if (decision.nodesToDown.map(_.member).contains(cluster.selfMember)) {
-//        println(s"Downing self: $cluster.selfMember")
-//        cluster.down(cluster.selfAddress)
-//      } else {
-//        println("Non-leader cannot down other nodes.")
-//      }
-//    }
+    if (cluster.state.leader.contains(cluster.selfAddress)) {
+      val nodesToDown = decision.nodesToDown
+      println(s"Downing nodes: $nodesToDown")
+      nodesToDown.foreach(node => cluster.down(node.member.address))
+    } else {
+      if (decision.nodesToDown.map(_.member).contains(cluster.selfMember)) {
+        println(s"Downing self: $cluster.selfMember")
+        cluster.down(cluster.selfAddress)
+      } else {
+        println("Non-leader cannot down other nodes.")
+      }
+    }
+  }
 
-  private def scheduleStabilityTrigger(): Cancellable =
-    context.system.scheduler.scheduleOnce(stableAfter, self, ClusterIsStable)
+  private def scheduleStability: SyncIO[Cancellable] =
+    SyncIO(context.system.scheduler.scheduleOnce(stableAfter, self, ClusterIsStable))
 
   /**
    * Schedules an instability trigger. In parallel also start a related timeout that will be
@@ -202,38 +288,19 @@ class Downer[A: Strategy](cluster: Cluster,
    *
    * @return a handle that will cancel both the instability trigger and the related timeout.
    */
-  private def scheduleInstabilityTrigger(): Cancellable = {
-    val c1 = context.system.scheduler.scheduleOnce(stableAfter * 2, self, ClusterIsUnstableTimeout)
-    val c2 = context.system.scheduler.scheduleOnce(stableAfter + downAllWhenUnstable, self, ClusterIsUnstable)
-    new Cancellable {
-      private val b: AtomicBoolean = new AtomicBoolean(c1.isCancelled && c2.isCancelled)
+  private def scheduleInstability: SyncIO[Cancellable] =
+    SyncIO {
+      val c1 = context.system.scheduler.scheduleOnce(stableAfter * 2, self, ClusterIsUnstableTimeout)
+      val c2 = context.system.scheduler.scheduleOnce(stableAfter + downAllWhenUnstable, self, ClusterIsUnstable)
 
-      override def cancel(): Boolean    = c1.cancel() && c2.cancel()
-      override def isCancelled: Boolean = b.getAndSet(c1.isCancelled && c2.isCancelled)
+      new Cancellable {
+        private val b: AtomicBoolean = new AtomicBoolean(c1.isCancelled && c2.isCancelled)
+
+        override def cancel(): Boolean = c1.cancel() && c2.cancel()
+
+        override def isCancelled: Boolean = b.getAndSet(c1.isCancelled && c2.isCancelled)
+      }
     }
-  }
-
-  /**
-   * Resets the stability trigger and returns a new handle.
-   *
-   * @param stabilityTrigger the trigger to reset
-   * @return the new handle
-   */
-  private def resetStabilityTrigger(stabilityTrigger: Cancellable): Cancellable = {
-    stabilityTrigger.cancel()
-    scheduleStabilityTrigger()
-  }
-
-  /**
-   * Resets the instability trigger and returns a new handle.
-   *
-   * @param instabilityTrigger the trigger to reset
-   * @return the new handle
-   */
-  private def resetInstabilityTrigger(instabilityTrigger: Cancellable): Cancellable = {
-    instabilityTrigger.cancel()
-    scheduleInstabilityTrigger()
-  }
 
   override def preStart(): Unit =
     cluster.subscribe(self,
@@ -259,13 +326,9 @@ object Downer {
     val ackN: Long
   }
 
-  final case class SecondGuessUnreachableRequest(member: Member, ackN: Long) extends Snitch {
-    def respond: SecondGuessResponse = SecondGuessResponse(member, ackN)
+  final case class SnitchRequest(reachabilityEvent: ReachabilityEvent, snitcher: ActorRef, ackN: Long) extends Snitch {
+    def respond: SnitchResponse = SnitchResponse(reachabilityEvent, ackN)
   }
 
-  final case class SecondGuessReachableRequest(member: Member, ackN: Long) extends Snitch {
-    def respond: SecondGuessResponse = SecondGuessResponse(member, ackN)
-  }
-
-  final case class SecondGuessResponse(member: Member, ackN: Long) extends Snitch
+  final case class SnitchResponse(reachabilityEvent: ReachabilityEvent, ackN: Long) extends Snitch
 }

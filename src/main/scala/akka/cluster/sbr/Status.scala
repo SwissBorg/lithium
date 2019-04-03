@@ -10,6 +10,5 @@ object Status {
 
 final case object Reachable           extends Status
 final case object WeaklyReachable     extends Status
-final case object IndirectlyReachable extends Status
 final case object Staged              extends Status
 final case object Unreachable         extends Status

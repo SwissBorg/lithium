@@ -34,6 +34,7 @@ scalacOptions ++=
 val akkaVersion                = "2.5.21"
 val akkaHTTPVersion            = "10.1.7"
 val catsVersion                = "1.6.0"
+val catsEffectVersion          = "1.2.0"
 val scalatestVersion           = "3.0.7"
 val monocleVersion             = "1.5.0"
 val scoptVersion               = "4.0.0-RC2"
@@ -54,6 +55,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka"          %% "akka-stream"               % akkaVersion,
   "com.typesafe.akka"          %% "akka-http"                 % akkaHTTPVersion,
   "org.typelevel"              %% "cats-core"                 % catsVersion,
+  "org.typelevel"              %% "cats-effect"                 % catsEffectVersion,
   "org.typelevel"              %% "cats-testkit"              % catsVersion,
   "com.chuusai"                %% "shapeless"                 % shapelessVersion,
   "com.github.julien-truffaut" %% "monocle-core"              % monocleVersion,
