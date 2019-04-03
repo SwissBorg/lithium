@@ -2,7 +2,7 @@ package akka.cluster.sbr
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, Props}
+import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Cancellable, Props}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.cluster.pubsub.DistributedPubSub
@@ -40,44 +40,36 @@ class Downer[A: Strategy](cluster: Cluster,
   private val mediator = DistributedPubSub(cluster.system).mediator
   mediator ! Subscribe(cluster.selfAddress.toString, context.self)
 
-  override def receive: Receive = waitingForSnapshot
+  override def receive: Receive = waitingForSnapshot.andThen(_.unsafeRunSync())
 
   /**
    * Waits for the state snapshot we should get after having
    * subscribed to the cluster's state with the initial
    * state as snapshot.
    */
-  private def waitingForSnapshot: Receive = {
+  private def waitingForSnapshot: IOReceive = {
     case state: CurrentClusterState =>
       val worldView = WorldView(cluster.selfMember, state)
 
-      val res = if (worldView.unreachableNodes.nonEmpty) {
-        become(
-          hasUnreachableNodes(
-            worldView,
-            scheduleStability.unsafeRunSync(),
-            scheduleInstability.unsafeRunSync(),
-            worldView.unreachableNodes
-              .foldLeft(SyncIO.pure(Snitches(publish))) {
-                case (snitches, node) =>
-                  snitches.flatMap(_.snitch(UnreachableMember(node.member), cluster)) // todo correct?
-              }
-              .unsafeRunSync()
-          )
-        )
+      if (worldView.unreachableNodes.nonEmpty) {
+        for {
+          stability   <- scheduleStability
+          instability <- scheduleInstability
+          notifier <- worldView.unreachableNodes
+            .foldLeft(SyncIO.pure(ReachabilityNotifier(publish))) {
+              case (notifier, node) =>
+                notifier.flatMap(notifyIfReachable(_, UnreachableMember(node.member))) // todo correct?
+            }
+          _ <- become(hasUnreachableNodes(worldView, stability, instability, notifier))
+        } yield ()
       } else {
-        become(noUnreachableNodes(worldView, Snitches(publish)))
+        become(noUnreachableNodes(worldView, ReachabilityNotifier(publish)))
       }
 
-      res.unsafeRunSync()
-
-    case _ => () // ignore // TODO needed?
+    case _ => SyncIO.unit // ignore // TODO needed?
   }
 
   private def publish[A](topic: String, a: A): SyncIO[Unit] = SyncIO(mediator ! Publish(topic, a))
-
-  type IOReceive = PartialFunction[Any, SyncIO[Unit]]
-  def become(receive: IOReceive): SyncIO[Unit] = SyncIO(context.become(receive.andThen(_.unsafeRunSync())))
 
   /**
    * Actor's state when the cluster has no unstable nodes.
@@ -85,12 +77,12 @@ class Downer[A: Strategy](cluster: Cluster,
    * At this point the unstability message has not been scheduled yet.
    *
    */
-  private def noUnreachableNodes(worldView: WorldView, snitches: Snitches): IOReceive = {
+  private def noUnreachableNodes(worldView: WorldView, notifier: ReachabilityNotifier): IOReceive = {
     case e: MemberEvent =>
       println(s"EVENT0: $e")
       for {
         worldView <- SyncIO.pure(worldView.memberEvent(e))
-        _         <- become(noUnreachableNodes(worldView, snitches))
+        _         <- become(noUnreachableNodes(worldView, notifier))
       } yield ()
 
     case e: UnreachableMember =>
@@ -100,8 +92,8 @@ class Downer[A: Strategy](cluster: Cluster,
         worldView   <- SyncIO.pure(worldView.reachabilityEvent(e))
         stability   <- scheduleStability
         instability <- scheduleInstability
-        snitches    <- snitches.snitch(e, cluster)
-        _           <- become(hasUnreachableNodes(worldView, stability, instability, snitches))
+        notifier    <- notifyIfReachable(notifier, e)
+        _           <- become(hasUnreachableNodes(worldView, stability, instability, notifier))
       } yield ()
 
     case e: ReachableMember =>
@@ -109,24 +101,24 @@ class Downer[A: Strategy](cluster: Cluster,
 
       for {
         worldView <- SyncIO.pure(worldView.reachabilityEvent(e))
-        snitches  <- snitches.snitch(e, cluster)
-        _         <- become(noUnreachableNodes(worldView, snitches))
+        notifier  <- notifyIfReachable(notifier, e)
+        _         <- become(noUnreachableNodes(worldView, notifier))
       } yield ()
 
-    case r @ SnitchRequest(event, snitcher, _) =>
+    case r @ ReachabilityNotification(event, ackTo, _) =>
       println(s"REQUEST: $r")
       if (event.member === cluster.selfMember) {
         for {
-          _         <- SyncIO(snitcher ! r.respond)
+          _         <- SyncIO(ackTo ! r.ack)
           worldView <- SyncIO.pure(worldView.reachabilityEvent(event))
 
           _ <- if (worldView.unreachableNodes.isEmpty) {
-            become(noUnreachableNodes(worldView, snitches))
+            become(noUnreachableNodes(worldView, notifier))
           } else {
             for {
               stability   <- scheduleStability
               instability <- scheduleInstability
-              _           <- become(hasUnreachableNodes(worldView, stability, instability, snitches))
+              _           <- become(hasUnreachableNodes(worldView, stability, instability, notifier))
             } yield ()
           }
         } yield ()
@@ -134,17 +126,21 @@ class Downer[A: Strategy](cluster: Cluster,
         SyncIO.unit
       }
 
-    case s @ SnitchResponse(event, ackN) =>
+    case s @ ReachabilityNotificationAck(event, id) =>
       println(s"RESPONSE: $s")
       for {
-        snitches <- snitches.response(event.member, ackN)
-        _        <- become(noUnreachableNodes(worldView, snitches))
+        notifier <- notifier.ack(event.member, id)
+        _        <- become(noUnreachableNodes(worldView, notifier))
       } yield ()
   }
 
   private def cancel(cancellable: Cancellable): SyncIO[Unit] = SyncIO(cancellable.cancel()).void
 
-  def resetWhen(p: Boolean)(cancellable: Cancellable, start: SyncIO[Cancellable]): SyncIO[Cancellable] =
+  private def notifyIfReachable(notifier: ReachabilityNotifier, e: ReachabilityEvent): SyncIO[ReachabilityNotifier] =
+    if (cluster.failureDetector.isAvailable(e.member.address)) notifier.notify(e)
+    else SyncIO.pure(notifier)
+
+  private def resetWhen(p: Boolean)(cancellable: Cancellable, start: SyncIO[Cancellable]): SyncIO[Cancellable] =
     if (p) cancel(cancellable) >> start
     else SyncIO.pure(cancellable)
 
@@ -155,7 +151,7 @@ class Downer[A: Strategy](cluster: Cluster,
   private def hasUnreachableNodes(worldView: WorldView,
                                   stability: Cancellable,
                                   instability: Cancellable,
-                                  snitches: Snitches): IOReceive = {
+                                  notifier: ReachabilityNotifier): IOReceive = {
     case ClusterIsStable =>
       println("hasUnreachableNodes")
 
@@ -163,7 +159,7 @@ class Downer[A: Strategy](cluster: Cluster,
         instability <- cancel(instability) >> scheduleInstability
         stability   <- cancel(stability) >> scheduleStability
         _           <- runStrategy(worldView)
-        _           <- become(hasUnreachableNodes(worldView, stability, instability, snitches)) // todo maybe not retrigger timeouts
+        _           <- become(hasUnreachableNodes(worldView, stability, instability, notifier)) // todo maybe not retrigger timeouts
       } yield ()
 
     case ClusterIsUnstable =>
@@ -171,7 +167,7 @@ class Downer[A: Strategy](cluster: Cluster,
         instability <- cancel(instability) >> scheduleInstability
         stability   <- cancel(stability) >> scheduleStability
         _           <- downAllNodes(worldView)
-        _           <- become(hasUnreachableNodes(worldView, stability, instability, snitches)) // todo maybe not retrigger timeouts
+        _           <- become(hasUnreachableNodes(worldView, stability, instability, notifier)) // todo maybe not retrigger timeouts
       } yield ()
 
     case e: MemberEvent =>
@@ -180,7 +176,7 @@ class Downer[A: Strategy](cluster: Cluster,
       for {
         worldView0 <- SyncIO.pure(worldView.memberEvent(e))
         stability  <- resetWhen(!worldView0.isStableChange(worldView))(stability, scheduleStability)
-        _          <- become(hasUnreachableNodes(worldView0, stability, instability, snitches))
+        _          <- become(hasUnreachableNodes(worldView0, stability, instability, notifier))
       } yield ()
 
     case e: ReachabilityEvent =>
@@ -188,35 +184,35 @@ class Downer[A: Strategy](cluster: Cluster,
 
       for {
         worldView0 <- SyncIO.pure(worldView.reachabilityEvent(e))
-        snitches   <- snitches.snitch(e, cluster)
+        notifier   <- notifyIfReachable(notifier, e)
         _ <- if (worldView0.unreachableNodes.isEmpty) {
           for {
             _ <- cancel(instability)
             _ <- cancel(stability)
-            _ <- become(noUnreachableNodes(worldView0, snitches))
+            _ <- become(noUnreachableNodes(worldView0, notifier))
           } yield ()
         } else {
-          become(hasUnreachableNodes(worldView0, stability, instability, snitches))
+          become(hasUnreachableNodes(worldView0, stability, instability, notifier))
         }
       } yield ()
 
-    case r @ SnitchRequest(event, snitcher, _) =>
+    case r @ ReachabilityNotification(event, ackTo, _) =>
       println(s"REQUEST: $r")
       if (event.member === cluster.selfMember) {
         for {
-          _          <- SyncIO(snitcher ! r.respond)
+          _          <- SyncIO(ackTo ! r.ack)
           worldView0 <- SyncIO.pure(worldView.reachabilityEvent(event))
 
           _ <- if (worldView0.unreachableNodes.isEmpty) {
             for {
               _ <- cancel(stability)
               _ <- cancel(instability)
-              _ <- become(noUnreachableNodes(worldView0, snitches))
+              _ <- become(noUnreachableNodes(worldView0, notifier))
             } yield ()
           } else {
             for {
               stability <- resetWhen(!worldView0.isStableChange(worldView))(stability, scheduleStability)
-              _         <- become(hasUnreachableNodes(worldView0, stability, instability, snitches))
+              _         <- become(hasUnreachableNodes(worldView0, stability, instability, notifier))
             } yield ()
           }
         } yield ()
@@ -224,11 +220,11 @@ class Downer[A: Strategy](cluster: Cluster,
         SyncIO.unit
       }
 
-    case s @ SnitchResponse(event, ackN) =>
+    case s @ ReachabilityNotificationAck(event, ackN) =>
       println(s"RESPONSE: $s")
       for {
-        snitches <- snitches.response(event.member, ackN)
-        _        <- become(hasUnreachableNodes(worldView, stability, instability, snitches))
+        notifier <- notifier.ack(event.member, ackN)
+        _        <- become(hasUnreachableNodes(worldView, stability, instability, notifier))
       } yield ()
   }
 
@@ -310,23 +306,24 @@ class Downer[A: Strategy](cluster: Cluster,
 }
 
 object Downer {
+  type IOReceive = PartialFunction[Any, SyncIO[Unit]]
+
   def props[A: Strategy](cluster: Cluster,
                          strategy: A,
                          stableAfter: FiniteDuration,
                          downAllWhenUnstable: FiniteDuration): Props =
     Props(new Downer(cluster, strategy, stableAfter, downAllWhenUnstable))
 
+  def become(receive: IOReceive)(implicit context: ActorContext): SyncIO[Unit] =
+    SyncIO(context.become(receive.andThen(_.unsafeRunSync())))
+
   final case object ClusterIsStable
   final case object ClusterIsUnstable
   final case object ClusterIsUnstableTimeout
 
-  sealed abstract class Snitch {
-    val ackN: Long
+  final case class ReachabilityNotification(reachabilityEvent: ReachabilityEvent, ackTo: ActorRef, id: Long) {
+    def ack: ReachabilityNotificationAck = ReachabilityNotificationAck(reachabilityEvent, id)
   }
 
-  final case class SnitchRequest(reachabilityEvent: ReachabilityEvent, snitcher: ActorRef, ackN: Long) extends Snitch {
-    def respond: SnitchResponse = SnitchResponse(reachabilityEvent, ackN)
-  }
-
-  final case class SnitchResponse(reachabilityEvent: ReachabilityEvent, ackN: Long) extends Snitch
+  final case class ReachabilityNotificationAck(reachabilityEvent: ReachabilityEvent, id: Long)
 }
