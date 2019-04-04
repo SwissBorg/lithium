@@ -1,16 +1,16 @@
 package akka.cluster.sbr
 
 import akka.cluster.ClusterEvent._
+import akka.cluster.Member
+import akka.cluster.MemberStatus._
 import akka.cluster.sbr.ArbitraryInstances._
-import akka.cluster.sbr.WorldView._
 import akka.cluster.sbr.implicits._
-import cats.kernel.Eq
 
 class WorldViewSpec extends MySpec {
   "WorldView" - {
     "1 - should not have a node simultaneously reachable and unreachable" in {
       forAll { worldView: WorldView =>
-        worldView.reachableConsideredNodes
+        worldView.consideredReachableNodes
           .map(_.member)
           .intersect(worldView.unreachableNodes.map(_.member)) shouldBe empty
       }
@@ -19,43 +19,96 @@ class WorldViewSpec extends MySpec {
     "2 - memberEvent" in {
       forAll { (worldView: WorldView, event: MemberEvent) =>
         event match {
-          case MemberJoined(node) =>
+          case MemberJoined(member) =>
             val w = worldView.memberEvent(event)
-            if (worldView.self !== node) {
-              w.statusOf(node) should ===(Some(Staged))
-              w.allStatuses.contains(node) shouldBe true
-              w.reachableConsideredNodes.contains(ReachableConsideredNode(node)) shouldBe false
-              w.unreachableNodes.contains(UnreachableNode(node)) shouldBe false
+
+            if (worldView.nodes.find(_.member === member).nonEmpty) {
+              w.nodes.exists { node =>
+                node.member === member && node.member.status == Joining
+              } shouldBe true
             } else {
-              w should ===(worldView)
+              w.nodes.contains(ReachableNode(member)) shouldBe true
             }
 
-          case MemberWeaklyUp(node) =>
-            val w = worldView.memberEvent(event)
-            w.statusOf(node) should ===(Some(WeaklyReachable))
-            w.allStatuses.contains(node) shouldBe true
-            w.reachableConsideredNodes.contains(ReachableConsideredNode(node)) shouldBe false
-            w.unreachableNodes.contains(UnreachableNode(node)) shouldBe false
+            w.consideredNodes.exists(_.member === member) shouldBe false
 
-          case _: MemberLeft | _: MemberExited =>
+          case MemberWeaklyUp(member) =>
             val w = worldView.memberEvent(event)
-            w should ===(worldView)
 
-          case MemberDowned(_) =>
+            if (worldView.nodes.find(_.member === member).nonEmpty) {
+              w.nodes.exists { node =>
+                node.member === member && node.member.status == WeaklyUp
+              } shouldBe true
+            } else {
+              w.nodes.contains(ReachableNode(member)) shouldBe true
+            }
+
+            w.consideredNodes.exists(_.member === member) shouldBe false
+
+          case MemberLeft(member) =>
             val w = worldView.memberEvent(event)
-            w should ===(worldView)
+
+            if (worldView.nodes.find(_.member === member).nonEmpty) {
+              w.nodes.exists { node =>
+                node.member === member && node.member.status == Leaving
+              } shouldBe true
+            } else {
+              w.nodes.contains(ReachableNode(member)) shouldBe true
+            }
+
+            w.consideredNodes.exists(n => cats.Eq[Member].eqv(n.member, member)) shouldBe true
+
+          case MemberExited(member) =>
+            val w = worldView.memberEvent(event)
+
+            if (worldView.nodes.find(_.member === member).nonEmpty) {
+              w.nodes.exists { node =>
+                node.member === member && node.member.status == Exiting
+              } shouldBe true
+            } else {
+              w.nodes.contains(ReachableNode(member)) shouldBe true
+            }
+
+            w.consideredNodes.exists(_.member === member) shouldBe true
+
+          case MemberDowned(member) =>
+            val w = worldView.memberEvent(event)
+
+            if (worldView.nodes.find(_.member === member).nonEmpty) {
+              w.nodes.exists { node =>
+                node.member === member && node.member.status == Down
+              } shouldBe true
+            } else {
+              w.nodes.contains(ReachableNode(member)) shouldBe true
+            }
+
+            w.consideredNodes.exists(_.member === member) shouldBe true
 
           case MemberRemoved(member, _) =>
             val w = worldView.memberEvent(event)
-            if (member !== w.self) {
-              w.reachableConsideredNodes.contains(ReachableConsideredNode(member)) shouldBe false
-              w.unreachableNodes.contains(UnreachableNode(member)) shouldBe false
+
+            if (worldView.nodes.find(_.member === member).nonEmpty) {
+              w.nodes.exists { node =>
+                node.member === member && node.member.status == Removed
+              } shouldBe true
+            } else {
+              w.nodes.contains(ReachableNode(member)) shouldBe true
             }
+
+            w.consideredNodes.exists(_.member === member) shouldBe true
 
           case MemberUp(member) =>
             val w = worldView.memberEvent(event)
-            w.reachableConsideredNodes.contains(ReachableConsideredNode(member)) shouldBe true
-            w.unreachableNodes.contains(UnreachableNode(member)) shouldBe false
+
+            if (worldView.nodes.find(_.member === member).nonEmpty) {
+              w.nodes.exists { node =>
+                node.member === member && node.member.status == Up
+              } shouldBe true
+            } else {
+              w.nodes.contains(ReachableNode(member)) shouldBe true
+            }
+
+            w.consideredNodes.exists(_.member === member) shouldBe true
         }
       }
     }
@@ -63,58 +116,45 @@ class WorldViewSpec extends MySpec {
     "3 - reachabilityEvent" in {
       forAll { (worldView: WorldView, event: ReachabilityEvent) =>
         event match {
-          case UnreachableMember(node) =>
+          case UnreachableMember(member) =>
             val w = worldView.reachabilityEvent(event)
-            w.statusOf(node) should ===(Some(Unreachable))
+            w.nodes.contains(UnreachableNode(member)) shouldBe true
 
-          case ReachableMember(node) =>
+          case ReachableMember(member) =>
             val w = worldView.reachabilityEvent(event)
-            w.statusOf(node) should ===(Some(Reachable))
+            w.nodes.contains(ReachableNode(member)) shouldBe true
         }
       }
     }
 
     "4 - reachableConsideredNodes" in {
       forAll { worldView: WorldView =>
-        assert(
-          worldView.reachableConsideredNodes
-            .forall(n => worldView.allStatuses.lookup(n.member).exists(Eq[Status].eqv(_, Reachable)))
-        )
+        assert(worldView.consideredReachableNodes.forall(worldView.nodes.contains))
       }
     }
 
     "5 - unreachableNodes" in {
       forAll { worldView: WorldView =>
-        assert(
-          worldView.unreachableNodes.forall(
-            n => worldView.allStatuses.lookup(n.member).exists(Eq[Status].eqv(_, Unreachable))
-          )
-        )
+        assert(worldView.unreachableNodes.forall(worldView.nodes.contains))
+
       }
     }
 
-    "6 - allNodes" in {
+    "6 - consideredNodes" in {
       forAll { worldView: WorldView =>
         assert(
-          worldView.allConsideredNodes
-            .forall(
-              (worldView.reachableConsideredNodes.map(_.member) ++ worldView.unreachableNodes.map(_.member)).contains
-            )
+          worldView.consideredNodes.forall((worldView.consideredReachableNodes ++ worldView.unreachableNodes).contains)
         )
       }
     }
 
-    "7 - allNodesWithRole" in {
+    "7 - consideredNodesWithRole" in {
       forAll { (worldView: WorldView, role: String) =>
-        if (role === "") worldView.allConsideredNodesWithRole(role) should ===(worldView.allConsideredNodes)
-        else assert(worldView.allConsideredNodesWithRole(role).forall(worldView.allConsideredNodes.contains))
+        if (role.isEmpty) worldView.consideredNodesWithRole(role) should ===(worldView.consideredNodes)
+        else assert(worldView.consideredNodesWithRole(role).forall(worldView.consideredNodes.contains))
 
-        worldView.allConsideredNodesWithRole(role) should ===(
-          worldView
-            .reachableConsideredNodesWithRole(role)
-            .map(_.member) ++ worldView
-            .unreachableNodesWithRole(role)
-            .map(_.member)
+        worldView.consideredNodesWithRole(role) should ===(
+          worldView.consideredReachableNodesWithRole(role) ++ worldView.considerdeUnreachableNodesWithRole(role)
         )
       }
     }
@@ -122,14 +162,14 @@ class WorldViewSpec extends MySpec {
     "8 - reachableNodesWithRole" in {
       forAll { (worldView: WorldView, role: String) =>
         if (role === "")
-          worldView.reachableConsideredNodesWithRole(role).map(_.member) should ===(
-            worldView.reachableConsideredNodes.map(_.member)
+          worldView.consideredReachableNodesWithRole(role).map(_.member) should ===(
+            worldView.consideredReachableNodes.map(_.member)
           )
         else
           assert(
             worldView
-              .reachableConsideredNodesWithRole(role)
-              .forall(worldView.reachableConsideredNodes.contains)
+              .consideredReachableNodesWithRole(role)
+              .forall(worldView.consideredReachableNodes.contains)
           )
       }
     }
@@ -138,15 +178,15 @@ class WorldViewSpec extends MySpec {
       forAll { (worldView: WorldView, role: String) =>
         if (role === "")
           worldView
-            .unreachableNodesWithRole(role)
+            .considerdeUnreachableNodesWithRole(role)
             .map(_.member) should ===(worldView.unreachableNodes.map(_.member))
-        else assert(worldView.unreachableNodesWithRole(role).forall(worldView.unreachableNodes.contains))
+        else assert(worldView.considerdeUnreachableNodesWithRole(role).forall(worldView.unreachableNodes.contains))
       }
     }
 
     "10 - otherStatuses should not contain the self node" in {
       forAll { worldView: WorldView =>
-        worldView.otherStatuses.contains(worldView.self) shouldBe false
+        worldView.otherNodes.contains(worldView.selfNode) shouldBe false
       }
     }
   }

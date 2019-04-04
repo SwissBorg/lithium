@@ -2,6 +2,7 @@ package akka.cluster.sbr.strategies.indirected
 
 import akka.cluster.sbr.ArbitraryInstances._
 import akka.cluster.sbr._
+import akka.cluster.sbr.implicits._
 import akka.cluster.sbr.strategy.ops._
 
 class IndirectedSpec extends MySpec {
@@ -9,9 +10,9 @@ class IndirectedSpec extends MySpec {
     "1 - should down self if unreachable" in {
       forAll { worldView: WorldView =>
         Indirected.takeDecision(worldView).map {
-          case DownSelf(_) => worldView.selfStatus should ===(Unreachable)
-          case Idle        => worldView.selfStatus should !==(Unreachable)
-          case _           => fail
+          case DownSelf(UnreachableNode(member)) => worldView.selfNode.member should ===(member)
+          case Idle                              => worldView.selfNode should ===(ReachableNode(worldView.selfNode.member))
+          case _                                 => fail
         }
       }
     }

@@ -11,7 +11,7 @@ class StrategyDecisionSpec extends MySpec {
     "1 - extract the correct nodes from the world view" in {
       forAll { worldView: WorldView =>
         DownReachable(worldView).nodesToDown.map(_.member) should ===(worldView.reachableNodes.map(_.member))
-        DownSelf(worldView).nodesToDown.map(_.member) should ===(SortedSet(worldView.self))
+        DownSelf(worldView).nodesToDown should ===(SortedSet(worldView.selfNode))
         DownUnreachable(worldView).nodesToDown.map(_.member) should ===(worldView.unreachableNodes.map(_.member))
       }
     }

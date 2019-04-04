@@ -2,9 +2,9 @@ package akka.cluster.sbr
 
 import akka.actor.{ActorContext, ActorRef, Address, Cancellable}
 import akka.cluster.ClusterEvent.ReachabilityEvent
+import akka.cluster.Member
 import akka.cluster.sbr.Downer.ReachabilityNotification
 import akka.cluster.sbr.ReachabilityNotifier.NotificationJob
-import akka.cluster.{Cluster, Member}
 import cats.effect.SyncIO
 import cats.implicits._
 
@@ -15,7 +15,7 @@ import scala.concurrent.duration._
  * Provides a way to notify other nodes of reachability events related to them.
  */
 final case class ReachabilityNotifier(private val jobs: Map[Address, NotificationJob],
-                                      private val publish: (String, ReachabilityNotification) => SyncIO[Unit]) {
+                                      private val send: (Member, Any) => SyncIO[Unit]) {
 
   /**
    * Notify the member association with the event.
@@ -27,7 +27,7 @@ final case class ReachabilityNotifier(private val jobs: Map[Address, Notificatio
 
     for {
       id               <- nextId(address)
-      sendNotification <- publish(address.toString, ReachabilityNotification(reachabilityEvent, self, id))
+      sendNotification <- send(reachabilityEvent.member, ReachabilityNotification(reachabilityEvent, self, id))
       sendNotification <- SyncIO(context.system.scheduler.schedule(0.seconds, 1.second)(sendNotification))
     } yield copy(jobs = jobs + (address -> NotificationJob(id, sendNotification)))
   }
@@ -71,8 +71,8 @@ final case class ReachabilityNotifier(private val jobs: Map[Address, Notificatio
 }
 
 object ReachabilityNotifier {
-  def apply(publish: (String, ReachabilityNotification) => SyncIO[Unit]): ReachabilityNotifier =
-    ReachabilityNotifier(Map.empty, publish)
+  def apply(send: (Member, Any) => SyncIO[Unit]): ReachabilityNotifier =
+    ReachabilityNotifier(Map.empty, send)
 
   final case class NotificationJob(id: Long, sendNotification: Cancellable)
 }

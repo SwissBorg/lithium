@@ -3,17 +3,18 @@ package akka.cluster.sbr
 import java.util.concurrent.atomic.AtomicBoolean
 
 import akka.actor.{Actor, ActorContext, ActorLogging, ActorRef, Cancellable, Props}
-import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
+import akka.cluster.MemberStatus.{Down, Removed}
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Subscribe}
-import akka.cluster.sbr.strategies.Or
-import akka.cluster.sbr.strategies.indirected.Indirected
-import cats.effect.SyncIO
-import akka.cluster.sbr.strategies.downall.DownAll
 import akka.cluster.sbr.implicits._
+import akka.cluster.sbr.strategies.Or
+import akka.cluster.sbr.strategies.downall.DownAll
+import akka.cluster.sbr.strategies.indirected.Indirected
 import akka.cluster.sbr.strategy.Strategy
 import akka.cluster.sbr.strategy.ops._
+import akka.cluster.{Cluster, Member}
+import cats.effect.SyncIO
 import cats.implicits._
 
 import scala.concurrent.ExecutionContext
@@ -51,25 +52,28 @@ class Downer[A: Strategy](cluster: Cluster,
     case state: CurrentClusterState =>
       val worldView = WorldView(cluster.selfMember, state)
 
-      if (worldView.unreachableNodes.nonEmpty) {
+      if (worldView.hasSplitBrain) {
         for {
-          stability   <- scheduleStability
-          instability <- scheduleInstability
+          clusterIsStable <- scheduleClusterIsStable
+          instability     <- scheduleClusterIsUnstable
           notifier <- worldView.unreachableNodes
-            .foldLeft(SyncIO.pure(ReachabilityNotifier(publish))) {
+            .foldLeft(SyncIO.pure(ReachabilityNotifier(send))) {
               case (notifier, node) =>
                 notifier.flatMap(notifyIfReachable(_, UnreachableMember(node.member))) // todo correct?
             }
-          _ <- become(hasUnreachableNodes(worldView, stability, instability, notifier))
+          _ <- become(splitBrainState(worldView, clusterIsStable, instability, notifier))
         } yield ()
       } else {
-        become(noUnreachableNodes(worldView, ReachabilityNotifier(publish)))
+        become(noSplitBrainState(worldView, ReachabilityNotifier(send)))
       }
 
     case _ => SyncIO.unit // ignore // TODO needed?
   }
 
-  private def publish[A](topic: String, a: A): SyncIO[Unit] = SyncIO(mediator ! Publish(topic, a))
+  def transitionToSplitBrainState(worldView: WorldView, notifier: ReachabilityNotifier): SyncIO[IOReceive] =
+    (scheduleClusterIsStable, scheduleClusterIsUnstable).mapN {
+      splitBrainState(worldView, _, _, notifier)
+    }
 
   /**
    * Actor's state when the cluster has no unstable nodes.
@@ -77,167 +81,146 @@ class Downer[A: Strategy](cluster: Cluster,
    * At this point the unstability message has not been scheduled yet.
    *
    */
-  private def noUnreachableNodes(worldView: WorldView, notifier: ReachabilityNotifier): IOReceive = {
+  private def noSplitBrainState(worldView: WorldView, notifier: ReachabilityNotifier): IOReceive = {
     case e: MemberEvent =>
-      println(s"EVENT0: $e")
       for {
         worldView <- SyncIO.pure(worldView.memberEvent(e))
-        _         <- become(noUnreachableNodes(worldView, notifier))
+        _ <- when(worldView.hasSplitBrain)(transitionToSplitBrainState(worldView, notifier).flatMap(become),
+                                           become(noSplitBrainState(worldView, notifier)))
       } yield ()
 
-    case e: UnreachableMember =>
-      println(s"EVENT0: $e")
-
-      for {
-        worldView   <- SyncIO.pure(worldView.reachabilityEvent(e))
-        stability   <- scheduleStability
-        instability <- scheduleInstability
-        notifier    <- notifyIfReachable(notifier, e)
-        _           <- become(hasUnreachableNodes(worldView, stability, instability, notifier))
-      } yield ()
-
-    case e: ReachableMember =>
-      println(s"EVENT0: $e")
-
+    case e: ReachabilityEvent =>
       for {
         worldView <- SyncIO.pure(worldView.reachabilityEvent(e))
         notifier  <- notifyIfReachable(notifier, e)
-        _         <- become(noUnreachableNodes(worldView, notifier))
+        _ <- when(worldView.hasSplitBrain)(transitionToSplitBrainState(worldView, notifier).flatMap(become),
+                                           become(noSplitBrainState(worldView, notifier)))
       } yield ()
 
     case r @ ReachabilityNotification(event, ackTo, _) =>
-      println(s"REQUEST: $r")
       if (event.member === cluster.selfMember) {
         for {
           _         <- SyncIO(ackTo ! r.ack)
           worldView <- SyncIO.pure(worldView.reachabilityEvent(event))
-
-          _ <- if (worldView.unreachableNodes.isEmpty) {
-            become(noUnreachableNodes(worldView, notifier))
-          } else {
-            for {
-              stability   <- scheduleStability
-              instability <- scheduleInstability
-              _           <- become(hasUnreachableNodes(worldView, stability, instability, notifier))
-            } yield ()
-          }
+          _ <- when(worldView.hasSplitBrain)(transitionToSplitBrainState(worldView, notifier).flatMap(become),
+                                             become(noSplitBrainState(worldView, notifier)))
         } yield ()
       } else {
-        SyncIO.unit
+        // notification is not for this member
+        SyncIO.unit // todo become?
       }
 
-    case s @ ReachabilityNotificationAck(event, id) =>
-      println(s"RESPONSE: $s")
+    case ReachabilityNotificationAck(event, id) =>
       for {
         notifier <- notifier.ack(event.member, id)
-        _        <- become(noUnreachableNodes(worldView, notifier))
+        _        <- become(noSplitBrainState(worldView, notifier))
       } yield ()
+
+    case ClusterIsStable =>
+      SyncIO(log.error("Should not receive stable signal when no split brain."))
+
+    case ClusterIsUnstable =>
+      SyncIO(log.error("Should not receive unstable signal when no split brain."))
+
+    case ClusterIsUnstableTimeout =>
+      SyncIO(log.error("Should not receive unstable timeout signal when no split brain."))
   }
 
   private def cancel(cancellable: Cancellable): SyncIO[Unit] = SyncIO(cancellable.cancel()).void
 
   private def notifyIfReachable(notifier: ReachabilityNotifier, e: ReachabilityEvent): SyncIO[ReachabilityNotifier] =
-    if (cluster.failureDetector.isAvailable(e.member.address)) notifier.notify(e)
-    else SyncIO.pure(notifier)
+    if (!cluster.failureDetector.isAvailable(e.member.address) || e.member.status == Down || e.member.status == Removed)
+      SyncIO.pure(notifier)
+    else {
+      // only notify available and non-exiting members.
+      notifier.notify(e)
+    }
 
-  private def resetWhen(p: Boolean)(cancellable: Cancellable, start: SyncIO[Cancellable]): SyncIO[Cancellable] =
-    if (p) cancel(cancellable) >> start
-    else SyncIO.pure(cancellable)
+  def transitionToNoSplitBrainState(worldView: WorldView,
+                                    clusterIsStable: Cancellable,
+                                    clusterIsUnstable: Cancellable,
+                                    notifier: ReachabilityNotifier): SyncIO[IOReceive] =
+    (cancel(clusterIsStable), cancel(clusterIsUnstable)).mapN { case (_, _) => noSplitBrainState(worldView, notifier) }
 
   /**
    * Actor's state when the cluster contains at least one unstable node.
    *
    */
-  private def hasUnreachableNodes(worldView: WorldView,
-                                  stability: Cancellable,
-                                  instability: Cancellable,
-                                  notifier: ReachabilityNotifier): IOReceive = {
-    case ClusterIsStable =>
-      println("hasUnreachableNodes")
+  private def splitBrainState(worldView: WorldView,
+                              clusterIsStable: Cancellable,
+                              clusterIsUnstable: Cancellable,
+                              notifier: ReachabilityNotifier): IOReceive = {
+    def resetWhenUnstable(newWorldView: WorldView): SyncIO[Cancellable] =
+      when(newWorldView.isStableChange(worldView))(
+        SyncIO.pure(clusterIsStable),
+        cancel(clusterIsStable) >> scheduleClusterIsStable
+      )
 
+    def stateTransition(newWorldView: WorldView, notifier: ReachabilityNotifier): SyncIO[Unit] =
       for {
-        instability <- cancel(instability) >> scheduleInstability
-        stability   <- cancel(stability) >> scheduleStability
-        _           <- runStrategy(worldView)
-        _           <- become(hasUnreachableNodes(worldView, stability, instability, notifier)) // todo maybe not retrigger timeouts
+        clusterIsStable <- resetWhenUnstable(newWorldView)
+        _ <- when(newWorldView.hasSplitBrain)(
+          become(splitBrainState(newWorldView, clusterIsStable, clusterIsUnstable, notifier)),
+          transitionToNoSplitBrainState(newWorldView, clusterIsStable, clusterIsUnstable, notifier).flatMap(become)
+        )
       } yield ()
 
-    case ClusterIsUnstable =>
+    def execute(f: WorldView => SyncIO[Unit]): SyncIO[Unit] =
       for {
-        instability <- cancel(instability) >> scheduleInstability
-        stability   <- cancel(stability) >> scheduleStability
-        _           <- downAllNodes(worldView)
-        _           <- become(hasUnreachableNodes(worldView, stability, instability, notifier)) // todo maybe not retrigger timeouts
+        _                 <- cancel(clusterIsUnstable)
+        _                 <- cancel(clusterIsStable)
+        _                 <- f(worldView)
+        clusterIsStable   <- scheduleClusterIsStable
+        clusterIsUnstable <- scheduleClusterIsStable
+        _                 <- become(splitBrainState(worldView, clusterIsStable, clusterIsUnstable, notifier))
       } yield ()
 
-    case e: MemberEvent =>
-      println(s"EVENT1: $e")
+    {
+      case e: MemberEvent =>
+        for {
+          worldView <- SyncIO.pure(worldView.memberEvent(e))
+          _         <- stateTransition(worldView, notifier)
+        } yield ()
 
-      for {
-        worldView0 <- SyncIO.pure(worldView.memberEvent(e))
-        stability  <- resetWhen(!worldView0.isStableChange(worldView))(stability, scheduleStability)
-        _          <- become(hasUnreachableNodes(worldView0, stability, instability, notifier))
-      } yield ()
+      case e: ReachabilityEvent =>
+        for {
+          worldView <- SyncIO.pure(worldView.reachabilityEvent(e))
+          notifier  <- notifyIfReachable(notifier, e)
+          _         <- stateTransition(worldView, notifier)
+        } yield ()
 
-    case e: ReachabilityEvent =>
-      println(s"EVENT1: $e")
-
-      for {
-        worldView0 <- SyncIO.pure(worldView.reachabilityEvent(e))
-        notifier   <- notifyIfReachable(notifier, e)
-        _ <- if (worldView0.unreachableNodes.isEmpty) {
+      case r @ ReachabilityNotification(event, ackTo, _) =>
+        if (event.member === cluster.selfMember) {
           for {
-            _ <- cancel(instability)
-            _ <- cancel(stability)
-            _ <- become(noUnreachableNodes(worldView0, notifier))
+            _         <- SyncIO(ackTo ! r.ack)
+            worldView <- SyncIO.pure(worldView.reachabilityEvent(event))
+            _         <- stateTransition(worldView, notifier)
           } yield ()
         } else {
-          become(hasUnreachableNodes(worldView0, stability, instability, notifier))
+          // notification is not for this member
+          SyncIO.unit // todo become?
         }
-      } yield ()
 
-    case r @ ReachabilityNotification(event, ackTo, _) =>
-      println(s"REQUEST: $r")
-      if (event.member === cluster.selfMember) {
+      case ReachabilityNotificationAck(event, ackN) =>
         for {
-          _          <- SyncIO(ackTo ! r.ack)
-          worldView0 <- SyncIO.pure(worldView.reachabilityEvent(event))
-
-          _ <- if (worldView0.unreachableNodes.isEmpty) {
-            for {
-              _ <- cancel(stability)
-              _ <- cancel(instability)
-              _ <- become(noUnreachableNodes(worldView0, notifier))
-            } yield ()
-          } else {
-            for {
-              stability <- resetWhen(!worldView0.isStableChange(worldView))(stability, scheduleStability)
-              _         <- become(hasUnreachableNodes(worldView0, stability, instability, notifier))
-            } yield ()
-          }
+          notifier <- notifier.ack(event.member, ackN)
+          _        <- become(splitBrainState(worldView, clusterIsStable, clusterIsUnstable, notifier))
         } yield ()
-      } else {
-        SyncIO.unit
-      }
 
-    case s @ ReachabilityNotificationAck(event, ackN) =>
-      println(s"RESPONSE: $s")
-      for {
-        notifier <- notifier.ack(event.member, ackN)
-        _        <- become(hasUnreachableNodes(worldView, stability, instability, notifier))
-      } yield ()
+      case ClusterIsStable          => execute(resolveSplitBrain)
+      case ClusterIsUnstable        => execute(downAllNodes)
+      case ClusterIsUnstableTimeout => ??? // todo implement
+    }
   }
 
   /**
    * Runs [[strategy]] with the strategy to remove indirectly connected nodes.
    */
-  private def runStrategy(worldView: WorldView): SyncIO[Unit] = {
-    println(s"WV: $worldView")
+  private def resolveSplitBrain(worldView: WorldView): SyncIO[Unit] =
     for {
       decision <- SyncIO.fromEither(Or(strategy, Indirected).takeDecision(worldView))
       _        <- executeDecision(decision)
     } yield ()
-  }
 
   /**
    * Downs all the nodes in the cluster.
@@ -258,22 +241,17 @@ class Downer[A: Strategy](cluster: Cluster,
    * In short, the leader can down anyone. Other nodes are only allowed to down themselves.
    */
   private def executeDecision(decision: StrategyDecision): SyncIO[Unit] = SyncIO {
-    println(s"DECISION: $decision")
     if (cluster.state.leader.contains(cluster.selfAddress)) {
       val nodesToDown = decision.nodesToDown
-      println(s"Downing nodes: $nodesToDown")
       nodesToDown.foreach(node => cluster.down(node.member.address))
     } else {
       if (decision.nodesToDown.map(_.member).contains(cluster.selfMember)) {
-        println(s"Downing self: $cluster.selfMember")
         cluster.down(cluster.selfAddress)
-      } else {
-        println("Non-leader cannot down other nodes.")
       }
     }
   }
 
-  private def scheduleStability: SyncIO[Cancellable] =
+  private def scheduleClusterIsStable: SyncIO[Cancellable] =
     SyncIO(context.system.scheduler.scheduleOnce(stableAfter, self, ClusterIsStable))
 
   /**
@@ -282,7 +260,7 @@ class Downer[A: Strategy](cluster: Cluster,
    *
    * @return a handle that will cancel both the instability trigger and the related timeout.
    */
-  private def scheduleInstability: SyncIO[Cancellable] =
+  private def scheduleClusterIsUnstable: SyncIO[Cancellable] =
     SyncIO {
       val c1 = context.system.scheduler.scheduleOnce(stableAfter * 2, self, ClusterIsUnstableTimeout)
       val c2 = context.system.scheduler.scheduleOnce(stableAfter + downAllWhenUnstable, self, ClusterIsUnstable)
@@ -295,6 +273,9 @@ class Downer[A: Strategy](cluster: Cluster,
         override def isCancelled: Boolean = b.getAndSet(c1.isCancelled && c2.isCancelled)
       }
     }
+
+  private def send(toMember: Member, msg: Any): SyncIO[Unit] =
+    SyncIO(mediator ! Publish(toMember.address.toString, msg))
 
   override def preStart(): Unit =
     cluster.subscribe(self,
@@ -314,8 +295,18 @@ object Downer {
                          downAllWhenUnstable: FiniteDuration): Props =
     Props(new Downer(cluster, strategy, stableAfter, downAllWhenUnstable))
 
+  /**
+   * Change the actor's behavior to `receive`.
+   */
   def become(receive: IOReceive)(implicit context: ActorContext): SyncIO[Unit] =
     SyncIO(context.become(receive.andThen(_.unsafeRunSync())))
+
+  /**
+   * Choose `whenTrue` when `cond` is true else choose `whenFalse`.
+   */
+  def when[A](cond: Boolean)(whenTrue: => SyncIO[A], whenFalse: => SyncIO[A]): SyncIO[A] =
+    if (cond) whenTrue
+    else whenFalse
 
   final case object ClusterIsStable
   final case object ClusterIsUnstable

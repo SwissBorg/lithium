@@ -1,14 +1,16 @@
 package akka.cluster.sbr.scenarios
 
 import akka.cluster.ClusterEvent.{MemberUp, UnreachableMember}
-import akka.cluster.Member
+import akka.cluster.MemberStatus.{Joining, WeaklyUp}
 import akka.cluster.sbr.ArbitraryInstances._
 import akka.cluster.sbr.testImplicits._
-import akka.cluster.sbr.{Staged, WorldView}
+import akka.cluster.sbr.{Node, ReachableNode, WorldView}
 import cats.data.{NonEmptyList, NonEmptySet}
-import org.scalacheck.Arbitrary
-import org.scalacheck.Gen.listOf
 import cats.implicits._
+import org.scalacheck.Arbitrary
+import org.scalacheck.Gen._
+
+import scala.collection.immutable.SortedSet
 
 final case class UpDisseminationScenario(worldViews: NonEmptyList[WorldView])
 
@@ -18,14 +20,14 @@ object UpDisseminationScenario {
     /**
      * Yields a [[WorldView]] that based on `worldView`
      * that sees all the nodes not in the `partition`
-     * as unreachable and seems some members up that others
+     * as unreachable and sees some members up that others
      * do not see.
      */
     def divergeWorldView(worldView: WorldView,
-                         allNodes: NonEmptySet[Member],
-                         partition: NonEmptySet[Member]): Arbitrary[WorldView] = Arbitrary {
-      listOf(arbMemberUp.arbitrary)
-        .map(_.filter(e => worldView.statusOf(e.member).fold(false)(_ === Staged)).foldLeft(worldView) {
+                         allNodes: NonEmptySet[Node],
+                         partition: NonEmptySet[Node]): Arbitrary[WorldView] =
+      pickStrictSubset(partition)
+        .map(_.filter(e => e.member.status == Joining || e.member.status == WeaklyUp).foldLeft(worldView) {
           case (worldView, upEvent) =>
             worldView.memberEvent(MemberUp(upEvent.member.copyUp(Integer.MAX_VALUE)))
         })
@@ -34,21 +36,19 @@ object UpDisseminationScenario {
 
           // Change `self`
           val worldView0 = worldView.copy(
-            self = partition.head,
-            otherStatuses = worldView.otherStatuses + (worldView.self -> worldView.selfStatus) - partition.head // add old self and remove new one
+            selfNode = ReachableNode(partition.head.member), // only clean partitions
+            otherNodes = worldView.otherNodes + worldView.selfNode - partition.head // add old self and remove new one
           )
 
           otherNodes.foldLeft[WorldView](worldView0) {
-            case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node))
+            case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node.member))
           }
         }
-    }
 
     for {
       initWorldView <- arbUpNumberConsistentWorldView.arbitrary
 
-      allNodes = NonEmptySet
-        .fromSetUnsafe(initWorldView.allConsideredNodes) // UpNumberConsistentWorldView has at least one node and all are reachable
+      allNodes = initWorldView.nodes // UpNumberConsistentWorldView has at least one node and all are reachable
 
       // Split the allNodes in `nSubCluster`.
       partitions <- splitCluster(allNodes)
@@ -59,4 +59,10 @@ object UpDisseminationScenario {
     } yield UpDisseminationScenario(divergedWorldViews)
   }
 
+  def pickStrictSubset[A: Ordering](as: NonEmptySet[A]): Arbitrary[SortedSet[A]] = Arbitrary {
+    for {
+      n      <- chooseNum(0, as.size - 1)
+      subset <- pick(n.toInt, as.toSortedSet)
+    } yield SortedSet(subset: _*)
+  }
 }

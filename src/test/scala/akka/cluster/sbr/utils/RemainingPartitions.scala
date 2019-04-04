@@ -22,7 +22,7 @@ object RemainingPartitions {
     case _: DownReachable                => RemainingPartitions(0)
     case _: DownSelf                     => RemainingPartitions(0)
     case _: Idle.type =>
-      if (worldView.reachableConsideredNodes.isEmpty) RemainingPartitions(0) // node is effectively down
+      if (worldView.consideredReachableNodes.isEmpty) RemainingPartitions(0) // node is effectively down
       else RemainingPartitions(1)
   }
 

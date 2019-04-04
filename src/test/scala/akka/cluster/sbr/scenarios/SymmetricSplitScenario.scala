@@ -1,9 +1,8 @@
 package akka.cluster.sbr.scenarios
 
 import akka.cluster.ClusterEvent.UnreachableMember
-import akka.cluster.Member
 import akka.cluster.sbr.ArbitraryInstances._
-import akka.cluster.sbr.WorldView
+import akka.cluster.sbr.{Node, ReachableNode, WorldView}
 import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
@@ -21,38 +20,25 @@ object SymmetricSplitScenario {
    */
   implicit val arbSplitScenario: Arbitrary[SymmetricSplitScenario] = Arbitrary {
 
-    /**
-     * Yields a [[WorldView]] that based on `worldView`
-     * that sees all the nodes not in the `partition`
-     * as unreachable.
-     */
-    def divergeWorldView(worldView: WorldView,
-                         allNodes: NonEmptySet[Member],
-                         partition: NonEmptySet[Member]): WorldView = {
-      val otherNodes = allNodes -- partition
+    def partitionedWorldView[N <: Node](nodes: NonEmptySet[N])(partition: NonEmptySet[N]): WorldView = {
+      val otherNodes = nodes -- partition
 
-      // Change `self`
-      val worldView0 = worldView.copy(
-        self = partition.head,
-        otherStatuses = worldView.otherStatuses + (worldView.self -> worldView.selfStatus) - partition.head // add old self and remove new one
-      )
+      val worldView0 = new WorldView(ReachableNode(partition.head.member), partition.tail.map(identity))
 
       otherNodes.foldLeft[WorldView](worldView0) {
-        case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node))
+        case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node.member))
       }
     }
 
     for {
-      healthyWorldView <- arbHealthyWorldView.arbitrary
-
-      allNodes = healthyWorldView.allStatuses.keys
+      nodes <- arbNonEmptySet[ReachableNode].arbitrary
 
       // Split the allNodes in `nSubCluster`.
-      partitions <- splitCluster(allNodes)
+      partitions <- splitCluster(nodes)
 
       // Each sub-allNodes sees the other nodes as unreachable.
-      divergedWorldViews = partitions.map(divergeWorldView(healthyWorldView, allNodes, _))
-    } yield SymmetricSplitScenario(divergedWorldViews, refineV[Positive](allNodes.length).right.get)
+      partitionedWorldViews = partitions.map(partitionedWorldView(nodes))
+    } yield SymmetricSplitScenario(partitionedWorldViews, refineV[Positive](nodes.length).right.get)
   }
 
 }

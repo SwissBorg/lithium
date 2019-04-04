@@ -10,11 +10,9 @@ private[staticquorum] object ReachableNodes {
   def apply(worldView: WorldView,
             quorumSize: QuorumSize,
             role: String): Either[NoReachableNodesError.type, ReachableNodes] = {
-    val reachableConsideredNodes = worldView.reachableConsideredNodesWithRole(role)
+    val reachableConsideredNodes = worldView.consideredReachableNodesWithRole(role)
 
-//    println(s"WV: $worldView")
-
-    if (worldView.reachableConsideredNodes.isEmpty && reachableConsideredNodes.isEmpty) {
+    if (worldView.consideredReachableNodes.isEmpty && reachableConsideredNodes.isEmpty) {
       NoReachableNodesError.asLeft
     } else {
       if (reachableConsideredNodes.size >= quorumSize)

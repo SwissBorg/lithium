@@ -28,13 +28,14 @@ object StrategyDecision {
   implicit val strategyDecisionMonoid: Monoid[StrategyDecision] = new Monoid[StrategyDecision] {
     override def empty: StrategyDecision = Idle
 
-    override def combine(x: StrategyDecision, y: StrategyDecision): StrategyDecision = (x, y) match {
-      case (Idle, y)        => y
-      case (x, Idle)        => x
-      case (x: DownSelf, _) => x
-      case (_, y: DownSelf) => y
-      case (x, y)           => DownThese(x, y)
-    }
+    override def combine(x: StrategyDecision, y: StrategyDecision): StrategyDecision =
+      (x, y) match {
+        case (Idle, y)        => y
+        case (x, Idle)        => x
+        case (x: DownSelf, _) => x
+        case (_, y: DownSelf) => y
+        case (x, y)           => DownThese(x, y)
+      }
   }
 }
 
@@ -43,12 +44,13 @@ object StrategyDecision {
  */
 sealed abstract case class DownReachable(nodeGroup: SortedSet[ReachableNode]) extends StrategyDecision
 object DownReachable {
-  def apply(worldView: WorldView): DownReachable = new DownReachable(worldView.reachableNodes) {}
+  def apply(worldView: WorldView): DownReachable =
+    new DownReachable(worldView.reachableNodes) {}
 }
 
 sealed abstract case class DownSelf(node: Node) extends StrategyDecision
 object DownSelf {
-  def apply(worldView: WorldView): DownSelf = new DownSelf(IndirectlyConnectedNode(worldView.self)) {}
+  def apply(worldView: WorldView): DownSelf = new DownSelf(worldView.selfNode) {}
 }
 
 /**

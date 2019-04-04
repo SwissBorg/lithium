@@ -82,7 +82,8 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
 
   implicit val arbMember: Arbitrary[Member] = Arbitrary(
     oneOf(
-      arbWeaklyUpMember.arbitrary,
+//      arbJoiningMember.arbitrary,
+//      arbWeaklyUpMember.arbitrary,
       arbUpMember.arbitrary,
       arbLeavingMember.arbitrary,
       arbDownMember.arbitrary,
@@ -92,13 +93,13 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
   )
 
   implicit val arbWorldView: Arbitrary[WorldView] = Arbitrary(
-    arbNonEmptyMap[Member, Status].arbitrary.map(nodes => WorldView(nodes.head._1, nodes.head._2, nodes.tail))
+    arbNonEmptySet[Node].arbitrary.map(nodes => new WorldView(ReachableNode(nodes.head.member), nodes.tail))
   )
 
   implicit val arbHealthyWorldView: Arbitrary[HealthyWorldView] = Arbitrary(
     for {
-      nodes <- arbNonEmptySet[Member].arbitrary
-      worldView = WorldView(nodes.head, Reachable, otherStatuses = SortedMap(nodes.tail.map(_ -> Reachable).toSeq: _*))
+      nodes <- arbNonEmptySet[ReachableNode].arbitrary // todo considered
+      worldView = new WorldView(nodes.head, nodes.tail.map(identity))
     } yield tag[HealthyTag][WorldView](worldView)
   )
 
@@ -107,27 +108,21 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
       nodes <- arbNonEmptySet[WeaklyUpMember](taggedOrder[Member, WeaklyUpTag], arbWeaklyUpMember).arbitrary
 
       nodeStatuses = nodes.toNonEmptyList.zipWithIndex.map {
-        case (weaklyUpMember, ix) => weaklyUpMember.copyUp(ix) -> Reachable
-      }
+        case (weaklyUpMember, ix) => ReachableNode(weaklyUpMember.copyUp(ix))
+      }.toNes
 
-      worldView = WorldView(nodeStatuses.head._1, nodeStatuses.head._2, SortedMap(nodeStatuses.toList: _*))
+      worldView = new WorldView(nodeStatuses.head, nodeStatuses.tail.map(identity))
     } yield tag[UpNumberConsistentTag][WorldView](worldView)
   )
 
-  implicit val arbReachability: Arbitrary[Status] =
-    Arbitrary(oneOf(Reachable, Unreachable))
+  implicit val arbNode: Arbitrary[Node] =
+    Arbitrary(oneOf(arbReachableNode.arbitrary, arbUnreachableNode.arbitrary))
 
   implicit val arbReachableNode: Arbitrary[ReachableNode] =
     Arbitrary(arbMember.arbitrary.map(ReachableNode(_)))
 
-  implicit val arbReachableConsideredNode: Arbitrary[ReachableConsideredNode] =
-    Arbitrary(arbMember.arbitrary.map(ReachableConsideredNode(_)))
-
   implicit val arbUnreachableNode: Arbitrary[UnreachableNode] =
     Arbitrary(arbMember.arbitrary.map(UnreachableNode(_)))
-
-  implicit val arbIndirectlyConnectedNode: Arbitrary[IndirectlyConnectedNode] =
-    Arbitrary(arbMember.arbitrary.map(IndirectlyConnectedNode(_)))
 
   implicit val arbUniqueAddress: Arbitrary[UniqueAddress] =
     Arbitrary(for {
@@ -141,8 +136,10 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
       system   <- alphaNumStr
     } yield Address(protocol, system, None, None))
 
-  implicit val arbMemberStatusFromJoining: Arbitrary[MemberStatus] =
-    Arbitrary(oneOf[MemberStatus](WeaklyUp, WeaklyUp))
+  implicit val arbMemberStatus: Arbitrary[MemberStatus] =
+    Arbitrary(
+      oneOf(Joining, WeaklyUp, Up, Leaving, Exiting, Down, Removed)
+    )
 
   implicit val arbMemberJoined: Arbitrary[MemberJoined] = Arbitrary(
     arbJoiningMember.arbitrary.map(MemberJoined)

@@ -2,72 +2,73 @@ package akka.cluster.sbr
 
 import akka.cluster.ClusterEvent._
 import akka.cluster.Member
-import akka.cluster.Member._
-import akka.cluster.MemberStatus.{Joining, WeaklyUp}
+import akka.cluster.MemberStatus.{Down, Joining, Removed, WeaklyUp}
 import akka.cluster.sbr.implicits._
 import cats.Eq
-import cats.data.NonEmptyMap
+import cats.data.NonEmptySet
 import cats.implicits._
 
-import scala.collection.immutable.{SortedMap, SortedSet}
+import scala.collection.immutable.SortedSet
 
 /**
  * The cluster from the point of view of a node.
  */
-final case class WorldView private[sbr] (private[sbr] val self: Member,
-                                         private[sbr] val selfStatus: Status,
-                                         private[sbr] val otherStatuses: SortedMap[Member, Status]) {
+final case class WorldView private[sbr] (private[sbr] val selfNode: Node,
+                                         /**
+                                          * Nodes are stored in a SortedSet as it depends on the ordering
+                                          * and not universal equality. The ordering on nodes is defined
+                                          * on their unique address, ignoring for instance the status.
+                                          * As a result, it cannot contain duplicate nodes.
+                                          *
+                                          * Care needs need to be taken when replacing a node with one where
+                                          * the status changed in the set. First it has it to be removed and
+                                          * then added. Only adding it will not override the value as they
+                                          * are equal given the ordering.
+                                          */
+                                         private[sbr] val otherNodes: SortedSet[Node]) {
+  import WorldView._
 
-  /**
-   * All the nodes in the cluster.
-   */
-  def allConsideredNodes: SortedSet[Member] =
-    SortedSet(allStatuses.toSortedMap.collect {
-      case (member, Reachable)   => member
-      case (member, Unreachable) => member
-    }.toSeq: _*)
+  lazy val nodes: NonEmptySet[Node] = NonEmptySet(selfNode, otherNodes)
+
+  def consideredNodes: SortedSet[Node] = nodes.toSortedSet.collect {
+    case status if shouldBeConsidered(status.member) => status
+  }
 
   /**
    * All the nodes in the cluster with the given role. If `role` is the empty
    * string all nodes will be returned.
    *
-   * @see [[allConsideredNodes]]
+   * @see [[consideredNodes]]
    */
-  def allConsideredNodesWithRole(role: String): SortedSet[Member] =
-    if (role != "") allConsideredNodes.filter(_.roles.contains(role)) else allConsideredNodes
+  def consideredNodesWithRole(role: String): SortedSet[Node] =
+    if (role.nonEmpty) consideredNodes.filter(_.member.roles.contains(role)) else consideredNodes
 
-  /**
-   * Nodes that are reachable from the current node. Does not count weakly-up nodes
-   * as they might not be visible from the other side of a potential split.
-   */
-  def reachableConsideredNodes: SortedSet[ReachableConsideredNode] =
-    SortedSet(allStatuses.toSortedMap.collect {
-      case (member, Reachable) => ReachableConsideredNode(member)
-    }.toSeq: _*)
+  lazy val consideredReachableNodes: SortedSet[ReachableNode] =
+    nodes.collect {
+      case r @ ReachableNode(member) if shouldBeConsidered(member) => r
+    }
 
   /**
    * Reachable nodes with the given role. If `role` is the empty
    * string all reachable nodes will be returned.
    *
-   * @see [[reachableConsideredNodes]]
+   * @see [[consideredReachableNodes]]
    */
-  def reachableConsideredNodesWithRole(role: String): SortedSet[ReachableConsideredNode] =
-    if (role != "") reachableConsideredNodes.filter(_.member.roles.contains(role)) else reachableConsideredNodes
+  def consideredReachableNodesWithRole(role: String): SortedSet[ReachableNode] =
+    if (role.nonEmpty) consideredReachableNodes.filter(_.member.roles.contains(role)) else consideredReachableNodes
 
-  def reachableNodes: SortedSet[ReachableNode] =
-    SortedSet(allStatuses.toSortedMap.collect {
-      case (member, Reachable)       => ReachableNode(member)
-      case (member, WeaklyReachable) => ReachableNode(member)
-      case (member, Staged)          => ReachableNode(member)
-    }.toSeq: _*)
+  lazy val reachableNodes: SortedSet[ReachableNode] = nodes.toSortedSet.collect { case r: ReachableNode => r }
 
   /**
    * Nodes that have been flagged as unreachable.
    */
-  def unreachableNodes: SortedSet[UnreachableNode] =
-    SortedSet(allStatuses.toSortedMap.iterator.collect {
-      case (member, Unreachable) => UnreachableNode(member)
-    }.toSeq: _*)
+  lazy val unreachableNodes: SortedSet[UnreachableNode] = nodes.collect {
+    case r: UnreachableNode => r
+  }
+
+  lazy val consideredUnreachableNodes: SortedSet[UnreachableNode] = nodes.collect {
+    case r @ UnreachableNode(member) if shouldBeConsidered(member) => r
+  }
 
   /**
    * Unreachable nodes with the given role. If `role` is the empty
@@ -76,25 +77,15 @@ final case class WorldView private[sbr] (private[sbr] val self: Member,
    * @see [[unreachableNodes]]
    */
   def unreachableNodesWithRole(role: String): SortedSet[UnreachableNode] =
-    if (role != "") unreachableNodes.filter(_.member.roles.contains(role)) else unreachableNodes
+    if (role.nonEmpty) unreachableNodes.filter(_.member.roles.contains(role)) else unreachableNodes
 
-  /**
-   * The reachability of the `member`.
-   */
-  def statusOf(node: Member): Option[Status] = allStatuses.lookup(node)
+  def considerdeUnreachableNodesWithRole(role: String): SortedSet[UnreachableNode] =
+    if (role.nonEmpty) consideredUnreachableNodes.filter(_.member.roles.contains(role)) else consideredUnreachableNodes
 
   /**
    * Updates the reachability given the member event.
    */
-  def memberEvent(event: MemberEvent): WorldView =
-    event match {
-      case MemberJoined(node)              => join(node)
-      case MemberWeaklyUp(node)            => weaklyUp(node)
-      case MemberUp(member)                => up(member)
-      case _: MemberLeft | _: MemberExited => leftOrExited(event.member)
-      case MemberDowned(member)            => down(member)
-      case MemberRemoved(member, _)        => remove(member)
-    }
+  def memberEvent(event: MemberEvent): WorldView = updateMember(event.member)
 
   /**
    * Updates the reachability given the reachability event.
@@ -105,129 +96,78 @@ final case class WorldView private[sbr] (private[sbr] val self: Member,
       case ReachableMember(member)   => becomeReachable(member)
     }
 
-  // todo
-  def isStableChange(oldWorldView: WorldView): Boolean = (oldWorldView.unreachableNodes -- unreachableNodes).isEmpty
-
   /**
-   * Stages the `node`.
-   *
-   * A staged node is a node that has been seen by the the current
-   * node but should not be counted in the decisions. E.g. in the
-   * `Joining` status.
-   *
+   * Returns true if it is stable compared to `oldWorldView`. Otherwise, returns false.
    */
-  private def join(node: Member): WorldView =
-    if (node === self) {
-      copy(self = node)
-    } else {
-      copy(otherStatuses = otherStatuses + (node -> Staged))
+  def isStableChange(oldWorldView: WorldView): Boolean =
+    oldWorldView.unreachableNodes.size != unreachableNodes.size ||
+      (unreachableNodes -- oldWorldView.unreachableNodes).isEmpty ||
+      (oldWorldView.unreachableNodes -- unreachableNodes).isEmpty
+
+  def hasSplitBrain: Boolean =
+    unreachableNodes.exists {
+      _.member.status match {
+        case Down | Removed => false // down or removed nodes are already leaving the cluster
+        case _              => true
+      }
     }
-
-  /**
-   * Stages the `node`.
-   *
-   * A staged node is a node that has been seen by the the current
-   * node but should not be counted in the decisions. E.g. in the
-   * `WeaklyUp`  status.
-   *
-   */
-  private def weaklyUp(node: Member): WorldView =
-    if (node === self) {
-      copy(self = node, selfStatus = WeaklyReachable)
-    } else {
-      copy(otherStatuses = otherStatuses + (node -> WeaklyReachable))
-    }
-
-  /**
-   * todo
-   */
-  private def down(node: Member): WorldView =
-    if (self === node) {
-      copy(self = node)
-    } else {
-      statusOf(node).fold(this)(status => copy(otherStatuses = otherStatuses + (node -> status)))
-    }
-
-  /**
-   * Makes a staged node `Reachable`.
-   */
-  private def up(node: Member): WorldView =
-    if (node === self) {
-      copy(self = node, selfStatus = Reachable)
-    } else {
-      copy(otherStatuses = otherStatuses + (node -> Reachable))
-    }
-
-  /**
-   * Updates the member.
-   */
-  private def leftOrExited(node: Member): WorldView =
-    if (node === self) {
-      copy(self = node)
-    } else {
-      statusOf(node).fold(this)(
-        status => copy(otherStatuses = otherStatuses + (node -> status))
-      )
-    }
-
-  /**
-   * Remove the `node`.
-   */
-  private def remove(node: Member): WorldView =
-    // ignores self removal
-    copy(otherStatuses = otherStatuses - node)
 
   /**
    * Change the `node`'s status to `Unreachable`.
    */
-  private def becomeUnreachable(node: Member): WorldView = changeStatus(Unreachable, node)
+  private def becomeUnreachable(member: Member): WorldView = updateNode(UnreachableNode(member))
 
   /**
    * Change the `node`'s state to `Reachable`.
    */
-  private def becomeReachable(node: Member): WorldView = changeStatus(Reachable, node)
+  private def becomeReachable(member: Member): WorldView = updateNode(ReachableNode(member))
 
-  private def changeStatus(status: Status, node: Member): WorldView =
-    if (node === self) {
-      copy(self = node, selfStatus = status)
+  private def updateMember(member: Member): WorldView =
+    if (member === selfNode.member) {
+      copy(selfNode = selfNode.copyMember(member))
     } else {
-      copy(otherStatuses = otherStatuses + (node -> status))
+      // Assumes the member is reachable if seen for the 1st time.
+      otherNodes.find(_.member === member).fold(copy(otherNodes = otherNodes + ReachableNode(member))) { status =>
+        copy(otherNodes = otherNodes - status + status.copyMember(member))
+      }
     }
 
-  private[sbr] val allStatuses: NonEmptyMap[Member, Status] = NonEmptyMap(self -> selfStatus, otherStatuses)
+  private def updateNode(node: Node): WorldView =
+    if (node.member === selfNode.member) {
+      copy(selfNode = node)
+    } else {
+      copy(otherNodes = otherNodes - node + node) // todo explain
+    }
 }
 
 object WorldView {
-  def init(self: Member): WorldView = WorldView(self, Staged, SortedMap(self -> Staged))
+  def init(self: Member): WorldView = new WorldView(ReachableNode(self), SortedSet.empty)
 
   // todo test
   def apply(self: Member, state: CurrentClusterState): WorldView = {
-    val unreachableMembers: SortedMap[Member, Unreachable.type] =
-      state.unreachable
-        .map(_ -> Unreachable)(collection.breakOut)
+    val unreachableMembers: SortedSet[UnreachableNode] = SortedSet(state.unreachable.map(UnreachableNode(_)).toSeq: _*)
 
-    val reachableMembers: SortedMap[Member, Status] =
-      state.members
-        .diff(state.unreachable)
-        .map { m =>
-          m.status match {
-            case Joining  => m -> Staged
-            case WeaklyUp => m -> WeaklyReachable
-            case _        => m -> Reachable
-          }
-        }(collection.breakOut)
+    val reachableMembers: SortedSet[ReachableNode] = SortedSet(
+      state.members.diff(state.unreachable).map(ReachableNode(_)).toSeq: _*
+    )
 
-    val a = WorldView(self,
-                      reachableMembers.getOrElse(self, Staged),
-                      unreachableMembers ++ reachableMembers.filterKeys(_ =!= self)) // Self is added separately]
+    val a = WorldView(
+      reachableMembers
+        .find(_.member === self)
+        .orElse(unreachableMembers.find(_.member === self))
+        .getOrElse(ReachableNode(self)), // assume self is reachable
+      (unreachableMembers ++ reachableMembers).filter(_.member =!= self)
+    )
 
     println(s"INIT $a")
 
     a
   }
 
+  def shouldBeConsidered(member: Member): Boolean = member.status != Joining && member.status != WeaklyUp
+
   implicit val worldViewEq: Eq[WorldView] = new Eq[WorldView] {
     override def eqv(x: WorldView, y: WorldView): Boolean =
-      x.self === y.self && x.selfStatus === y.selfStatus && x.otherStatuses === y.otherStatuses
+      x.selfNode === y.selfNode && x.selfNode === y.selfNode && x.otherNodes === y.otherNodes
   }
 }

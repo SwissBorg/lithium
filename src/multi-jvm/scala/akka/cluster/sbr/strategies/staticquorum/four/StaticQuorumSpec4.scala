@@ -25,24 +25,25 @@ class StaticQuorumSpec4 extends ThreeNodeSpec("StaticQuorum", StaticQuorumSpec4C
 
       enterBarrier("node3-disconnected")
 
-      runOn(node1, node2) {
-        waitForUp(node1, node2)
-      }
-
-      enterBarrier("node3-unreachable")
-
-      enterBarrier("node1-3-up")
-
       runOn(node2) {
         waitForUp(node2)
         waitToBecomeUnreachable(node3)
       }
 
-      runOn(node1) {
-        waitToBecomeUnreachable(node1, node2, node3)
+      enterBarrier("node3-unreachable")
+
+      runOn(node3) {
+        waitForUp(node3)
+        waitToBecomeUnreachable(node2)
       }
 
-      enterBarrier("node3-unreachable")
+      enterBarrier("node2-unreachble")
+
+      runOn(node1) {
+        waitToBecomeUnreachable(node2, node3)
+      }
+
+      enterBarrier("node2-3-unreachable")
 
       runOn(node1, node2, node3) {
         waitForSelfDowning

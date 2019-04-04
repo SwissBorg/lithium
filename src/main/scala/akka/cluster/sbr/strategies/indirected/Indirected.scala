@@ -8,13 +8,11 @@ final case object Indirected {
   implicit val indirectedStrategy: Strategy[Indirected.type] = new Strategy[Indirected.type] {
     override def takeDecision(strategy: Indirected.type, worldView: WorldView): Either[Throwable, StrategyDecision] = {
       val decision =
-        if (worldView.selfStatus === Unreachable) {
-          DownSelf(worldView)
-        } else {
-          Idle
+        worldView.selfNode match {
+          case UnreachableNode(_) => DownSelf(worldView)
+          case ReachableNode(_)   => Idle
         }
 
-//      println(s"ID: $decision")
       decision.asRight
     }
   }

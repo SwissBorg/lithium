@@ -10,8 +10,6 @@ object StaticQuorum {
     ReachableNodes(worldView, strategy.quorumSize, strategy.role).map { reachableNodes =>
       val a = (reachableNodes, UnreachableNodes(worldView, strategy.quorumSize, strategy.role))
 
-//      println(a)
-
       a match {
 
         /**

@@ -7,28 +7,18 @@ import cats.implicits._
 sealed abstract class KeepOldestView extends Product with Serializable
 
 object KeepOldestView {
-  def apply(worldView: WorldView, downIfAlone: Boolean, role: String): Either[KeepOldestViewError, KeepOldestView] = {
-    val allNodesSortedByAge = worldView.allConsideredNodesWithRole(role).toList.sorted(Member.ageOrdering)
+  def apply(worldView: WorldView, downIfAlone: Boolean, role: String): Either[NoOldestNode.type, KeepOldestView] = {
+    val allNodesSortedByAge = worldView.consideredNodesWithRole(role).toList.sortBy(_.member)(Member.ageOrdering)
 
-    for {
-      oldestNode <- allNodesSortedByAge.headOption
-//      _ = println(allNodesSortedByAge.map(m => s"${m.upNumber}-${m.address.host}-${m.address.port}"))
-//      _ = println(s"OLDEST: $oldestNode")
-      reachability <- worldView.statusOf(oldestNode)
-//      _ = println(s"REACHABILITY: $reachability")
-    } yield
-      reachability match {
-        case Reachable =>
-          if (!downIfAlone || worldView.reachableConsideredNodes.size > 1) OldestReachable.asRight
-          else OldestAlone.asRight
-        case Unreachable              => OldestUnreachable.asRight
-        case Staged | WeaklyReachable => OldestIsNotConsidered(oldestNode).asLeft
-      }
-  }.fold[Either[KeepOldestViewError, KeepOldestView]](NoOldestNode.asLeft)(identity)
+    allNodesSortedByAge.headOption.fold[Either[NoOldestNode.type, KeepOldestView]](NoOldestNode.asLeft) {
+      case _: ReachableNode =>
+        if (!downIfAlone || worldView.consideredReachableNodes.size > 1) OldestReachable.asRight
+        else OldestAlone.asRight
+      case _: UnreachableNode => OldestUnreachable.asRight
+    }
+  }
 
-  sealed abstract class KeepOldestViewError(message: String) extends Throwable(message)
-  final case object NoOldestNode                             extends KeepOldestViewError("")
-  final case class OldestIsNotConsidered(member: Member)     extends KeepOldestViewError(s"$member")
+  final case object NoOldestNode extends Throwable
 }
 
 final case object OldestReachable   extends KeepOldestView
