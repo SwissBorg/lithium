@@ -7,7 +7,7 @@ sealed abstract private[staticquorum] class UnreachableNodes
 
 private[staticquorum] object UnreachableNodes {
   def apply(worldView: WorldView, quorumSize: QuorumSize, role: String): UnreachableNodes = {
-    val unreachableNodes = worldView.considerdeUnreachableNodesWithRole(role)
+    val unreachableNodes = worldView.consideredUnreachableNodesWithRole(role)
 
     if (unreachableNodes.isEmpty) EmptyUnreachable
     else {

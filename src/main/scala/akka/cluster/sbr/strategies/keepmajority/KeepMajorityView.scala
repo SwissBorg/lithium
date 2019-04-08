@@ -24,7 +24,7 @@ private[keepmajority] object KeepMajorityView {
 //    println(s"role = $role")
 
     val reachableConsideredNodes = worldView.consideredReachableNodesWithRole(role)
-    val unreachableNodes         = worldView.considerdeUnreachableNodesWithRole(role)
+    val unreachableNodes         = worldView.consideredUnreachableNodesWithRole(role)
 
     if (reachableConsideredNodes.size >= majority) ReachableMajority.asRight
     else if (unreachableNodes.size >= majority) UnreachableMajority.asRight

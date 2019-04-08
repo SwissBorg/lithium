@@ -154,7 +154,7 @@ class WorldViewSpec extends MySpec {
         else assert(worldView.consideredNodesWithRole(role).forall(worldView.consideredNodes.contains))
 
         worldView.consideredNodesWithRole(role) should ===(
-          worldView.consideredReachableNodesWithRole(role) ++ worldView.considerdeUnreachableNodesWithRole(role)
+          worldView.consideredReachableNodesWithRole(role) ++ worldView.consideredUnreachableNodesWithRole(role)
         )
       }
     }
@@ -178,9 +178,9 @@ class WorldViewSpec extends MySpec {
       forAll { (worldView: WorldView, role: String) =>
         if (role === "")
           worldView
-            .considerdeUnreachableNodesWithRole(role)
+            .consideredUnreachableNodesWithRole(role)
             .map(_.member) should ===(worldView.unreachableNodes.map(_.member))
-        else assert(worldView.considerdeUnreachableNodesWithRole(role).forall(worldView.unreachableNodes.contains))
+        else assert(worldView.consideredUnreachableNodesWithRole(role).forall(worldView.unreachableNodes.contains))
       }
     }
 

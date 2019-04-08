@@ -43,6 +43,7 @@ val refinedVersion             = "0.9.4"
 val pureConfigVersion          = "0.10.2"
 val scalacheckShapelessVersion = "1.1.8"
 val refinedScalacheckVersion   = "0.9.4"
+val logbackVersion             = "1.2.3"
 
 libraryDependencies ++= Seq(
   "eu.timepit"                 %% "refined"                   % refinedVersion,
@@ -53,9 +54,11 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka"          %% "akka-cluster-tools"        % akkaVersion,
   "com.typesafe.akka"          %% "akka-distributed-data"     % akkaVersion,
   "com.typesafe.akka"          %% "akka-stream"               % akkaVersion,
+  "com.typesafe.akka"          %% "akka-slf4j"                % akkaVersion,
+  "ch.qos.logback"             % "logback-classic"            % logbackVersion,
   "com.typesafe.akka"          %% "akka-http"                 % akkaHTTPVersion,
   "org.typelevel"              %% "cats-core"                 % catsVersion,
-  "org.typelevel"              %% "cats-effect"                 % catsEffectVersion,
+  "org.typelevel"              %% "cats-effect"               % catsEffectVersion,
   "org.typelevel"              %% "cats-testkit"              % catsVersion,
   "com.chuusai"                %% "shapeless"                 % shapelessVersion,
   "com.github.julien-truffaut" %% "monocle-core"              % monocleVersion,

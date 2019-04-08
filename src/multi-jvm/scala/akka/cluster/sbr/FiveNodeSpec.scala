@@ -6,6 +6,7 @@ import akka.cluster.MemberStatus.{Down, Up}
 import akka.remote.testconductor.RoleName
 import akka.remote.testkit.MultiNodeSpec
 import akka.testkit.ImplicitSender
+import org.jboss.netty.logging.Slf4JLoggerFactory
 import org.scalatest.concurrent.{Eventually, IntegrationPatience}
 
 import scala.concurrent.duration._
@@ -77,6 +78,7 @@ abstract class FiveNodeSpec(name: String, config: FiveNodeSpecConfig)
   }
 
   private val addresses: Map[RoleName, Address] = roles.map(r => r -> node(r).address).toMap
+  addresses.foreach(a => log.debug(s"$a"))
 
   private def addressOf(roleName: RoleName): Address = addresses(roleName)
 
