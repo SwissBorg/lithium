@@ -11,7 +11,11 @@ import cats.implicits._
 import scala.collection.immutable.SortedSet
 
 /**
- * The cluster from the point of view of a node.
+ * Represents the view of the cluster from the point of view of the
+ * `selfNode`.
+ *
+ * @param selfNode the node from which the world is seen.
+ * @param otherNodes all the other nodes knowns by the `selfNode`.
  */
 final case class WorldView private[sbr] (private[sbr] val selfNode: Node,
                                          /**
@@ -28,67 +32,77 @@ final case class WorldView private[sbr] (private[sbr] val selfNode: Node,
                                          private[sbr] val otherNodes: SortedSet[Node]) {
   import WorldView._
 
+  /**
+   * All the nodes in the cluster.
+   */
   lazy val nodes: NonEmptySet[Node] = NonEmptySet(selfNode, otherNodes)
 
+  /**
+   * The nodes that need to be considered in split-brain resolutions.
+   *
+   * A node is to be considered when it isn't in the "Joining" or "WeaklyUp"
+   * states. These status are ignored since a node can join and become
+   * weakly-up during a network-partition.
+   */
   def consideredNodes: SortedSet[Node] = nodes.toSortedSet.collect {
     case status if shouldBeConsidered(status.member) => status
   }
 
   /**
-   * All the nodes in the cluster with the given role. If `role` is the empty
-   * string all nodes will be returned.
-   *
-   * @see [[consideredNodes]]
+   * The nodes with the given role, that need to be considered in
+   * split-brain resolutions.
    */
   def consideredNodesWithRole(role: String): SortedSet[Node] =
     if (role.nonEmpty) consideredNodes.filter(_.member.roles.contains(role)) else consideredNodes
 
+  /**
+   * The reachable nodes that need to be considered in split-brain resolutions.
+   */
   lazy val consideredReachableNodes: SortedSet[ReachableNode] =
     nodes.collect {
       case r @ ReachableNode(member) if shouldBeConsidered(member) => r
     }
 
   /**
-   * Reachable nodes with the given role. If `role` is the empty
-   * string all reachable nodes will be returned.
-   *
-   * @see [[consideredReachableNodes]]
+   * The reachable nodes with the given role, that need to be
+   * considered in split-brain resolutions.
    */
   def consideredReachableNodesWithRole(role: String): SortedSet[ReachableNode] =
     if (role.nonEmpty) consideredReachableNodes.filter(_.member.roles.contains(role)) else consideredReachableNodes
 
+  /**
+   * All the reachable nodes.
+   */
   lazy val reachableNodes: SortedSet[ReachableNode] = nodes.toSortedSet.collect { case r: ReachableNode => r }
 
   /**
-   * Nodes that have been flagged as unreachable.
+   * All the unreachable nodes.
    */
   lazy val unreachableNodes: SortedSet[UnreachableNode] = nodes.collect {
     case r: UnreachableNode => r
   }
 
+  /**
+   * The unreachable nodes that need to be considered in split-brain resolutions.
+   */
   lazy val consideredUnreachableNodes: SortedSet[UnreachableNode] = nodes.collect {
     case r @ UnreachableNode(member) if shouldBeConsidered(member) => r
   }
 
   /**
-   * Unreachable nodes with the given role. If `role` is the empty
-   * string all unreachable nodes will be returned.
-   *
-   * @see [[unreachableNodes]]
+   * The unreachable nodes with the given role, that need to be
+   * considered in split-brain resolutions.
    */
-  def unreachableNodesWithRole(role: String): SortedSet[UnreachableNode] =
-    if (role.nonEmpty) unreachableNodes.filter(_.member.roles.contains(role)) else unreachableNodes
-
-  def considerdeUnreachableNodesWithRole(role: String): SortedSet[UnreachableNode] =
+  def consideredUnreachableNodesWithRole(role: String): SortedSet[UnreachableNode] =
     if (role.nonEmpty) consideredUnreachableNodes.filter(_.member.roles.contains(role)) else consideredUnreachableNodes
 
   /**
-   * Updates the reachability given the member event.
+   * Update the world view given the member event.
    */
   def memberEvent(event: MemberEvent): WorldView = updateMember(event.member)
 
   /**
-   * Updates the reachability given the reachability event.
+   * Update the given the world view given the reachability event.
    */
   def reachabilityEvent(event: ReachabilityEvent): WorldView =
     event match {
@@ -97,20 +111,24 @@ final case class WorldView private[sbr] (private[sbr] val selfNode: Node,
     }
 
   /**
-   * Returns true if it is stable compared to `oldWorldView`. Otherwise, returns false.
+   * True when the change from the `oldWorldView` does not affect
+   * the "stability" of the cluster.
+   *
+   * The change is said to be stable when there's no change in the
+   * unreachable nodes.
    */
   def isStableChange(oldWorldView: WorldView): Boolean =
-    oldWorldView.unreachableNodes.size != unreachableNodes.size ||
+    !(oldWorldView.unreachableNodes.size != unreachableNodes.size ||
       (unreachableNodes -- oldWorldView.unreachableNodes).isEmpty ||
-      (oldWorldView.unreachableNodes -- unreachableNodes).isEmpty
+      (oldWorldView.unreachableNodes -- unreachableNodes).isEmpty)
 
-  def hasSplitBrain: Boolean =
-    unreachableNodes.exists {
-      _.member.status match {
-        case Down | Removed => false // down or removed nodes are already leaving the cluster
-        case _              => true
-      }
-    }
+//  def hasSplitBrain: Boolean =
+//    unreachableNodes.exists {
+//      _.member.status match {
+//        case Down | Removed => false // down or removed nodes are already leaving the cluster
+//        case _              => true
+//      }
+//    }
 
   /**
    * Change the `node`'s status to `Unreachable`.
@@ -159,7 +177,7 @@ object WorldView {
       (unreachableMembers ++ reachableMembers).filter(_.member =!= self)
     )
 
-    println(s"INIT $a")
+    println(s"INIT $a") // todo remove
 
     a
   }
