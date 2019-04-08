@@ -122,13 +122,13 @@ final case class WorldView private[sbr] (private[sbr] val selfNode: Node,
       (unreachableNodes -- oldWorldView.unreachableNodes).isEmpty ||
       (oldWorldView.unreachableNodes -- unreachableNodes).isEmpty)
 
-//  def hasSplitBrain: Boolean =
-//    unreachableNodes.exists {
-//      _.member.status match {
-//        case Down | Removed => false // down or removed nodes are already leaving the cluster
-//        case _              => true
-//      }
-//    }
+  def hasSplitBrain: Boolean =
+    unreachableNodes.exists {
+      _.member.status match {
+        case Down | Removed => false // down or removed nodes are already leaving the cluster
+        case _              => true
+      }
+    }
 
   /**
    * Change the `node`'s status to `Unreachable`.
