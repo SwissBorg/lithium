@@ -3,11 +3,12 @@ package akka.cluster.sbr
 import akka.actor.{Address, Cancellable}
 import akka.cluster.sbr.Notifier.JobStatus
 import cats.data.OptionT
+import cats.implicits._
 import cats.effect
 import cats.effect.SyncIO
 
-final case class Notifier[E] private (statuses: Map[Address, JobStatus],
-                                      send: (E, Address, Long) => SyncIO[Cancellable]) {
+final case class Notifier[E] private (private val statuses: Map[Address, JobStatus],
+                                      private val send: (E, Address, Long) => SyncIO[Cancellable]) {
 
   /**
    * Send `e` using [[send]].
@@ -53,6 +54,14 @@ final case class Notifier[E] private (statuses: Map[Address, JobStatus],
   }
 
   /**
+   * Cancels all the ongoing notifications to `address`.
+   *
+   * @param address the address for which to cancel the notifications.
+   */
+  def cancel(address: Address): SyncIO[Notifier[E]] =
+    statuses.get(address).traverse(_.jobs.values.toList.traverse(Downer.cancel)).as(copy(statuses = statuses - address))
+
+  /**
    * Maybe the id to be given to the next event to be sent to `address`
    * and the updated job status.
    *
@@ -86,6 +95,5 @@ final case class Notifier[E] private (statuses: Map[Address, JobStatus],
 
 object Notifier {
   def apply[E](send: (E, Address, Long) => SyncIO[Cancellable]): Notifier[E] = new Notifier(Map.empty, send)
-
   final case class JobStatus(jobs: Map[Long, Cancellable], stashedAcks: Set[Long])
 }

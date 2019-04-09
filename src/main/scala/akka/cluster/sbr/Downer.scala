@@ -5,7 +5,7 @@ import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus.{Down, Removed}
 import akka.cluster.pubsub.DistributedPubSub
-import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Subscribe}
+import akka.cluster.pubsub.DistributedPubSubMediator.{Put, SendToAll}
 import akka.cluster.sbr.implicits._
 import akka.cluster.sbr.strategies.Or
 import akka.cluster.sbr.strategies.downall.DownAll
@@ -37,7 +37,7 @@ class Downer[A: Strategy](cluster: Cluster,
   // a node that has been detected as unreachable will never receive an unreachability
   // event in his name.
   private val mediator = DistributedPubSub(cluster.system).mediator
-  mediator ! Subscribe("sbr", context.self)
+  mediator ! Put(self)
 
   override def receive: Receive = waitingForSnapshot.andThen(_.unsafeRunSync())
 
@@ -119,7 +119,7 @@ class Downer[A: Strategy](cluster: Cluster,
         if (event.member === cluster.selfMember) {
           for {
             _         <- SyncIO(log.debug("{}", r))
-            _         <- SyncIO(mediator ! Publish("sbr", r.ack))
+            _         <- SyncIO(mediator ! SendToAll(self.path.toStringWithoutAddress, r.ack, allButSelf = false))
             worldView <- reachabilityEvent(event)
             _         <- stateTransition(worldView, notifier)
           } yield ()
@@ -138,8 +138,11 @@ class Downer[A: Strategy](cluster: Cluster,
           _        <- become(noSplitBrain(worldView, clusterIsStable, notifier))
         } yield ()
 
-      case ClusterIsStable   => splitBrainResolver_(Or(strategy, Indirected))
-      case ClusterIsUnstable => SyncIO(log.warning("[no-split-brain] Received unstable cluster event."))
+      case ClusterIsStable =>
+        SyncIO(log.debug("Cluster is stable, resolving...")) >> splitBrainResolver_(Or(strategy, Indirected))
+
+      case ClusterIsUnstable =>
+        SyncIO(log.warning("[no-split-brain] Received unstable cluster event."))
     }
   }
 
@@ -196,7 +199,7 @@ class Downer[A: Strategy](cluster: Cluster,
         if (event.member === cluster.selfMember) {
           for {
             _         <- SyncIO(log.debug("{}", r))
-            _         <- SyncIO(mediator ! Publish("sbr", r.ack))
+            _         <- SyncIO(mediator ! SendToAll(self.path.toStringWithoutAddress, r.ack, allButSelf = true))
             worldView <- reachabilityEvent(event)
             _         <- stateTransition(worldView, notifier)
           } yield ()
@@ -215,8 +218,11 @@ class Downer[A: Strategy](cluster: Cluster,
           _        <- become(hasSplitBrain(worldView, clusterIsStable, clusterIsUnstable, notifier))
         } yield ()
 
-      case ClusterIsStable   => splitBrainResolver_(Or(strategy, Indirected))
-      case ClusterIsUnstable => splitBrainResolver_(DownAll)
+      case ClusterIsStable =>
+        SyncIO(log.debug("Cluster is stable, resolving...")) >> splitBrainResolver_(Or(strategy, Indirected))
+
+      case ClusterIsUnstable =>
+        SyncIO(log.debug("Cluster is unstable, downing all...")) >> splitBrainResolver_(DownAll)
     }
   }
 
@@ -267,14 +273,14 @@ class Downer[A: Strategy](cluster: Cluster,
   private def send(e: ReachabilityEvent, to: Address, id: Long): SyncIO[Cancellable] =
     SyncIO(
       context.system.scheduler.schedule(0.seconds, 1.second)(
-        mediator ! Publish("sbr", ReachabilityNotification(e, id))
+        mediator ! SendToAll(self.path.toStringWithoutAddress, ReachabilityNotification(e, id), allButSelf = false)
       )
     )
 
   def splitBrainResolver[A: Strategy](before: SyncIO[Unit], after: SyncIO[Unit])(worldView: WorldView,
                                                                                  a: A): SyncIO[Unit] =
     for {
-      _        <- SyncIO(log.debug("[execute]"))
+      _        <- SyncIO(log.debug("[execute] worldView = {}", worldView))
       _        <- before
       decision <- SyncIO.fromEither(a.takeDecision(worldView))
       _        <- executeDecision(decision)
