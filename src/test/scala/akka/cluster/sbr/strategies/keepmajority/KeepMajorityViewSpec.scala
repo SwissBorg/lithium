@@ -23,9 +23,6 @@ class KeepMajorityViewSpec extends MySpec {
               worldView.consideredUnreachableNodesWithRole(keepMajority.role).size should be >= majority
 
             case UnreachableLowestAddress =>
-              worldView.nodes.toList.foreach(a => println(a.member.roles))
-//              println("")
-//              println(s"Bla = ${worldView.unreachableNodesWithRole(keepMajority.role)}")
               worldView.consideredUnreachableNodesWithRole(keepMajority.role).size should ===(majority - 1)
           }
           .handleError {

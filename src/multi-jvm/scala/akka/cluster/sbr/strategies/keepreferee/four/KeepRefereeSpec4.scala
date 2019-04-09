@@ -19,7 +19,7 @@ class KeepRefereeSpec4MultiJvmNode5 extends KeepRefereeSpec4
  */
 class KeepRefereeSpec4 extends FiveNodeSpec("KeepReferee", KeepRefereeSpec4Config) {
   override def assertions(): Unit =
-    "Unidirectional link failure" in within(60 seconds) {
+    "Unidirectional link failure" in within(120 seconds) {
       runOn(node1) {
         // Node4 cannot receive node5 messages
         // Node4 and node5 will shutdown because they are indirectly connected.

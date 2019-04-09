@@ -169,17 +169,13 @@ object WorldView {
       state.members.diff(state.unreachable).map(ReachableNode(_)).toSeq: _*
     )
 
-    val a = WorldView(
+    WorldView(
       reachableMembers
         .find(_.member === self)
         .orElse(unreachableMembers.find(_.member === self))
         .getOrElse(ReachableNode(self)), // assume self is reachable
       (unreachableMembers ++ reachableMembers).filter(_.member =!= self)
     )
-
-    println(s"INIT $a") // todo remove
-
-    a
   }
 
   def shouldBeConsidered(member: Member): Boolean = member.status != Joining && member.status != WeaklyUp

@@ -8,13 +8,10 @@ class ReachableNodesSpec extends MySpec {
     "1 - should instantiate the correct instance" in {
       forAll { (worldView: WorldView, quorumSize: QuorumSize, role: String) =>
         ReachableNodes(worldView, quorumSize, role) match {
-          case Left(NoReachableNodesError) =>
-            worldView.consideredReachableNodesWithRole(role) shouldBe empty
-
-          case Right(ReachableQuorum) =>
+          case ReachableQuorum =>
             worldView.consideredReachableNodesWithRole(role).size should be >= quorumSize.value
 
-          case Right(ReachableSubQuorum) =>
+          case ReachableSubQuorum =>
             worldView.consideredReachableNodesWithRole(role).size should be < quorumSize.value
         }
       }

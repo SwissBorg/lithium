@@ -1,81 +1,91 @@
 package akka.cluster.sbr
 
-import akka.actor.{ActorContext, ActorRef, Address, Cancellable}
-import akka.cluster.ClusterEvent.ReachabilityEvent
-import akka.cluster.Member
-import akka.cluster.sbr.Downer.ReachabilityNotification
-import akka.cluster.sbr.Notifier.NotificationJob
+import akka.actor.{Address, Cancellable}
+import akka.cluster.sbr.Notifier.JobStatus
+import cats.data.OptionT
+import cats.effect
 import cats.effect.SyncIO
-import cats.implicits._
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
-
-/**
- * Provides machinery to send out notifications.
- *
- * @param jobs the notification jobs in progress.
- * @param send how to send a message of type `E` and its id.
- * @tparam E the type of notification messages.
- */
-final case class Notifier[E](
-  private val jobs: Map[Address, NotificationJob],
-  private val send: (E, Long) => SyncIO[Unit]
-)(implicit context: ActorContext, ec: ExecutionContext) {
+final case class Notifier[E] private (statuses: Map[Address, JobStatus],
+                                      send: (E, Address, Long) => SyncIO[Cancellable]) {
 
   /**
-   * Send out a notification with the message `e` and expect an acknowledgment from `expectAckFrom`.
+   * Send `e` using [[send]].
+   *
+   * It assumes that all users of this class send the same events, in the same order, to `to`.
+   * As a result, if the messages has already been acked by `to` it will not be sent a second time.
+   *
+   * @param e the event to send.
+   * @param to the address that should ack the event.
    */
-  def notify(
-    e: E,
-    expectAckFrom: Address
-  ): SyncIO[Notifier[E]] =
-    for {
-      id               <- nextId(expectAckFrom)
-      sendNotification <- SyncIO(context.system.scheduler.schedule(0.seconds, 1.second)(send(e, id).unsafeRunSync())) // todo correctly set the frequency
-    } yield copy(jobs = jobs + (expectAckFrom -> NotificationJob(id, sendNotification)))
+  def send(e: E, to: Address): SyncIO[Notifier[E]] = {
+    val notifier0 = for {
+      (status, maybeId) <- OptionT.liftF(SyncIO.pure(nextId(to)))
+      id                <- OptionT.fromOption[SyncIO](maybeId)
+      sendNotification  <- OptionT.liftF(send(e, to, id))
+    } yield copy(statuses = statuses + (to -> status.copy(jobs = status.jobs + (id -> sendNotification))))
 
-  /**
-   * Acknowledge the notification.
-   */
-  def ack(acker: Address, id: Long): SyncIO[Notifier[E]] =
-    jobs
-      .get(acker)
-      .traverse {
-        case NotificationJob(id0, sendNotification) =>
-          if (id0 <= id) {
-            // Cancel the sending of all previous notifications.
-            // When a node drags behind the others nodes this will
-            // make sure that it will not send out stale notifications.
-            SyncIO(sendNotification.cancel()).void
-          } else {
-            SyncIO.unit // stale ack
-          }
-      }
-      .as(copy(jobs = jobs - acker))
-
-  /**
-   * Cancels the snitching to `member`.
-   */
-  def cancel(member: Member): SyncIO[Notifier[E]] = {
-    val address = member.address
-    jobs.get(address).traverse(job => SyncIO(job.sendNotification.cancel())).as(copy(jobs = jobs - address))
+    notifier0.getOrElse(this)
   }
 
-  def cancelAll(): SyncIO[Notifier[E]] =
-    jobs.values.toList.traverse(job => SyncIO(job.sendNotification.cancel())).as(copy(jobs = Map.empty))
+  /**
+   * Acknowledge the event.
+   *
+   * @param id the id of the event to be acked.
+   * @param from the address of the acker.
+   */
+  def ack(id: Long, from: Address): SyncIO[Notifier[E]] = {
+    def cancelAndUpdate(status: JobStatus): OptionT[SyncIO, JobStatus] =
+      for {
+        c <- OptionT.fromOption[effect.SyncIO](status.jobs.get(id))
+        _ <- OptionT.liftF(Downer.cancel(c))
+      } yield status.copy(jobs = status.jobs - id)
+
+    val updateJobStatus = for {
+      status <- OptionT.fromOption[SyncIO](statuses.get(from))
+      status <- OptionT.liftF(cancelAndUpdate(status).getOrElse(status.copy(stashedAcks = status.stashedAcks + id)))
+    } yield status
+
+    // Create an empty job status with ack stashed as the related job does not exist.
+    updateJobStatus.fold(copy(statuses = statuses + (from -> JobStatus(Map.empty, Set(id))))) { status =>
+      copy(statuses = statuses + (from -> status))
+    }
+  }
 
   /**
-   * Generate an id for the `address`.
+   * Maybe the id to be given to the next event to be sent to `address`
+   * and the updated job status.
+   *
+   * The id is `None` if an acknowledgment has already been received
+   * for the potential next id. Meaning that the event for which the
+   * id is being generated does not have to be sent as it was already
+   * receive via another sender.
+   *
+   * @param address the address for which the generate an id.
+   * @return the updated job status and potential id.
    */
-  private def nextId(address: Address): SyncIO[Long] = jobs.get(address).fold(SyncIO.pure(0L)) {
-    case NotificationJob(id, sendNotification) => SyncIO(sendNotification.cancel()).as(id + 1)
+  private def nextId(address: Address): (JobStatus, Option[Long]) = {
+    val status = statuses.getOrElse(address, JobStatus(Map.empty, Set.empty))
+
+    val potentialNextId =
+      if (status.jobs.keys.nonEmpty) {
+        status.jobs.keys.max + 1
+      } else {
+        0L
+      }
+
+    if (status.stashedAcks.contains(potentialNextId)) {
+      // The event for which the id is being generated will be ignored
+      // and "automatically" be acked.
+      (status.copy(stashedAcks = status.stashedAcks - potentialNextId), None)
+    } else {
+      (status, Some(potentialNextId))
+    }
   }
 }
 
 object Notifier {
-  def apply[E](send: (E, Long) => SyncIO[Unit])(implicit context: ActorContext, ec: ExecutionContext): Notifier[E] =
-    Notifier(Map.empty, send)
+  def apply[E](send: (E, Address, Long) => SyncIO[Cancellable]): Notifier[E] = new Notifier(Map.empty, send)
 
-  final case class NotificationJob(id: Long, sendNotification: Cancellable)
+  final case class JobStatus(jobs: Map[Long, Cancellable], stashedAcks: Set[Long])
 }

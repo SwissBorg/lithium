@@ -58,7 +58,7 @@ abstract class ThreeNodeSpec(name: String, config: ThreeNodeSpecConfig)
 
   private val addresses: Map[RoleName, Address] = roles.map(r => r -> node(r).address).toMap
 
-  addresses.foreach(println)
+  addresses.foreach(a => log.debug(s"$a"))
 
   private def addressOf(roleName: RoleName): Address = addresses(roleName)
 
@@ -81,7 +81,6 @@ abstract class ThreeNodeSpec(name: String, config: ThreeNodeSpecConfig)
   protected def waitForSelfDowning(implicit system: ActorSystem): Unit = {
     val selfAddress = Cluster(system).selfAddress
     awaitCond {
-//      println(s"BLA: ${Cluster(system).state.members.find(_.address === selfAddress)}")
       Cluster(system).state.members.exists(m => m.address === selfAddress && m.status === Down)
     }
   }

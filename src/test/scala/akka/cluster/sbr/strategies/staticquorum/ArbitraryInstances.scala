@@ -12,7 +12,7 @@ object ArbitraryInstances extends akka.cluster.sbr.ArbitraryInstances {
     posNum[Int].map(refineV[Positive](_).right.get) // trust me
   }
 
-  implicit val arbReachableNodes: Arbitrary[Either[NoReachableNodesError.type, ReachableNodes]] = Arbitrary(
+  implicit val arbReachableNodes: Arbitrary[ReachableNodes] = Arbitrary(
     for {
       worldView  <- arbitrary[WorldView]
       quorumSize <- arbitrary[QuorumSize]
