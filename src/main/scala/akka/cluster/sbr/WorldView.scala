@@ -111,16 +111,33 @@ final case class WorldView private[sbr] (private[sbr] val selfNode: Node,
     }
 
   /**
-   * True when the change from the `oldWorldView` does not affect
-   * the "stability" of the cluster.
-   *
-   * The change is said to be stable when there's no change in the
-   * unreachable nodes.
+   * True when there is no change in membership and reachability. Else, false.
    */
-  def isStableChange(oldWorldView: WorldView): Boolean =
-    !(oldWorldView.unreachableNodes.size != unreachableNodes.size ||
-      (unreachableNodes -- oldWorldView.unreachableNodes).isEmpty ||
-      (oldWorldView.unreachableNodes -- unreachableNodes).isEmpty)
+  def isStableChange(oldWorldView: WorldView): Boolean = {
+    val nodes0   = nodes.toNonEmptyList
+    val oldNodes = oldWorldView.nodes.toNonEmptyList
+
+    // Check if all the nodes with the same address are equal.
+    lazy val sameMembershipAndReachability = (nodes0 ::: oldNodes).groupBy(_.member.address).values.forall { ns =>
+      val n = ns.head
+
+      n match {
+        case ReachableNode(member) =>
+          ns.tail.forall {
+            case ReachableNode(innerMember) => member.status == innerMember.status
+            case _: UnreachableNode         => false
+          }
+
+        case UnreachableNode(member) =>
+          ns.tail.forall {
+            case UnreachableNode(innerMember) => member.status == innerMember.status
+            case _: ReachableNode             => false
+          }
+      }
+    }
+
+    nodes0.size == oldNodes.size && sameMembershipAndReachability
+  }
 
   def hasSplitBrain: Boolean =
     unreachableNodes.exists {
