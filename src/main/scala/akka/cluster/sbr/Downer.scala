@@ -270,12 +270,15 @@ class Downer[A: Strategy](cluster: Cluster,
   private def scheduleClusterIsUnstable: SyncIO[Cancellable] =
     SyncIO(context.system.scheduler.scheduleOnce(stableAfter + downAllWhenUnstable, self, ClusterIsUnstable))
 
-  private def send(e: ReachabilityEvent, to: Address, id: Long): SyncIO[Cancellable] =
+  private def send(e: ReachabilityEvent, to: Address, id: Long): SyncIO[Cancellable] = {
+    val path = s"$to${self.path.toStringWithoutAddress}"
     SyncIO(
-      context.system.scheduler.schedule(0.seconds, 1.second)(
-        mediator ! SendToAll(self.path.toStringWithoutAddress, ReachabilityNotification(e, id), allButSelf = false)
-      )
+      context.system.scheduler.schedule(0.seconds, 1.second) {
+        // todo select before?
+        context.actorSelection(path) ! ReachabilityNotification(e, id)
+      }
     )
+  }
 
   def splitBrainResolver[A: Strategy](before: SyncIO[Unit], after: SyncIO[Unit])(worldView: WorldView,
                                                                                  a: A): SyncIO[Unit] =
