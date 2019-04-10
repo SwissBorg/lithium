@@ -11,9 +11,8 @@ class DownAllSpec extends MySpec {
     "1 - should always down nodes" in {
       forAll { worldView: WorldView =>
         DownAll.takeDecision(worldView).map {
-          case DownReachable(_) => succeed
-          case Idle             => succeed
-          case _                => fail
+          case DownThese(DownSelf(_), DownReachable(_)) => succeed
+          case _                                        => fail
         }
       }
     }

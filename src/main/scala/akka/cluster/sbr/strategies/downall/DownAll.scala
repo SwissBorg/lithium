@@ -12,7 +12,8 @@ import cats.implicits._
 final case object DownAll {
   implicit val downAllStrategy: Strategy[DownAll.type] = new Strategy[DownAll.type] {
     override def takeDecision(strategy: DownAll.type, worldView: WorldView): Either[Throwable, StrategyDecision] =
-      DownReachable(worldView).asRight
+      // When self is indirectly connected it is not reachable.
+      DownThese(DownSelf(worldView), DownReachable(worldView)).asRight
   }
 
   implicit val downAllStrategyReader: StrategyReader[DownAll.type] = StrategyReader.fromName("down-all")
