@@ -3,7 +3,7 @@ package akka.cluster.sbr.strategies.staticquorum
 import akka.cluster.sbr.strategy.ops._
 import akka.cluster.sbr._
 import akka.cluster.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario}
-import akka.cluster.sbr.utils.RemainingPartitions
+import akka.cluster.sbr.utils.PostResolution
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
@@ -21,11 +21,11 @@ class StaticQuorumSpec extends MySpec {
         implicit val _: Arbitrary[StaticQuorum] = StaticQuorumSpec.arbStaticQuorum(scenario.clusterSize)
 
         forAll { staticQuorum: StaticQuorum =>
-          val remainingSubClusters: RemainingPartitions = scenario.worldViews.foldMap { worldView =>
-            staticQuorum.takeDecision(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+          val remainingPartitions: PostResolution = scenario.worldViews.foldMap { worldView =>
+            staticQuorum.takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
           }
 
-          remainingSubClusters.n.value should be <= 1
+          remainingPartitions.noSplitBrain shouldBe true
         }
       }
     }
@@ -36,10 +36,10 @@ class StaticQuorumSpec extends MySpec {
 
         forAll { staticQuorum: StaticQuorum =>
           val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-            staticQuorum.takeDecision(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+            staticQuorum.takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
           }
 
-          remainingSubClusters.n.value should be <= 1
+          remainingSubClusters.noSplitBrain shouldBe true
         }
       }
     }

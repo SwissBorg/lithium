@@ -116,13 +116,16 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
   )
 
   implicit val arbNode: Arbitrary[Node] =
-    Arbitrary(oneOf(arbReachableNode.arbitrary, arbUnreachableNode.arbitrary))
+    Arbitrary(oneOf(arbReachableNode.arbitrary, arbUnreachableNode.arbitrary, arbIndirectlyConnectedNode.arbitrary))
 
   implicit val arbReachableNode: Arbitrary[ReachableNode] =
     Arbitrary(arbMember.arbitrary.map(ReachableNode(_)))
 
   implicit val arbUnreachableNode: Arbitrary[UnreachableNode] =
     Arbitrary(arbMember.arbitrary.map(UnreachableNode(_)))
+
+  implicit val arbIndirectlyConnectedNode: Arbitrary[IndirectlyConnectedNode] =
+    Arbitrary(arbMember.arbitrary.map(IndirectlyConnectedNode(_)))
 
   implicit val arbUniqueAddress: Arbitrary[UniqueAddress] =
     Arbitrary(for {

@@ -4,27 +4,27 @@ import akka.cluster.sbr.strategy.ops._
 import akka.cluster.sbr._
 import akka.cluster.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario}
 import akka.cluster.sbr.strategies.keepmajority.ArbitraryInstances._
-import akka.cluster.sbr.utils.RemainingPartitions
+import akka.cluster.sbr.utils.PostResolution
 
 class KeepMajoritySpec extends MySpec {
   "KeepMajority" - {
     "1 - should handle symmetric split scenarios" in {
       forAll { (scenario: SymmetricSplitScenario, keepMajority: KeepMajority) =>
-        val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          keepMajority.takeDecision(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+        val remainingPartitions = scenario.worldViews.foldMap { worldView =>
+          keepMajority.takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
         }
 
-        remainingSubClusters.n.value should be <= 1
+        remainingPartitions.noSplitBrain shouldBe true
       }
     }
 
     "2 - should handle a split during the oldest-removed scenarios" in {
       forAll { (scenario: OldestRemovedScenario, keepMajority: KeepMajority) =>
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          keepMajority.takeDecision(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+          keepMajority.takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
         }
 
-        remainingSubClusters.n.value should be <= 1
+        remainingSubClusters.noSplitBrain shouldBe true
       }
     }
   }

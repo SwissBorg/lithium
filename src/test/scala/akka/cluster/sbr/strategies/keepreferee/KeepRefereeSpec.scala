@@ -3,7 +3,7 @@ package akka.cluster.sbr.strategies.keepreferee
 import akka.cluster.sbr.MySpec
 import akka.cluster.sbr.strategy.ops._
 import akka.cluster.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario, UpDisseminationScenario}
-import akka.cluster.sbr.utils.RemainingPartitions
+import akka.cluster.sbr.utils.PostResolution
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.scalacheck.all._
@@ -15,13 +15,13 @@ class KeepRefereeSpec extends MySpec {
         // same referee for everyone
         val referee = scenario.worldViews.head.nodes.head.member.address.toString
 
-        val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
+        val remainingPartitions = scenario.worldViews.foldMap { worldView =>
           KeepReferee(referee, downAllIfLessThanNodes)
             .takeDecision(worldView)
-            .foldMap(RemainingPartitions.fromDecision(worldView))
+            .foldMap(PostResolution.fromDecision(worldView))
         }
 
-        remainingSubClusters.n.value should be <= 1
+        remainingPartitions.noSplitBrain shouldBe true
       }
     }
 
@@ -33,10 +33,10 @@ class KeepRefereeSpec extends MySpec {
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
           KeepReferee(referee, downAllIfLessThanNodes)
             .takeDecision(worldView)
-            .foldMap(RemainingPartitions.fromDecision(worldView))
+            .foldMap(PostResolution.fromDecision(worldView))
         }
 
-        remainingSubClusters.n.value should be <= 1
+        remainingSubClusters.noSplitBrain shouldBe true
       }
     }
 
@@ -50,10 +50,10 @@ class KeepRefereeSpec extends MySpec {
             val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
               KeepReferee(referee.member.address.toString, downAllIfLessThanNodes)
                 .takeDecision(worldView)
-                .foldMap(RemainingPartitions.fromDecision(worldView))
+                .foldMap(PostResolution.fromDecision(worldView))
             }
 
-            remainingSubClusters.n.value should be <= 1
+            remainingSubClusters.noSplitBrain shouldBe true
           }
           .getOrElse(succeed)
       }

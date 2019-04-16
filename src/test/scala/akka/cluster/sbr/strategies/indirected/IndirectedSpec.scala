@@ -2,7 +2,6 @@ package akka.cluster.sbr.strategies.indirected
 
 import akka.cluster.sbr.ArbitraryInstances._
 import akka.cluster.sbr._
-import akka.cluster.sbr.implicits._
 import akka.cluster.sbr.strategy.ops._
 
 class IndirectedSpec extends MySpec {

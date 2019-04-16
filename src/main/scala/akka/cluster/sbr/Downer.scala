@@ -2,7 +2,6 @@ package akka.cluster.sbr
 
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.cluster.Cluster
-import akka.cluster.sbr.strategies.downall.DownAll
 import akka.cluster.sbr.strategies.indirected.Indirected
 import akka.cluster.sbr.strategy.Strategy
 import akka.cluster.sbr.strategy.ops._

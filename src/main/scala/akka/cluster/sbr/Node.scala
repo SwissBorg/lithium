@@ -15,9 +15,10 @@ object Node {
 
   implicit val nodeEq: Eq[Node] = new Eq[Node] {
     override def eqv(x: Node, y: Node): Boolean = (x, y) match {
-      case (_: UnreachableNode, _: UnreachableNode) => x === y
-      case (_: ReachableNode, _: ReachableNode)     => x === y
-      case _                                        => false
+      case (_: UnreachableNode, _: UnreachableNode)                 => x === y
+      case (_: ReachableNode, _: ReachableNode)                     => x === y
+      case (_: IndirectlyConnectedNode, _: IndirectlyConnectedNode) => x === y
+      case _                                                        => false
     }
   }
 }

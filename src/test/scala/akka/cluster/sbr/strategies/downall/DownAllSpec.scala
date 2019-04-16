@@ -4,7 +4,7 @@ import akka.cluster.sbr.ArbitraryInstances._
 import akka.cluster.sbr.strategy.ops._
 import akka.cluster.sbr._
 import akka.cluster.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario, UpDisseminationScenario}
-import akka.cluster.sbr.utils.RemainingPartitions
+import akka.cluster.sbr.utils.PostResolution
 
 class DownAllSpec extends MySpec {
   "DownAll" - {
@@ -19,31 +19,31 @@ class DownAllSpec extends MySpec {
 
     "2 - should handle symmetric split scenarios" in {
       forAll { scenario: SymmetricSplitScenario =>
-        val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          DownAll.takeDecision(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+        val remainingPartitions = scenario.worldViews.foldMap { worldView =>
+          DownAll.takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
         }
 
-        remainingSubClusters.n.value should be <= 1
+        remainingPartitions.noSplitBrain shouldBe true
       }
     }
 
     "3 - should handle a split during up-dissemination scenarios" in {
       forAll { scenario: UpDisseminationScenario =>
-        val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          DownAll.takeDecision(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+        val remainingPartitions = scenario.worldViews.foldMap { worldView =>
+          DownAll.takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
         }
 
-        remainingSubClusters.n.value should be <= 1
+        remainingPartitions.noSplitBrain shouldBe true
       }
     }
 
     "4 - should handle a split during the oldest-removed scenarios" in {
       forAll { scenario: OldestRemovedScenario =>
-        val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          DownAll.takeDecision(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+        val remainingPartitions = scenario.worldViews.foldMap { worldView =>
+          DownAll.takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
         }
 
-        remainingSubClusters.n.value should be <= 1
+        remainingPartitions.noSplitBrain shouldBe true
       }
     }
   }
