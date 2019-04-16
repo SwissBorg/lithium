@@ -34,8 +34,8 @@ private[keepmajority] object KeepMajorityView {
         .sortBy(_.member.address)(Member.addressOrdering)
         .headOption
         .fold[Either[NoMajority.type, KeepMajorityView]](NoMajority.asLeft) {
-          case _: ReachableNode   => ReachableLowestAddress.asRight
-          case _: UnreachableNode => UnreachableLowestAddress.asRight
+          case _: ReachableNode | _: IndirectlyConnectedNode => ReachableLowestAddress.asRight
+          case _: UnreachableNode                            => UnreachableLowestAddress.asRight
         }
     } else NoMajority.asLeft
   }

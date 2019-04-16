@@ -9,7 +9,8 @@
         </encoder>
     </appender>
 
-    <logger name="akka.cluster.sbr" level="${APPLICATION_LOG_LEVEL}"/>
+    <logger name="akka.cluster.sbr.Downer" level="${APPLICATION_LOG_LEVEL}"/>
+    <logger name="akka.cluster.sbr.StabilityReporter" level="${APPLICATION_LOG_LEVEL}"/>
 
     <root level="${GENERAL_LOG_LEVEL}">
         <appender-ref ref="STDOUT"/>

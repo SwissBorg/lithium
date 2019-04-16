@@ -17,7 +17,7 @@ class StaticQuorumSpec4MultiJvmNode3 extends StaticQuorumSpec4
  */
 class StaticQuorumSpec4 extends ThreeNodeSpec("StaticQuorum", StaticQuorumSpec4Config) {
   override def assertions(): Unit =
-    "Unidirectional link failure" in within(60 seconds) {
+    "Unidirectional link failure" in within(120 seconds) {
       runOn(node1) {
         // Node2 cannot receive node3 messages
         val _ = testConductor.blackhole(node2, node3, Direction.Receive).await
@@ -37,7 +37,7 @@ class StaticQuorumSpec4 extends ThreeNodeSpec("StaticQuorum", StaticQuorumSpec4C
         waitToBecomeUnreachable(node2)
       }
 
-      enterBarrier("node2-unreachble")
+      enterBarrier("node2-unreachable")
 
       runOn(node1) {
         waitToBecomeUnreachable(node2, node3)

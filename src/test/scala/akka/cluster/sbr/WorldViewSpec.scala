@@ -86,16 +86,11 @@ class WorldViewSpec extends MySpec {
 
           case MemberRemoved(member, _) =>
             val w = worldView.memberEvent(event)
-
-            if (worldView.nodes.find(_.member === member).nonEmpty) {
-              w.nodes.exists { node =>
-                node.member === member && node.member.status == Removed
-              } shouldBe true
+            if (w.selfNode.member !== member) {
+              w.nodes.find(_.member === member).isEmpty shouldBe true
             } else {
-              w.nodes.contains(ReachableNode(member)) shouldBe true
+              w.selfNode.member should ===(member)
             }
-
-            w.consideredNodes.exists(_.member === member) shouldBe true
 
           case MemberUp(member) =>
             val w = worldView.memberEvent(event)

@@ -29,8 +29,8 @@ final case class WorldView private[sbr] (private[sbr] val selfNode: Node,
                                           * then added. Only adding it will not override the value as they
                                           * are equal given the ordering.
                                           */
-                                         private[sbr] val otherNodes: SortedSet[Node]) {
-  import WorldView._
+                                         private[sbr] val otherNodes: SortedSet[Node],
+                                         private[sbr] val trackIndirectlyConnected: Boolean) {
 
   /**
    * All the nodes in the cluster.
@@ -44,9 +44,8 @@ final case class WorldView private[sbr] (private[sbr] val selfNode: Node,
    * states. These status are ignored since a node can join and become
    * weakly-up during a network-partition.
    */
-  def consideredNodes: SortedSet[Node] = nodes.toSortedSet.collect {
-    case status if shouldBeConsidered(status.member) => status
-  }
+  def consideredNodes: SortedSet[Node] =
+    nodes.toSortedSet.collect { case node if shouldBeConsidered(node) => node }
 
   /**
    * The nodes with the given role, that need to be considered in
@@ -59,9 +58,7 @@ final case class WorldView private[sbr] (private[sbr] val selfNode: Node,
    * The reachable nodes that need to be considered in split-brain resolutions.
    */
   lazy val consideredReachableNodes: SortedSet[ReachableNode] =
-    nodes.collect {
-      case r @ ReachableNode(member) if shouldBeConsidered(member) => r
-    }
+    reachableNodes.collect { case n if shouldBeConsidered(n) => n }
 
   /**
    * The reachable nodes with the given role, that need to be
@@ -73,21 +70,31 @@ final case class WorldView private[sbr] (private[sbr] val selfNode: Node,
   /**
    * All the reachable nodes.
    */
-  lazy val reachableNodes: SortedSet[ReachableNode] = nodes.toSortedSet.collect { case r: ReachableNode => r }
+  lazy val reachableNodes: SortedSet[ReachableNode] = nodes.toSortedSet.collect {
+    case r: ReachableNode => r
+
+    // Cannot be indirectly connected from pov of the node that cannot reach it.
+    // So it is safe to transform it into a reachable for those wo do.
+    case i: IndirectlyConnectedNode if !trackIndirectlyConnected => ReachableNode(i.member)
+  }
 
   /**
    * All the unreachable nodes.
    */
-  lazy val unreachableNodes: SortedSet[UnreachableNode] = nodes.collect {
-    case r: UnreachableNode => r
-  }
+  lazy val unreachableNodes: SortedSet[UnreachableNode] =
+    nodes.collect { case r: UnreachableNode => r }
+
+  /**
+   * All the indirectly connected nodes.
+   */
+  lazy val indirectlyConnectedNodes: SortedSet[IndirectlyConnectedNode] =
+    nodes.collect { case r: IndirectlyConnectedNode => r }
 
   /**
    * The unreachable nodes that need to be considered in split-brain resolutions.
    */
-  lazy val consideredUnreachableNodes: SortedSet[UnreachableNode] = nodes.collect {
-    case r @ UnreachableNode(member) if shouldBeConsidered(member) => r
-  }
+  lazy val consideredUnreachableNodes: SortedSet[UnreachableNode] =
+    unreachableNodes.collect { case n if shouldBeConsidered(n) => n }
 
   /**
    * The unreachable nodes with the given role, that need to be
@@ -99,7 +106,12 @@ final case class WorldView private[sbr] (private[sbr] val selfNode: Node,
   /**
    * Update the world view given the member event.
    */
-  def memberEvent(event: MemberEvent): WorldView = updateMember(event.member)
+  def memberEvent(event: MemberEvent): WorldView =
+    event match {
+      case MemberRemoved(member, _) => removeMember(member)
+      case _                        => updateMember(event.member)
+
+    }
 
   /**
    * Update the given the world view given the reachability event.
@@ -108,6 +120,16 @@ final case class WorldView private[sbr] (private[sbr] val selfNode: Node,
     event match {
       case UnreachableMember(member) => becomeUnreachable(member)
       case ReachableMember(member)   => becomeReachable(member)
+    }
+
+  def indirectlyConnected(member: Member): WorldView =
+    if (member === selfNode.member) {
+      copy(selfNode = IndirectlyConnectedNode(member))
+    } else {
+      otherNodes.find(_.member === member).fold(copy(otherNodes = otherNodes + IndirectlyConnectedNode(member))) {
+        node =>
+          copy(otherNodes = otherNodes - node + IndirectlyConnectedNode(member))
+      }
     }
 
   /**
@@ -125,26 +147,32 @@ final case class WorldView private[sbr] (private[sbr] val selfNode: Node,
         case ReachableNode(member) =>
           ns.tail.forall {
             case ReachableNode(innerMember) => member.status == innerMember.status
-            case _: UnreachableNode         => false
+            case _                          => false
           }
 
         case UnreachableNode(member) =>
           ns.tail.forall {
             case UnreachableNode(innerMember) => member.status == innerMember.status
-            case _: ReachableNode             => false
+            case _                            => false
           }
+
+        case IndirectlyConnectedNode(member) =>
+          ns.tail.forall({
+            case IndirectlyConnectedNode(innerMember) => member.status == innerMember.status
+            case _                                    => false
+          })
       }
     }
 
     nodes0.size == oldNodes.size && sameMembershipAndReachability
   }
 
+  def hasIndirectlyConnectedNodes: Boolean = ???
+
   def hasSplitBrain: Boolean =
-    unreachableNodes.exists {
-      _.member.status match {
-        case Down | Removed => false // down or removed nodes are already leaving the cluster
-        case _              => true
-      }
+    (unreachableNodes.map(_.member.status).toList ::: indirectlyConnectedNodes.map(_.member.status).toList).exists {
+      case Down | Removed => false // down or removed nodes are already leaving the cluster
+      case _              => true
     }
 
   /**
@@ -162,8 +190,17 @@ final case class WorldView private[sbr] (private[sbr] val selfNode: Node,
       copy(selfNode = selfNode.copyMember(member))
     } else {
       // Assumes the member is reachable if seen for the 1st time.
-      otherNodes.find(_.member === member).fold(copy(otherNodes = otherNodes + ReachableNode(member))) { status =>
-        copy(otherNodes = otherNodes - status + status.copyMember(member))
+      otherNodes.find(_.member === member).fold(copy(otherNodes = otherNodes + ReachableNode(member))) { node =>
+        copy(otherNodes = otherNodes - node + node.copyMember(member))
+      }
+    }
+
+  private def removeMember(member: Member): WorldView =
+    if (member === selfNode.member) {
+      copy(selfNode = selfNode.copyMember(member)) // ignore only update
+    } else {
+      otherNodes.find(_.member === member).fold(this) { node =>
+        copy(otherNodes = otherNodes - node)
       }
     }
 
@@ -173,13 +210,27 @@ final case class WorldView private[sbr] (private[sbr] val selfNode: Node,
     } else {
       copy(otherNodes = otherNodes - node + node) // todo explain
     }
+
+  def shouldBeConsidered(node: Node): Boolean = node match {
+    case UnreachableNode(member) =>
+      member.status != Joining && member.status != WeaklyUp
+
+    case ReachableNode(member) =>
+      member.status != Joining && member.status != WeaklyUp
+
+    // When indirectly connected nodes are tracked they do not
+    // appear in the considered nodes as they will be downed.
+    case IndirectlyConnectedNode(member) =>
+      !trackIndirectlyConnected && member.status != Joining && member.status != WeaklyUp
+  }
 }
 
 object WorldView {
-  def init(self: Member): WorldView = new WorldView(ReachableNode(self), SortedSet.empty)
+  def init(self: Member, trackIndirectlyConnected: Boolean): WorldView =
+    new WorldView(ReachableNode(self), SortedSet.empty, trackIndirectlyConnected)
 
   // todo test
-  def apply(self: Member, state: CurrentClusterState): WorldView = {
+  def apply(self: Member, trackIndirectlyConnected: Boolean, state: CurrentClusterState): WorldView = {
     val unreachableMembers: SortedSet[UnreachableNode] = SortedSet(state.unreachable.map(UnreachableNode(_)).toSeq: _*)
 
     val reachableMembers: SortedSet[ReachableNode] = SortedSet(
@@ -191,11 +242,10 @@ object WorldView {
         .find(_.member === self)
         .orElse(unreachableMembers.find(_.member === self))
         .getOrElse(ReachableNode(self)), // assume self is reachable
-      (unreachableMembers ++ reachableMembers).filter(_.member =!= self)
+      (unreachableMembers ++ reachableMembers).filter(_.member =!= self),
+      trackIndirectlyConnected
     )
   }
-
-  def shouldBeConsidered(member: Member): Boolean = member.status != Joining && member.status != WeaklyUp
 
   implicit val worldViewEq: Eq[WorldView] = new Eq[WorldView] {
     override def eqv(x: WorldView, y: WorldView): Boolean =

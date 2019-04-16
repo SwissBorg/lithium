@@ -23,7 +23,7 @@ object SymmetricSplitScenario {
     def partitionedWorldView[N <: Node](nodes: NonEmptySet[N])(partition: NonEmptySet[N]): WorldView = {
       val otherNodes = nodes -- partition
 
-      val worldView0 = new WorldView(ReachableNode(partition.head.member), partition.tail.map(identity))
+      val worldView0 = new WorldView(ReachableNode(partition.head.member), partition.tail.map(identity), false)
 
       otherNodes.foldLeft[WorldView](worldView0) {
         case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node.member))

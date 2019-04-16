@@ -39,3 +39,12 @@ object ReachableNode {
   implicit val reachableNodeOrder: Order[ReachableNode]       = Order.fromOrdering
   implicit val reachableNodeEq: Eq[ReachableNode]             = reachableNodeOrdering.equiv(_, _)
 }
+
+final case class IndirectlyConnectedNode(member: Member) extends Node {
+  override def copyMember(member: Member): Node = copy(member = member)
+}
+object IndirectlyConnectedNode {
+  implicit val indirectlyConnectedNodeOrdering: Ordering[IndirectlyConnectedNode] = Ordering.by(_.member)
+  implicit val indirectlyConnectedNodeOrder: Order[IndirectlyConnectedNode]       = Order.fromOrdering
+  implicit val indirectlyReachableNodeEq: Eq[IndirectlyConnectedNode]             = indirectlyConnectedNodeOrdering.equiv(_, _)
+}

@@ -1,104 +1,125 @@
 package akka.cluster.sbr
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Address, Cancellable, Props}
-import akka.cluster.ClusterEvent.ReachabilityEvent
-import akka.cluster.pubsub.DistributedPubSub
-import akka.cluster.pubsub.DistributedPubSubMediator.{Put, SendToAll}
+import akka.actor.{Actor, ActorLogging, ActorRef, Address, Cancellable, Props, Stash}
+import akka.cluster.Cluster
+import akka.cluster.ClusterEvent._
+import akka.cluster.sbr.implicits._
+import cats.implicits._
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-// If a node receive a unreachability event in his name it means that it is
-// indirectly connected. It is unreachable via a link but reachable via another as
-// it receive the event.
-// As cluster events are only gossiped to reachable nodes,
-// a node that has been detected as unreachable will never receive an unreachability
-// event in his name.
-
-class IndirectConnectionReporter(parent: ActorRef) extends Actor with ActorLogging {
-
+class IndirectConnectionReporter(parent: ActorRef, cluster: Cluster) extends Actor with ActorLogging with Stash {
   import IndirectConnectionReporter._
 
-  var statuses: Map[Address, JobStatus] = Map.empty
+  /* --- State --- */
+  private var opinion: Option[Cancellable]                   = None
+  private var lastOpinions: Map[Address, (Boolean, Boolean)] = Map.empty
 
-  private val mediator = DistributedPubSub(context.system).mediator
-  mediator ! Put(self)
+  override def receive: Receive = waitingForState
 
-  override def receive: Receive = {
-    case Report(e, to) =>
-      log.debug("Reporting {} to {}", e, to)
-      val (status, maybeId) = nextId(to)
+  def waitingForState: Receive = {
+    case CurrentClusterState(members, unreachable, _, _, _) =>
+      val unreachableLastOpinions: Map[Address, (Boolean, Boolean)] =
+        unreachable.flatMap { member =>
+          if (fDetector.isMonitoring(member.address)) {
+            Some(member.address -> ((false, fDetector.isAvailable(member.address))))
+          } else None
+        }(collection.breakOut)
 
-      maybeId match {
-        case Some(id) => statuses = statuses + (to -> status.copy(jobs = status.jobs + (id -> report(e, id, to))))
-        case None     => statuses = statuses + (to -> status)
-      }
+      val reachableLastOpinions: Map[Address, (Boolean, Boolean)] = (members -- unreachable).flatMap { member =>
+        if (fDetector.isMonitoring(member.address)) {
+          Some(member.address -> ((true, fDetector.isAvailable(member.address))))
+        } else None
+      }(collection.breakOut)
 
-    case Ack(id, from) =>
-      // Broadcast ack to the notifiers on different nodes.
-      mediator ! SendToAll(self.path.toStringWithoutAddress, PublishAck(id, from), allButSelf = true)
+      opinion = scheduleOpinion()
+      lastOpinions = unreachableLastOpinions ++ reachableLastOpinions
 
-    case PublishAck(id, from) =>
-      log.debug("Received acknowledgment for {} from {}.", id, from)
-      statuses.get(from) match {
-        case Some(status) =>
-          status.jobs.get(id).foreach(_.cancel())
-          statuses = statuses + (from -> status.copy(jobs = status.jobs - id))
-        case None =>
-          statuses = statuses + (from -> JobStatus.withStashedAck(id))
-      }
+      unstashAll()
+      context.become(main)
 
+    case _ => stash()
   }
 
-  private def nextId(address: Address): (JobStatus, Option[Long]) = {
-    val status = statuses.getOrElse(address, JobStatus.empty)
+  // isReachable, isLocallyReachable
+  def main: Receive = {
+    case Opinion =>
+      cluster.state.members.foreach { member =>
+        if (member =!= selfMember && fDetector.isMonitoring(member.address)) {
+          val localAvailability = fDetector.isAvailable(member.address)
 
-    val potentialNextId =
-      if (status.jobs.keys.nonEmpty) {
-        status.jobs.keys.max + 1
-      } else {
-        0L
+          def onChange(prevLocalAvailability: Boolean)(f: => Unit): Unit =
+            if (prevLocalAvailability != localAvailability) {
+              f
+
+              // We can get safely get the KV pair as `onChange` is only called
+              // when `lastOpinions.contains(member.address)`
+              lastOpinions = lastOpinions + (member.address -> ((lastOpinions(member.address)._1, localAvailability)))
+            }
+
+          (lastOpinions.get(member.address), localAvailability) match {
+            // todo
+            // If it's locally unavailable it should be gossiping it.
+            case (Some((`isReachable`, prevLocalAvailability)), `isLocallyUnavailable`) =>
+              onChange(prevLocalAvailability)(parent ! IndirectlyConnectedNode(member))
+
+            case (Some((`isUnreachable`, prevLocalAvailability)), `isLocallyAvailable`) =>
+              onChange(prevLocalAvailability)(parent ! IndirectlyConnectedNode(member))
+
+            case _ => ()
+          }
+
+          opinion = scheduleOpinion()
+        }
       }
 
-    if (status.stashedAcks.contains(potentialNextId)) {
-      // The event for which the id is being generated will be ignored
-      // and "automatically" be acked.
-      (status.copy(stashedAcks = status.stashedAcks - potentialNextId), None)
-    } else {
-      statuses = statuses + (address -> status)
-      (status, Some(potentialNextId))
-    }
+    case e: ReachabilityEvent =>
+      if (fDetector.isMonitoring(e.member.address)) {
+        val isLocallyAvailable = fDetector.isAvailable(e.member.address)
+
+        val isReachable = e match {
+          case UnreachableMember(member) =>
+            if (isLocallyAvailable) parent ! IndirectlyConnectedNode(member)
+            false
+
+          case ReachableMember(member) =>
+            if (!isLocallyAvailable) parent ! IndirectlyConnectedNode(member)
+            true
+        }
+
+        lastOpinions = lastOpinions + (e.member.address -> ((isReachable, isLocallyAvailable)))
+      }
   }
 
-  private def report(e: ReachabilityEvent, id: Long, to: Address): Cancellable = {
-    val path  = s"$to${parent.path.toStringWithoutAddress}"
-    val actor = context.actorSelection(path)
-    log.debug(s"Send: $actor ! $e")
-    context.system.scheduler.schedule(0.seconds, 1.second)(actor ! Notification(e, id))
+  def scheduleOpinion(): Some[Cancellable] = Some(context.system.scheduler.scheduleOnce(1.second)(self ! Opinion))
+
+  private val selfMember = cluster.selfMember
+  private val fDetector  = cluster.failureDetector
+
+  override def preStart(): Unit =
+    cluster.subscribe(self, InitialStateAsSnapshot, classOf[akka.cluster.ClusterEvent.ReachabilityEvent])
+
+  override def postStop(): Unit = {
+    cluster.unsubscribe(self)
+    opinion.foreach(_.cancel())
   }
 
-  implicit private val ec: ExecutionContext = context.system.dispatcher
-
-  override def postStop(): Unit =
-    statuses.values.foreach(_.jobs.values.foreach(_.cancel()))
+  implicit private val ec: ExecutionContext = context.dispatcher
 }
 
 object IndirectConnectionReporter {
-  def props(parent: ActorRef): Props = Props(new IndirectConnectionReporter(parent))
+  def props(parent: ActorRef, cluster: Cluster): Props = Props(new IndirectConnectionReporter(parent, cluster))
 
-  final case class Report(e: ReachabilityEvent, to: Address)
-  final case class Ack(id: Long, address: Address)
+  final case object Opinion
 
-  /**
-   * For internal use.
-   */
-  final case class PublishAck(id: Long, address: Address)
+  /* --- Constants for code documentation --- */
 
-  final case class Notification(e: ReachabilityEvent, id: Long)
+  final private val isReachable   = true
+  final private val isUnreachable = false
 
-  final case class JobStatus(jobs: Map[Long, Cancellable], stashedAcks: Set[Long])
-  object JobStatus {
-    val empty: JobStatus                    = JobStatus(Map.empty, Set.empty)
-    def withStashedAck(id: Long): JobStatus = JobStatus(Map.empty, Set(id))
-  }
+  final private val isLocallyAvailable   = true
+  final private val isLocallyUnavailable = false
+
+  /* -----------------------------------------*/
 }

@@ -16,9 +16,11 @@ import cats.implicits._
 final case class RemainingPartitions(n: Int Refined NonNegative)
 
 object RemainingPartitions {
+  // todo rethink testing
   def fromDecision(worldView: WorldView)(decision: StrategyDecision): RemainingPartitions = decision match {
     case DownThese(decision1, decision2) => fromDecision(worldView)(decision1) |+| fromDecision(worldView)(decision2)
     case _: DownUnreachable              => RemainingPartitions(1)
+    case _: DownIndirectlyConnected      => RemainingPartitions(0)
     case _: DownReachable                => RemainingPartitions(0)
     case _: DownSelf                     => RemainingPartitions(0)
     case _: Idle.type =>

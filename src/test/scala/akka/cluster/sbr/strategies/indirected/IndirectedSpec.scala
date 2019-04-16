@@ -10,9 +10,8 @@ class IndirectedSpec extends MySpec {
     "1 - should down self if unreachable" in {
       forAll { worldView: WorldView =>
         Indirected.takeDecision(worldView).map {
-          case DownSelf(UnreachableNode(member)) => worldView.selfNode.member should ===(member)
-          case Idle                              => worldView.selfNode should ===(ReachableNode(worldView.selfNode.member))
-          case _                                 => fail
+          case DownIndirectlyConnected(nodes) => worldView.indirectlyConnectedNodes should ===(nodes)
+          case _                              => fail
         }
       }
     }
