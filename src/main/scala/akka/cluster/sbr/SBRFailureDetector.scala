@@ -9,17 +9,46 @@ import cats.implicits._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class IndirectConnectionReporter(parent: ActorRef, cluster: Cluster) extends Actor with ActorLogging with Stash {
-  import IndirectConnectionReporter._
+/**
+ * Actor reporting the reachability status of cluster members from its own point
+ * of view. Essentially, it adds the [[IndirectlyConnectedNode]] status to the
+ * reachability events.
+ *
+ * A node is indirectly connected when its local failure detector does not have
+ * the same opinion as the reachability information of the cluster. This can
+ * happen when a link between two nodes is faulty and cannot communicate
+ * anymore. In this case the two nodes see each other as unreachable (which
+ * will be gossiped) but could still reach other by taking a different path.
+ *
+ * The actor will once a second compare its reachability information
+ * with the one gossiped and update the `parent` accordingly. As a result,
+ * it introduces a one second delay compared to normal reachability events.
+ *
+ * Similarly to the reachability events coming from the underlying failure detector
+ * this one is also eventually consisted.
+ *
+ * @param parent the actor to report to.
+ * @param cluster the cluster membership information.
+ */
+class SBRFailureDetector(parent: ActorRef, cluster: Cluster) extends Actor with ActorLogging with Stash {
+  import SBRFailureDetector._
 
   /* --- State --- */
-  private var opinion: Option[Cancellable]                   = None
+
+  // Sends a `Opinion` message to itself.
+  private var opinion: Option[Cancellable] = None
+
+  // For each address, what the has been gossiped (true when it is reachable) and
+  // if it was locally reachable at the time of the previous "opinion" check.
   private var lastOpinions: Map[Address, (Boolean, Boolean)] = Map.empty
 
   override def receive: Receive = waitingForState
 
   def waitingForState: Receive = {
     case CurrentClusterState(members, unreachable, _, _, _) =>
+      // Initial setup of the opinions. The first opinions will be sent
+      // out after receiving the first `Opinion` event.
+
       val unreachableLastOpinions: Map[Address, (Boolean, Boolean)] =
         unreachable.flatMap { member =>
           if (fDetector.isMonitoring(member.address)) {
@@ -42,13 +71,15 @@ class IndirectConnectionReporter(parent: ActorRef, cluster: Cluster) extends Act
     case _ => stash()
   }
 
-  // isReachable, isLocallyReachable
   def main: Receive = {
     case Opinion =>
       cluster.state.members.foreach { member =>
         if (member =!= selfMember && fDetector.isMonitoring(member.address)) {
           val localAvailability = fDetector.isAvailable(member.address)
 
+          /**
+           * Runs `f` when the local availabilty has changed since the last "opinion" check.
+           */
           def onChange(prevLocalAvailability: Boolean)(f: => Unit): Unit =
             if (prevLocalAvailability != localAvailability) {
               f
@@ -98,15 +129,29 @@ class IndirectConnectionReporter(parent: ActorRef, cluster: Cluster) extends Act
           case UnreachableMember(member) =>
             if (isLocallyAvailable) {
               log.debug("INIT UNR: {}", IndirectlyConnectedNode(member))
+
+              // There's a high probability that the member is really unreachable but
+              // hasn't been detected yet as such from the current cluster member. If
+              // that's the case it should be eventually corrected.
               parent ! IndirectlyConnectedNode(member)
+            } else {
+              parent ! UnreachableMember(member)
             }
+
             false
 
           case ReachableMember(member) =>
             if (!isLocallyAvailable) {
               log.debug("INIT REA: {}", IndirectlyConnectedNode(member))
+
+              // There's a high probability that the member is really unreachable but
+              // hasn't been detected yet as such from the current cluster member. If
+              // that's the case it should be eventually corrected.
               parent ! IndirectlyConnectedNode(member)
+            } else {
+              parent ! ReachableMember(member)
             }
+
             true
         }
 
@@ -138,8 +183,8 @@ class IndirectConnectionReporter(parent: ActorRef, cluster: Cluster) extends Act
   implicit private val ec: ExecutionContext = context.dispatcher
 }
 
-object IndirectConnectionReporter {
-  def props(parent: ActorRef, cluster: Cluster): Props = Props(new IndirectConnectionReporter(parent, cluster))
+object SBRFailureDetector {
+  def props(parent: ActorRef, cluster: Cluster): Props = Props(new SBRFailureDetector(parent, cluster))
 
   final case class Opinion(i: Int)
 

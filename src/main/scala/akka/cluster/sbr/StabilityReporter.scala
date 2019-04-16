@@ -15,7 +15,7 @@ class StabilityReporter(downer: ActorRef,
     with ActorLogging {
   import StabilityReporter._
 
-  private val _ = context.system.actorOf(IndirectConnectionReporter.props(self, cluster), "notifier")
+  private val _ = context.system.actorOf(SBRFailureDetector.props(self, cluster), "sbr-fd")
 
   private var _handleIndirectlyConnected: Option[Cancellable] = None
   private var _handleSplitBrain: Option[Cancellable]          = None
@@ -155,10 +155,7 @@ class StabilityReporter(downer: ActorRef,
   implicit private val ec: ExecutionContext = context.system.dispatcher
 
   override def preStart(): Unit =
-    cluster.subscribe(self,
-                      InitialStateAsSnapshot,
-                      classOf[akka.cluster.ClusterEvent.MemberEvent],
-                      classOf[akka.cluster.ClusterEvent.ReachabilityEvent])
+    cluster.subscribe(self, InitialStateAsSnapshot, classOf[akka.cluster.ClusterEvent.MemberEvent])
 
   override def postStop(): Unit = {
     cluster.unsubscribe(self)
