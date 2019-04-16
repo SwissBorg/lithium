@@ -14,8 +14,6 @@ class IndirectConnectionReporter(parent: ActorRef, cluster: Cluster) extends Act
 
   /* --- State --- */
   private var opinion: Option[Cancellable]                   = None
-
-  // todo remove opinions on dead addresses
   private var lastOpinions: Map[Address, (Boolean, Boolean)] = Map.empty
 
   override def receive: Receive = waitingForState
@@ -114,6 +112,10 @@ class IndirectConnectionReporter(parent: ActorRef, cluster: Cluster) extends Act
 
         lastOpinions = lastOpinions + (e.member.address -> ((isReachable, isLocallyAvailable)))
       }
+
+    case MemberRemoved(member, _) =>
+      log.debug("Removing {} from the opinions.", member)
+      lastOpinions = lastOpinions - member.address
   }
 
   def scheduleOpinion(): Some[Cancellable] =
@@ -123,7 +125,10 @@ class IndirectConnectionReporter(parent: ActorRef, cluster: Cluster) extends Act
   private val fDetector  = cluster.failureDetector
 
   override def preStart(): Unit =
-    cluster.subscribe(self, InitialStateAsSnapshot, classOf[akka.cluster.ClusterEvent.ReachabilityEvent])
+    cluster.subscribe(self,
+                      InitialStateAsSnapshot,
+                      classOf[MemberRemoved],
+                      classOf[akka.cluster.ClusterEvent.ReachabilityEvent])
 
   override def postStop(): Unit = {
     cluster.unsubscribe(self)
