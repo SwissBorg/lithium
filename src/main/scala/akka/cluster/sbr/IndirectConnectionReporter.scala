@@ -14,6 +14,8 @@ class IndirectConnectionReporter(parent: ActorRef, cluster: Cluster) extends Act
 
   /* --- State --- */
   private var opinion: Option[Cancellable]                   = None
+
+  // todo remove opinions on dead addresses
   private var lastOpinions: Map[Address, (Boolean, Boolean)] = Map.empty
 
   override def receive: Receive = waitingForState
@@ -59,20 +61,36 @@ class IndirectConnectionReporter(parent: ActorRef, cluster: Cluster) extends Act
             }
 
           (lastOpinions.get(member.address), localAvailability) match {
-            // todo
-            // If it's locally unavailable it should be gossiping it.
             case (Some((`isReachable`, prevLocalAvailability)), `isLocallyUnavailable`) =>
-              onChange(prevLocalAvailability)(parent ! IndirectlyConnectedNode(member))
+              onChange(prevLocalAvailability) {
+                log.debug("UPDATE: {}", IndirectlyConnectedNode(member))
+                parent ! IndirectlyConnectedNode(member)
+              }
+
+            case (Some((`isReachable`, prevLocalAvailability)), `isLocallyAvailable`) =>
+              onChange(prevLocalAvailability) {
+                log.debug("UPDATE: {}", ReachableMember(member))
+                parent ! ReachableMember(member)
+              }
 
             case (Some((`isUnreachable`, prevLocalAvailability)), `isLocallyAvailable`) =>
-              onChange(prevLocalAvailability)(parent ! IndirectlyConnectedNode(member))
+              onChange(prevLocalAvailability) {
+                log.debug("UPDATE: {}", IndirectlyConnectedNode(member))
+                parent ! IndirectlyConnectedNode(member)
+              }
+
+            case (Some((`isUnreachable`, prevLocalAvailability)), `isLocallyUnavailable`) =>
+              onChange(prevLocalAvailability) {
+                log.debug("UPDATE: {}", UnreachableMember(member))
+                parent ! UnreachableMember(member)
+              }
 
             case _ => ()
           }
-
-          opinion = scheduleOpinion()
         }
       }
+
+      opinion = scheduleOpinion()
 
     case e: ReachabilityEvent =>
       if (fDetector.isMonitoring(e.member.address)) {
@@ -80,11 +98,17 @@ class IndirectConnectionReporter(parent: ActorRef, cluster: Cluster) extends Act
 
         val isReachable = e match {
           case UnreachableMember(member) =>
-            if (isLocallyAvailable) parent ! IndirectlyConnectedNode(member)
+            if (isLocallyAvailable) {
+              log.debug("INIT UNR: {}", IndirectlyConnectedNode(member))
+              parent ! IndirectlyConnectedNode(member)
+            }
             false
 
           case ReachableMember(member) =>
-            if (!isLocallyAvailable) parent ! IndirectlyConnectedNode(member)
+            if (!isLocallyAvailable) {
+              log.debug("INIT REA: {}", IndirectlyConnectedNode(member))
+              parent ! IndirectlyConnectedNode(member)
+            }
             true
         }
 
@@ -92,7 +116,8 @@ class IndirectConnectionReporter(parent: ActorRef, cluster: Cluster) extends Act
       }
   }
 
-  def scheduleOpinion(): Some[Cancellable] = Some(context.system.scheduler.scheduleOnce(1.second)(self ! Opinion))
+  def scheduleOpinion(): Some[Cancellable] =
+    Some(context.system.scheduler.scheduleOnce(1.second, self, Opinion))
 
   private val selfMember = cluster.selfMember
   private val fDetector  = cluster.failureDetector
@@ -111,7 +136,7 @@ class IndirectConnectionReporter(parent: ActorRef, cluster: Cluster) extends Act
 object IndirectConnectionReporter {
   def props(parent: ActorRef, cluster: Cluster): Props = Props(new IndirectConnectionReporter(parent, cluster))
 
-  final case object Opinion
+  final case class Opinion(i: Int)
 
   /* --- Constants for code documentation --- */
 

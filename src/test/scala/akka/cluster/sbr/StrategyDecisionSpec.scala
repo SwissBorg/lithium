@@ -30,6 +30,9 @@ class StrategyDecisionSpec extends MySpec {
           case DownThese(decision1, decision2) =>
             strategyDecision.nodesToDown should ===(decision1.nodesToDown ++ decision2.nodesToDown)
 
+          case DownIndirectlyConnected(nodeGroup) =>
+            strategyDecision.nodesToDown.map(_.member) should ===(nodeGroup.map(_.member))
+
           case Idle => strategyDecision.nodesToDown.isEmpty shouldBe true
         }
       }
