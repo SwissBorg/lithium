@@ -1,6 +1,6 @@
 package akka.cluster.sbr
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, Props, Stash}
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 
@@ -12,7 +12,8 @@ class StabilityReporter(downer: ActorRef,
                         downAllWhenUnstable: FiniteDuration,
                         cluster: Cluster)
     extends Actor
-    with ActorLogging {
+    with ActorLogging
+    with Stash {
   import StabilityReporter._
 
   private val _ = context.system.actorOf(SBRFailureDetector.props(self, cluster), "sbr-fd")
@@ -22,14 +23,16 @@ class StabilityReporter(downer: ActorRef,
 //  private var clusterIsUnstable: Option[Cancellable]       = None
 
   override def receive: Receive = {
-    case state: CurrentClusterState =>
-      val worldView = WorldView(cluster.selfMember, trackIndirectlyConnected = true, state)
+    case _: CurrentClusterState =>
+      val worldView = WorldView.init(cluster.selfMember, trackIndirectlyConnected = true)
 
       startHandleIndirectlyConnected()
       startHandleSplitBrain()
+
+      unstashAll()
       context.become(main(worldView))
 
-    case _ => () // ignore
+    case _ => stash() // ignore
   }
 
   /**

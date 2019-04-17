@@ -40,32 +40,26 @@ class SBRFailureDetector(parent: ActorRef, cluster: Cluster) extends Actor with 
 
   // For each address, what the has been gossiped (true when it is reachable) and
   // if it was locally reachable at the time of the previous "opinion" check.
-  private var lastOpinions: Map[Address, (Boolean, Boolean)] = Map.empty
+  private var lastSBRReachabilities: Map[Address, SBRReachability] = Map.empty
 
   override def receive: Receive = waitingForState
 
   def waitingForState: Receive = {
-    case CurrentClusterState(members, unreachable, _, _, _) =>
-      // Initial setup of the opinions. The first opinions will be sent
-      // out after receiving the first `Opinion` event.
+    case CurrentClusterState(members, unreachable, seenBy, _, _) =>
+      val indirectlyConnectedNodes = unreachable.filter(m => seenBy.contains(m.address))
+      val unreachableNodes         = unreachable -- indirectlyConnectedNodes
+      val reachableNodes           = members -- unreachable
 
-      val unreachableLastOpinions: Map[Address, (Boolean, Boolean)] =
-        unreachable.flatMap { member =>
-          if (fDetector.isMonitoring(member.address)) {
-            Some(member.address -> ((false, fDetector.isAvailable(member.address))))
-          } else None
-        }(collection.breakOut)
+      indirectlyConnectedNodes.foreach(m => parent ! IndirectlyConnectedNode(m))
+      unreachableNodes.foreach(m => parent ! UnreachableMember(m))
+      reachableNodes.foreach(m => parent ! ReachableMember(m))
 
-      val reachableLastOpinions: Map[Address, (Boolean, Boolean)] = (members -- unreachable).flatMap { member =>
-        if (fDetector.isMonitoring(member.address)) {
-          Some(member.address -> ((true, fDetector.isAvailable(member.address))))
-        } else None
-      }(collection.breakOut)
-
-      opinion = scheduleOpinion()
-      lastOpinions = unreachableLastOpinions ++ reachableLastOpinions
+      lastSBRReachabilities = (indirectlyConnectedNodes.map(m => m.address -> IndirectlyConnected) ++
+        unreachableNodes.map(m => m.address                                -> Unreachable) ++
+        reachableNodes.map(m => m.address                                  -> Reachable)).toMap
 
       unstashAll()
+      opinion = scheduleOpinion()
       context.become(main)
 
     case _ => stash()
@@ -73,94 +67,67 @@ class SBRFailureDetector(parent: ActorRef, cluster: Cluster) extends Actor with 
 
   def main: Receive = {
     case Opinion =>
-      cluster.state.members.foreach { member =>
-        if (member =!= selfMember && fDetector.isMonitoring(member.address)) {
-          val localAvailability = fDetector.isAvailable(member.address)
+      log.debug("OPINION")
 
-          /**
-           * Runs `f` when the local availabilty has changed since the last "opinion" check.
-           */
-          def onChange(prevLocalAvailability: Boolean)(f: => Unit): Unit =
-            if (prevLocalAvailability != localAvailability) {
-              f
-
-              // We can get safely get the KV pair as `onChange` is only called
-              // when `lastOpinions.contains(member.address)`
-              lastOpinions = lastOpinions + (member.address -> ((lastOpinions(member.address)._1, localAvailability)))
-            }
-
-          (lastOpinions.get(member.address), localAvailability) match {
-            case (Some((`isReachable`, prevLocalAvailability)), `isLocallyUnavailable`) =>
-              onChange(prevLocalAvailability) {
-                log.debug("UPDATE: {}", IndirectlyConnectedNode(member))
-                parent ! IndirectlyConnectedNode(member)
-              }
-
-            case (Some((`isReachable`, prevLocalAvailability)), `isLocallyAvailable`) =>
-              onChange(prevLocalAvailability) {
-                log.debug("UPDATE: {}", ReachableMember(member))
-                parent ! ReachableMember(member)
-              }
-
-            case (Some((`isUnreachable`, prevLocalAvailability)), `isLocallyAvailable`) =>
-              onChange(prevLocalAvailability) {
-                log.debug("UPDATE: {}", IndirectlyConnectedNode(member))
-                parent ! IndirectlyConnectedNode(member)
-              }
-
-            case (Some((`isUnreachable`, prevLocalAvailability)), `isLocallyUnavailable`) =>
-              onChange(prevLocalAvailability) {
-                log.debug("UPDATE: {}", UnreachableMember(member))
-                parent ! UnreachableMember(member)
-              }
-
-            case _ => ()
-          }
+      val indirectlyConnectedNodes = cluster.state.unreachable.filter(m => cluster.state.seenBy.contains(m.address))
+      indirectlyConnectedNodes.foreach { m =>
+        lastSBRReachabilities.get(m.address).foreach {
+          case IndirectlyConnected => ()
+          case _                   => parent ! IndirectlyConnectedNode(m)
         }
+
+        lastSBRReachabilities += (m.address -> IndirectlyConnected)
+      }
+
+      val unreachableNodes = cluster.state.unreachable -- indirectlyConnectedNodes
+      unreachableNodes.foreach { m =>
+        lastSBRReachabilities.get(m.address).foreach {
+          case Unreachable => ()
+          case _           => parent ! UnreachableMember(m)
+        }
+
+        lastSBRReachabilities += (m.address -> Unreachable)
+      }
+
+      val reachableNodes = cluster.state.members -- cluster.state.unreachable
+      reachableNodes.foreach { m =>
+        lastSBRReachabilities.get(m.address).foreach {
+          case Reachable => ()
+          case _         => parent ! ReachableMember(m)
+        }
+
+        lastSBRReachabilities += (m.address -> Reachable)
+      }
+
+      val (availableMembers, unavailableMembers) = cluster.state.members.iterator
+        .filter(m => m != selfMember && fDetector.isMonitoring(m.address))
+        .partition(m => fDetector.isAvailable(m.address))
+
+      if (availableMembers.nonEmpty && unavailableMembers.nonEmpty) {
+        parent ! IndirectlyConnectedNode()
       }
 
       opinion = scheduleOpinion()
 
     case e: ReachabilityEvent =>
-      if (fDetector.isMonitoring(e.member.address)) {
-        val isLocallyAvailable = fDetector.isAvailable(e.member.address)
+      // First blindly trust the reachability event
+      // as its highly probable that it is correct.
+      // If it's a mistake it will be corrected in a
+      // subsequent "opinion" step.
 
-        val isReachable = e match {
-          case UnreachableMember(member) =>
-            if (isLocallyAvailable) {
-              log.debug("INIT UNR: {}", IndirectlyConnectedNode(member))
+      e match {
+        case UnreachableMember(member) =>
+          lastSBRReachabilities += (member.address -> Unreachable)
 
-              // There's a high probability that the member is really unreachable but
-              // hasn't been detected yet as such from the current cluster member. If
-              // that's the case it should be eventually corrected.
-              parent ! IndirectlyConnectedNode(member)
-            } else {
-              parent ! UnreachableMember(member)
-            }
-
-            false
-
-          case ReachableMember(member) =>
-            if (!isLocallyAvailable) {
-              log.debug("INIT REA: {}", IndirectlyConnectedNode(member))
-
-              // There's a high probability that the member is really unreachable but
-              // hasn't been detected yet as such from the current cluster member. If
-              // that's the case it should be eventually corrected.
-              parent ! IndirectlyConnectedNode(member)
-            } else {
-              parent ! ReachableMember(member)
-            }
-
-            true
-        }
-
-        lastOpinions = lastOpinions + (e.member.address -> ((isReachable, isLocallyAvailable)))
+        case ReachableMember(member) =>
+          lastSBRReachabilities += (member.address -> Reachable)
       }
+
+      parent ! e
 
     case MemberRemoved(member, _) =>
       log.debug("Removing {} from the opinions.", member)
-      lastOpinions = lastOpinions - member.address
+      lastSBRReachabilities = lastSBRReachabilities - member.address
   }
 
   def scheduleOpinion(): Some[Cancellable] =
@@ -187,6 +154,11 @@ object SBRFailureDetector {
   def props(parent: ActorRef, cluster: Cluster): Props = Props(new SBRFailureDetector(parent, cluster))
 
   final case class Opinion(i: Int)
+
+  sealed abstract class SBRReachability extends Product with Serializable
+  final case object Reachable           extends SBRReachability
+  final case object Unreachable         extends SBRReachability
+  final case object IndirectlyConnected extends SBRReachability
 
   /* --- Constants for code documentation --- */
 
