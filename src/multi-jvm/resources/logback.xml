@@ -11,7 +11,7 @@
 
     <logger name="akka.cluster.sbr.Downer" level="${APPLICATION_LOG_LEVEL}"/>
     <logger name="akka.cluster.sbr.StabilityReporter" level="${APPLICATION_LOG_LEVEL}"/>
-    <logger name="akka.cluster.sbr.SBRFailureDetector" level="${APPLICATION_LOG_LEVEL}"/>
+<!--    <logger name="akka.cluster.sbr.SBRFailureDetector" level="${APPLICATION_LOG_LEVEL}"/>-->
 
     <root level="${GENERAL_LOG_LEVEL}">
         <appender-ref ref="STDOUT"/>

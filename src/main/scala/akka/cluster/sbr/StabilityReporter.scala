@@ -17,20 +17,10 @@ class StabilityReporter(downer: ActorRef,
 
   private val _ = context.system.actorOf(SBRFailureDetector.props(self, cluster), "sbr-fd")
 
-  private var _handleIndirectlyConnected: Option[Cancellable] = None
-  private var _handleSplitBrain: Option[Cancellable]          = None
+  private var _handleSplitBrain: Option[Cancellable] = Some(scheduleHandleSplitBrain())
 //  private var clusterIsUnstable: Option[Cancellable]       = None
 
-  override def receive: Receive = {
-    case state: CurrentClusterState =>
-      val worldView = WorldView(cluster.selfMember, trackIndirectlyConnected = true, state)
-
-      startHandleIndirectlyConnected()
-      startHandleSplitBrain()
-      context.become(main(worldView))
-
-    case _ => () // ignore
-  }
+  override def receive: Receive = main(WorldView.init(cluster.selfMember, trackIndirectlyConnected = true))
 
   /**
    * The actors main receive.
@@ -40,7 +30,6 @@ class StabilityReporter(downer: ActorRef,
   def main(worldView: WorldView): Receive = {
     def stabilityAndBecome(updatedWorldView: WorldView): Unit = {
       if (!updatedWorldView.isStableChange(worldView)) {
-        resetHandleIndirectlyConnected()
         resetHandleSplitBrain()
       }
 
@@ -68,10 +57,6 @@ class StabilityReporter(downer: ActorRef,
         log.debug("{}", i)
         stabilityAndBecome(worldView.indirectlyConnected(member))
 
-      case HandleIndirectlyConnected =>
-        log.debug("Handle indirectly connected")
-        downer ! Downer.HandleIndirectlyConnected(worldView)
-
       case HandleSplitBrain =>
 //        cancelClusterIsUnstable()
         log.debug("Handle split brain")
@@ -83,46 +68,24 @@ class StabilityReporter(downer: ActorRef,
     }
   }
 
-  /* ------ Indirectly connected ------ */
-
-  private def startHandleIndirectlyConnected(): Unit =
-    _handleIndirectlyConnected match {
-      case None    => _handleIndirectlyConnected = Some(scheduleHandleIndirectlyConnected())
-      case Some(_) => () // already started
-    }
-
-  private def resetHandleIndirectlyConnected(): Unit =
-    _handleIndirectlyConnected.foreach { c =>
-      log.debug("Resetting handleIndirectlyConnected")
-      c.cancel()
-      _handleIndirectlyConnected = Some(scheduleHandleIndirectlyConnected())
-    }
-
-  private def cancelHandleIndirectlyConnected(): Unit =
-    _handleIndirectlyConnected.foreach { c =>
-      log.debug("Cancelling handleIndirectlyConnected")
-      c.cancel()
-      _handleIndirectlyConnected = None
-    }
-
   /* ------ Split brain ------ */
 
-  private def startHandleSplitBrain(): Unit =
-    _handleSplitBrain match {
-      case None    => _handleSplitBrain = Some(scheduleHandleSplitBrain())
-      case Some(_) => () // already started
-    }
+//  private def startHandleSplitBrain(): Unit =
+//    _handleSplitBrain match {
+//      case None    => _handleSplitBrain = Some(scheduleHandleSplitBrain())
+//      case Some(_) => () // already started
+//    }
 
   private def resetHandleSplitBrain(): Unit =
     _handleSplitBrain.foreach { c =>
-      log.debug("Resetting handleSplitBrain")
+//      log.debug("Resetting handleSplitBrain")
       c.cancel()
       _handleSplitBrain = Some(scheduleHandleSplitBrain())
     }
 
   private def cancelHandleSplitBrain(): Unit =
     _handleSplitBrain.foreach { c =>
-      log.debug("Cancelling handleSplitBrain")
+//      log.debug("Cancelling handleSplitBrain")
       c.cancel()
       _handleSplitBrain = None
     }
@@ -143,11 +106,8 @@ class StabilityReporter(downer: ActorRef,
 //      clusterIsUnstable = None
 //    }
 
-  private def scheduleHandleIndirectlyConnected(): Cancellable =
-    context.system.scheduler.scheduleOnce(stableAfter, self, HandleIndirectlyConnected)
-
   private def scheduleHandleSplitBrain(): Cancellable =
-    context.system.scheduler.scheduleOnce(stableAfter * 2, self, HandleSplitBrain)
+    context.system.scheduler.scheduleOnce(stableAfter, self, HandleSplitBrain)
 
 //  private def scheduleClusterIsUnstable(): Cancellable =
 //    context.system.scheduler.scheduleOnce(stableAfter + downAllWhenUnstable, self, ClusterIsUnstable)
@@ -159,7 +119,6 @@ class StabilityReporter(downer: ActorRef,
 
   override def postStop(): Unit = {
     cluster.unsubscribe(self)
-    cancelHandleIndirectlyConnected()
     cancelHandleSplitBrain()
 //    cancelClusterIsUnstable()
   }
