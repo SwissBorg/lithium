@@ -9,13 +9,13 @@ class UnreachableNodesSpec extends MySpec {
       forAll { (worldView: WorldView, quorumSize: QuorumSize, role: String) =>
         UnreachableNodes(worldView, quorumSize, role) match {
           case EmptyUnreachable =>
-            worldView.unreachableNodesWithRole(role) shouldBe empty
+            worldView.consideredUnreachableNodesWithRole(role) shouldBe empty
 
           case UnreachablePotentialQuorum =>
-            worldView.unreachableNodesWithRole(role).size should be >= quorumSize.value
+            worldView.consideredUnreachableNodesWithRole(role).size should be >= quorumSize.value
 
           case UnreachableSubQuorum =>
-            worldView.unreachableNodesWithRole(role).size should be < quorumSize.value
+            worldView.consideredUnreachableNodesWithRole(role).size should be < quorumSize.value
         }
       }
     }

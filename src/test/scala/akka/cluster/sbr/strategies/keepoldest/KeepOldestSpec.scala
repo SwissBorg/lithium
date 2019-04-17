@@ -4,27 +4,27 @@ import akka.cluster.sbr.MySpec
 import akka.cluster.sbr.strategy.ops._
 import akka.cluster.sbr.scenarios.{SymmetricSplitScenario, UpDisseminationScenario}
 import akka.cluster.sbr.strategies.keepoldest.ArbitraryInstances._
-import akka.cluster.sbr.utils.RemainingPartitions
+import akka.cluster.sbr.utils.PostResolution
 
 class KeepOldestSpec extends MySpec {
   "KeepOldest" - {
     "1 - should handle symmetric split scenarios" in {
       forAll { (scenario: SymmetricSplitScenario, keepOldest: KeepOldest) =>
-        val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          keepOldest.handle(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+        val remainingPartitions = scenario.worldViews.foldMap { worldView =>
+          keepOldest.takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
         }
 
-        remainingSubClusters.n.value should be <= 1
+        remainingPartitions.noSplitBrain shouldBe true
       }
     }
 
     "2 - should handle split during up-dissemination" in {
       forAll { (scenario: UpDisseminationScenario, keepOldest: KeepOldest) =>
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          keepOldest.handle(worldView).foldMap(RemainingPartitions.fromDecision(worldView))
+          keepOldest.takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
         }
 
-        remainingSubClusters.n.value should be <= 1
+        remainingSubClusters.noSplitBrain shouldBe true
       }
     }
   }

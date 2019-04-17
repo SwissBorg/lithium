@@ -35,13 +35,4 @@ trait MySpec
   // disable Eq syntax (by making `catsSyntaxEq` not implicit), since it collides
   // with scalactic's equality
   override def catsSyntaxEq[A: Eq](a: A): EqOps[A] = new EqOps[A](a)
-
-//    PropertyCheckConfiguration(minSuccessful = PosInt(10000),
-//                               maxDiscardedFactor = PosZDouble(5),
-//                               minSize = PosZInt(0),
-//                               sizeRange = PosZInt(100),
-//                               workers = PosInt(8))
-
-//    PropertyCheckConfig(minSuccessful = 5000, maxDiscarded = 250000, maxSize = 100, workers = 8)
-//    PropertyCheckConfig(minSuccessful = 100)
 }

@@ -14,28 +14,41 @@ sealed abstract class StrategyDecision extends Product with Serializable
 object StrategyDecision {
 
   val nodesToDown: Getter[StrategyDecision, SortedSet[Node]] = Getter[StrategyDecision, SortedSet[Node]] {
-    case DownThese(decision1, decision2)     => nodesToDown.get(decision1) ++ nodesToDown.get(decision2)
-    case DownSelf(node)                      => SortedSet(node)
-    case DownReachable(reachableNodes)       => reachableNodes.map(identity[Node])
-    case DownUnreachable(unreachableNodes)   => unreachableNodes.map(identity[Node])
-    case UnsafeDownReachable(reachableNodes) => reachableNodes.map(identity[Node])
-    case _: Idle.type                        => SortedSet.empty
+    case DownThese(decision1, decision2)                   => nodesToDown.get(decision1) ++ nodesToDown.get(decision2)
+    case DownSelf(node)                                    => SortedSet(node)
+    case DownReachable(reachableNodes)                     => reachableNodes.map(identity[Node])
+    case DownUnreachable(unreachableNodes)                 => unreachableNodes.map(identity[Node])
+    case DownIndirectlyConnected(indirectlyConnectedNodes) => indirectlyConnectedNodes.map(identity[Node])
+    case _: Idle.type                                      => SortedSet.empty
   }
 
   implicit class DecisionOps(private val decision: StrategyDecision) extends AnyVal {
     def nodesToDown: SortedSet[Node] = StrategyDecision.nodesToDown.get(decision)
+    def clean: StrategyDecision =
+      if (decision.nodesToDown.isEmpty) Idle
+      else {
+        decision match {
+          case Idle | _: DownSelf | _: DownIndirectlyConnected | _: DownUnreachable | _: DownReachable => decision
+          case DownThese(decision1, decision2) =>
+            if (decision1.nodesToDown.isEmpty) decision2.clean
+            else if (decision2.nodesToDown.isEmpty) decision1.clean
+            else decision
+        }
+      }
+
   }
 
   implicit val strategyDecisionMonoid: Monoid[StrategyDecision] = new Monoid[StrategyDecision] {
     override def empty: StrategyDecision = Idle
 
-    override def combine(x: StrategyDecision, y: StrategyDecision): StrategyDecision = (x, y) match {
-      case (Idle, y)        => y
-      case (x, Idle)        => x
-      case (_, y: DownSelf) => y
-      case (x: DownSelf, _) => x
-      case (x, y)           => DownThese(x, y)
-    }
+    override def combine(x: StrategyDecision, y: StrategyDecision): StrategyDecision =
+      (x, y) match {
+        case (Idle, y)        => y
+        case (x, Idle)        => x
+        case (x: DownSelf, _) => x
+        case (_, y: DownSelf) => y
+        case (x, y)           => DownThese(x, y)
+      }
   }
 }
 
@@ -44,20 +57,20 @@ object StrategyDecision {
  */
 sealed abstract case class DownReachable(nodeGroup: SortedSet[ReachableNode]) extends StrategyDecision
 object DownReachable {
-  def apply(worldView: WorldView): DownReachable = new DownReachable(worldView.reachableNodes) {}
+  def apply(worldView: WorldView): DownReachable =
+    new DownReachable(worldView.reachableNodes) {}
 }
 
 sealed abstract case class DownSelf(node: Node) extends StrategyDecision
 object DownSelf {
-  def apply(worldView: WorldView): DownSelf = new DownSelf(IndirectlyConnectedNode(worldView.self)) {}
+  def apply(worldView: WorldView): DownSelf = new DownSelf(worldView.selfNode) {}
 }
 
-/**
- * TODO doc!
- */
-sealed abstract case class UnsafeDownReachable(nodeGroup: SortedSet[ReachableNode]) extends StrategyDecision
-object UnsafeDownReachable {
-  def apply(worldView: WorldView): UnsafeDownReachable = new UnsafeDownReachable(worldView.reachableNodes) {}
+sealed abstract case class DownIndirectlyConnected(nodeGroup: SortedSet[IndirectlyConnectedNode])
+    extends StrategyDecision
+object DownIndirectlyConnected {
+  def apply(worldView: WorldView): DownIndirectlyConnected =
+    new DownIndirectlyConnected(worldView.indirectlyConnectedNodes) {}
 }
 
 /**
@@ -65,7 +78,7 @@ object UnsafeDownReachable {
  */
 sealed abstract case class DownUnreachable(nodeGroup: SortedSet[UnreachableNode]) extends StrategyDecision
 object DownUnreachable {
-  def apply(worldView: WorldView): StrategyDecision = new DownUnreachable(worldView.unreachableNodes) {}
+  def apply(worldView: WorldView): DownUnreachable = new DownUnreachable(worldView.unreachableNodes) {}
 }
 
 final case class DownThese(decision1: StrategyDecision, decision2: StrategyDecision) extends StrategyDecision

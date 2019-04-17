@@ -9,17 +9,14 @@ import eu.timepit.refined.numeric.Positive
 final case class KeepReferee(address: String, downAllIfLessThanNodes: Int Refined Positive)
 
 object KeepReferee {
-  def keepReferee(strategy: KeepReferee, worldView: WorldView): StrategyDecision = {
-    val a = KeepRefereeView(worldView, strategy.address, strategy.downAllIfLessThanNodes)
-//    println(a)
-    a match {
+  def keepReferee(strategy: KeepReferee, worldView: WorldView): StrategyDecision =
+    KeepRefereeView(worldView, strategy.address, strategy.downAllIfLessThanNodes) match {
       case RefereeReachable                          => DownUnreachable(worldView)
       case TooFewReachableNodes | RefereeUnreachable => DownReachable(worldView)
     }
-  }
 
   implicit val keepRefereeStrategy: Strategy[KeepReferee] = new Strategy[KeepReferee] {
-    override def handle(strategy: KeepReferee, worldView: WorldView): Either[Throwable, StrategyDecision] =
+    override def takeDecision(strategy: KeepReferee, worldView: WorldView): Either[Throwable, StrategyDecision] =
       keepReferee(strategy, worldView).asRight
   }
 

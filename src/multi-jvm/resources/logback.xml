@@ -1,0 +1,19 @@
+<configuration>
+    <property name="GENERAL_LOG_LEVEL" value="${GENERAL_LOG_LEVEL:-INFO}"/>
+    <property name="APPLICATION_LOG_LEVEL" value="${APPLICATION_LOG_LEVEL:-DEBUG}"/>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+<!--            <pattern>%date{ISO8601} %-5level %logger{36} %X{sourceThread} - %msg%n</pattern>-->
+            <pattern>%date{ISO8601} %-5level - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="akka.cluster.sbr.Downer" level="${APPLICATION_LOG_LEVEL}"/>
+    <logger name="akka.cluster.sbr.StabilityReporter" level="${APPLICATION_LOG_LEVEL}"/>
+    <logger name="akka.cluster.sbr.SBRFailureDetector" level="${APPLICATION_LOG_LEVEL}"/>
+
+    <root level="${GENERAL_LOG_LEVEL}">
+        <appender-ref ref="STDOUT"/>
+    </root>
+</configuration>

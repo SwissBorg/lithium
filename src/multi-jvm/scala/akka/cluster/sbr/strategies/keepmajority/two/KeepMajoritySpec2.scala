@@ -1,7 +1,6 @@
-package akka.cluster.sbr.strategies.keepmajority
+package akka.cluster.sbr.strategies.keepmajority.two
 
 import akka.cluster.sbr.FiveNodeSpec
-import akka.cluster.sbr.strategies.keepmajority.two.KeepMajoritySpec2Config
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
@@ -16,9 +15,9 @@ class KeepMajoritySpec2 extends FiveNodeSpec("KeepMajority", KeepMajoritySpec2Co
   override def assertions(): Unit =
     "Three partitions, bidirectional link failure" in within(60 seconds) {
       runOn(node1) {
-        // Partition of node1, node2, node3
-        // Partition of node 4
-        // Partition of node 5
+        // Partition with node1, node2, node3 <- survive
+        // Partition with node 4              <- killed
+        // Partition with node 5              <- killed
         akka.cluster.sbr.util
           .linksToKillForPartitions(List(node1, node2, node3) :: List(node4) :: List(node5) :: Nil)
           .foreach {
@@ -50,10 +49,16 @@ class KeepMajoritySpec2 extends FiveNodeSpec("KeepMajority", KeepMajoritySpec2Co
       enterBarrier("node1-2-3-4-unreachable")
 
       runOn(node1, node2, node3) {
-        waitForUnreachableHandling()
         waitForSurvivors(node1, node2, node3)
+        waitForDownOrGone(node4, node5)
       }
 
       enterBarrier("node4-5-downed")
+
+      runOn(node4, node5) {
+        waitForSelfDowning
+      }
+
+      enterBarrier("node4-5-suicide")
     }
 }

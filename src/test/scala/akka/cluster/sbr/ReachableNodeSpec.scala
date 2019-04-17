@@ -7,7 +7,7 @@ class ReachableNodeSpec extends MySpec {
   "ReachableNode" - {
     "1 - should not affect the order" in {
       forAll { reachableNodes: List[ReachableNode] =>
-        reachableNodes.sorted.map(_.node) should ===(reachableNodes.map(_.node).sorted)
+        reachableNodes.sorted.map(_.member) should ===(reachableNodes.map(_.member).sorted)
       }
     }
   }

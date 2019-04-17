@@ -1,6 +1,5 @@
 package akka.cluster.sbr.strategies.staticquorum.five
 
-import akka.cluster.Cluster
 import akka.cluster.sbr.FiveNodeSpec
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
@@ -12,6 +11,12 @@ class StaticQuorumSpec5MultiJvmNode3 extends StaticQuorumSpec5
 class StaticQuorumSpec5MultiJvmNode4 extends StaticQuorumSpec5
 class StaticQuorumSpec5MultiJvmNode5 extends StaticQuorumSpec5
 
+/**
+ * Node4 and node5 are indirectly connected in a five node cluster
+ *
+ * Node4 and node5 should down themselves as they are indirectly connected.
+ * The three other nodes survive as they form a quorum.
+ */
 class StaticQuorumSpec5 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec5Config) {
   override def assertions(): Unit =
     "Unidirectional link failure" in within(60 seconds) {
@@ -44,14 +49,16 @@ class StaticQuorumSpec5 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec5Co
       enterBarrier("node4-5-unreachable")
 
       runOn(node1, node2, node3) {
-        waitForUnreachableHandling()
         waitForSurvivors(node1, node2, node3)
+        waitForDownOrGone(node4, node5)
       }
 
-      enterBarrier("node4-5-downed")
+      enterBarrier("node1-2-3-ok")
 
-      runOn(node1, node2, node3, node4, node5) {
-        println(s"AAA-${Cluster(system).state.members}")
+      runOn(node4, node5) {
+        waitForSelfDowning
       }
+
+      enterBarrier("node4-5-suicide")
     }
 }

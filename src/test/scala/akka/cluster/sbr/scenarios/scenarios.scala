@@ -1,6 +1,5 @@
 package akka.cluster.sbr
 
-import akka.cluster.Member
 import akka.cluster.sbr.utils.splitIn
 import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined._
@@ -13,7 +12,7 @@ package object scenarios {
   /**
    * Split the nodes into n sub-clusters, where 1 <= n <= #nodes.
    */
-  def splitCluster(nodes: NonEmptySet[Member]): Gen[NonEmptyList[NonEmptySet[Member]]] =
+  def splitCluster[A](nodes: NonEmptySet[A]): Gen[NonEmptyList[NonEmptySet[A]]] =
     for {
       // Split the allNodes in `nSubCluster`.
       nSubClusters <- chooseNum(1, nodes.length).map(refineV[Positive](_).right.get) // always > 1

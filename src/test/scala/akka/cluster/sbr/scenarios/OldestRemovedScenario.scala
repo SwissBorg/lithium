@@ -4,7 +4,7 @@ import akka.cluster.ClusterEvent.{MemberRemoved, UnreachableMember}
 import akka.cluster.Member
 import akka.cluster.MemberStatus.{Exiting, Removed}
 import akka.cluster.sbr.ArbitraryInstances._
-import akka.cluster.sbr.WorldView
+import akka.cluster.sbr.{Node, ReachableNode, WorldView}
 import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
 import org.scalacheck.Arbitrary
@@ -19,44 +19,40 @@ final case class OldestRemovedScenario(worldViews: NonEmptyList[WorldView], clus
 object OldestRemovedScenario {
   implicit val arbOldestRemovedScenario: Arbitrary[OldestRemovedScenario] = Arbitrary {
     def divergeWorldView(worldView: WorldView,
-                         allNodes: NonEmptySet[Member],
-                         partition: NonEmptySet[Member]): Arbitrary[WorldView] = Arbitrary {
+                         allNodes: NonEmptySet[Node],
+                         partition: NonEmptySet[Node]): Arbitrary[WorldView] = Arbitrary {
       val otherNodes = allNodes -- partition
 
-      val oldestNode = partition.toList.sorted(Member.ageOrdering).head
+      val oldestNode = partition.toList.sortBy(_.member)(Member.ageOrdering).head
 
       chooseNum(1, 3)
         .map { n =>
-          if (n == 1)
+          if (n === 1)
             // Remove oldest node
-            worldView
-              .memberEvent(MemberRemoved(oldestNode.copy(Removed), Exiting))
-              .getOrElse(worldView) // info not disseminated before partition
-          else if (n == 2)
+            worldView.memberEvent(MemberRemoved(oldestNode.member.copy(Removed), Exiting))
+          else if (n === 2)
             // Oldest node is unreachable
-            worldView
-              .reachabilityEvent(UnreachableMember(oldestNode))
-              .getOrElse(worldView) // unreachable just after partition
-          else worldView
+            worldView.reachabilityEvent(UnreachableMember(oldestNode.member))
+          else worldView // info not disseminated
         }
         .map { worldView =>
           // Change `self`
           val worldView0 = worldView.copy(
-            self = partition.head,
-            otherStatuses = worldView.otherStatuses + (worldView.self -> worldView.selfStatus) - partition.head // add old self and remove new one
+            selfNode = ReachableNode(partition.head.member), // only clean partitions
+            otherNodes = worldView.otherNodes + worldView.selfNode - partition.head // add old self and remove new one
           )
 
           otherNodes.foldLeft[WorldView](worldView0) {
-            case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node)).toTry.get
+            case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node.member))
           }
         }
     }
 
     for {
       initWorldView <- arbHealthyWorldView.arbitrary
-      allNodes = NonEmptySet.fromSetUnsafe(initWorldView.allConsideredNodes)
-      partitions         <- splitCluster(allNodes)
-      divergedWorldViews <- partitions.traverse(divergeWorldView(initWorldView, allNodes, _)).arbitrary
-    } yield OldestRemovedScenario(divergedWorldViews, refineV[Positive](allNodes.length).right.get)
+      nodes = initWorldView.nodes
+      partitions         <- splitCluster(nodes)
+      divergedWorldViews <- partitions.traverse(divergeWorldView(initWorldView, nodes, _)).arbitrary
+    } yield OldestRemovedScenario(divergedWorldViews, refineV[Positive](nodes.length).right.get)
   }
 }

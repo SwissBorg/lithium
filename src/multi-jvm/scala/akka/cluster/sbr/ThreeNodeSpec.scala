@@ -1,8 +1,8 @@
 package akka.cluster.sbr
 
-import akka.actor.Address
+import akka.actor.{ActorSystem, Address}
 import akka.cluster.Cluster
-import akka.cluster.MemberStatus.Up
+import akka.cluster.MemberStatus.{Down, Up}
 import akka.remote.testconductor.RoleName
 import akka.remote.testkit.MultiNodeSpec
 import akka.testkit.ImplicitSender
@@ -58,22 +58,41 @@ abstract class ThreeNodeSpec(name: String, config: ThreeNodeSpecConfig)
 
   private val addresses: Map[RoleName, Address] = roles.map(r => r -> node(r).address).toMap
 
-  addresses.foreach(println)
+  addresses.foreach(a => log.debug(s"$a"))
 
   private def addressOf(roleName: RoleName): Address = addresses(roleName)
 
-  protected def waitToBecomeUnreachable(roleNames: RoleName*): Unit = roleNames.map(addressOf).foreach { address =>
-    awaitCond(Cluster(system).state.unreachable.exists(_.address == address))
-  }
+  protected def waitToBecomeUnreachable(roleNames: RoleName*): Unit =
+    awaitCond(
+      roleNames.map(addressOf).forall(address => Cluster(system).state.unreachable.exists(_.address === address))
+    )
 
   protected def waitForUnreachableHandling(): Unit =
     awaitCond(Cluster(system).state.unreachable.isEmpty)
 
   protected def waitForSurvivors(roleNames: RoleName*): Unit = roleNames.map(addressOf).foreach { address =>
-    awaitCond(Cluster(system).state.members.exists(_.address == address))
+    awaitCond(Cluster(system).state.members.exists(_.address === address))
   }
 
   protected def waitForUp(roleNames: RoleName*): Unit = roleNames.map(addressOf).foreach { address =>
-    awaitCond(Cluster(system).state.members.exists(m => m.address == address && m.status == Up))
+    awaitCond(Cluster(system).state.members.exists(m => m.address === address && m.status === Up))
+  }
+
+  protected def waitForSelfDowning(implicit system: ActorSystem): Unit = {
+    val selfAddress = Cluster(system).selfAddress
+    awaitCond {
+      Cluster(system).state.members.exists(m => m.address === selfAddress && m.status === Down)
+    }
+  }
+
+  protected def waitForDownOrGone(roleNames: RoleName*): Unit = roleNames.map(addressOf).foreach { address =>
+    awaitCond {
+      val members     = Cluster(system).state.members
+      val unreachable = Cluster(system).state.unreachable
+
+      unreachable.isEmpty &&                                              // no unreachable members
+      (members.exists(m => m.address === address && m.status === Down) || // member is down
+      !members.exists(_.address === address)) // member is not in the cluster
+    }
   }
 }

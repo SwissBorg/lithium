@@ -11,10 +11,11 @@ class KeepMajoritySpecMultiJvmNode2 extends KeepMajoritySpec
 class KeepMajoritySpecMultiJvmNode3 extends KeepMajoritySpec
 
 class KeepMajoritySpec extends ThreeNodeSpec("KeepMajority", KeepMajoritySpecConfig) {
-  override def assertions(): Unit = {
+  override def assertions(): Unit =
     "Bidirectional link failure" in within(60 seconds) {
       runOn(node1) {
-        // Kill link bi-directionally to node3
+        // Partition with node1 and node2 <- survive
+        // Partition with node3           <- killed
         linksToKillForPartitions(List(node1, node2) :: List(node3) :: Nil).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
         }
@@ -30,26 +31,16 @@ class KeepMajoritySpec extends ThreeNodeSpec("KeepMajority", KeepMajoritySpecCon
       enterBarrier("node3-unreachable")
 
       runOn(node1, node2) {
-        waitForUnreachableHandling()
         waitForSurvivors(node1, node2)
+        waitForDownOrGone(node3)
       }
 
       enterBarrier("node3-downed")
-    }
 
-    "Complete bidirectional link failure" in within(30 seconds) {
-      runOn(node1) {
-        val _ = testConductor.blackhole(node1, node2, Direction.Both).await
+      runOn(node3) {
+        waitForSelfDowning
       }
 
-      enterBarrier("all-disconnected")
-
-      runOn(node1) {
-        waitToBecomeUnreachable(node2)
-        // TODO How to check if all killed?
-      }
-
-      enterBarrier("all-downed")
+      enterBarrier("node3-suicide")
     }
-  }
 }

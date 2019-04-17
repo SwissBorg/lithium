@@ -1,21 +1,11 @@
 package akka.cluster.sbr
 
-import java.util.concurrent.atomic.AtomicBoolean
-
-import akka.actor.{Actor, ActorLogging, Cancellable, Props}
+import akka.actor.{Actor, ActorLogging, Props}
 import akka.cluster.Cluster
-import akka.cluster.ClusterEvent._
-import akka.cluster.pubsub.DistributedPubSub
-import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Subscribe}
-import akka.cluster.sbr.strategies.Or
-import akka.cluster.sbr.strategies.downall.DownAll
 import akka.cluster.sbr.strategies.indirected.Indirected
 import akka.cluster.sbr.strategy.Strategy
 import akka.cluster.sbr.strategy.ops._
-import akka.cluster.sbr.implicits._
-import cats.implicits._
 
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 class Downer[A: Strategy](cluster: Cluster,
@@ -24,280 +14,43 @@ class Downer[A: Strategy](cluster: Cluster,
                           downAllWhenUnstable: FiniteDuration)
     extends Actor
     with ActorLogging {
+
   import Downer._
 
-  // TODO is this one ok?
-  implicit private val ec: ExecutionContext = context.system.dispatcher
+  private val _ = context.system.actorOf(StabilityReporter.props(self, stableAfter, downAllWhenUnstable, cluster))
 
-  // If a node receive a unreachability event in his name it means that it is
-  // indirectly connected. It is unreachable via a link but reachable via another as
-  // it receive the event.
-  // As cluster events are only gossiped to reachable nodes,
-  // a node that has been detected as unreachable will never receive an unreachability
-  // event in his name.
-  private val mediator = DistributedPubSub(cluster.system).mediator
-  mediator ! Subscribe("info", self)
+  override def receive: Receive = {
+    case h @ HandleIndirectlyConnected(worldView) =>
+      log.debug("{}", h)
 
-  override def receive: Receive = waitingForSnapshot
-
-  /**
-   * Waits for the state snapshot we should get after having
-   * subscribed to the cluster's state with the initial
-   * state as snapshot.
-   */
-  private def waitingForSnapshot: Receive = {
-    case state: CurrentClusterState =>
-      val worldView = WorldView(cluster.selfMember, state)
-
-      if (worldView.unreachableNodes.nonEmpty) {
-        context.become(
-          hasUnreachableNodes(
-            worldView,
-            scheduleStabilityTrigger(),
-            scheduleInstabilityTrigger() // cluster has already an unreachable node
-          )
-        )
-      } else {
-        context.become(noUnreachableNodes(worldView, scheduleStabilityTrigger()))
-      }
-
-    case _ => () // ignore // TODO needed?
-  }
-
-  /**
-   * Actor's state when the cluster has no unstable nodes.
-   *
-   * At this point the unstability message has not been scheduled yet.
-   *
-   * @param worldView the current world view
-   * @param stabilityTrigger the handle to the stability trigger
-   */
-  private def noUnreachableNodes(worldView: WorldView, stabilityTrigger: Cancellable): Receive = {
-    case ClusterIsStable =>
-      println("noUnreachableNodes")
-      runStrategy(worldView)
-      context.become(noUnreachableNodes(worldView, scheduleStabilityTrigger()))
-
-    case e: MemberEvent =>
-      println(s"EVENT0: $e")
-      onMemberEvent(worldView, e) { w =>
-        context.become(
-          noUnreachableNodes(
-            w,
-            if (w === worldView) stabilityTrigger else resetStabilityTrigger(stabilityTrigger)
-          )
-        )
-      }
-
-    case e: UnreachableMember =>
-      mediator ! Publish("info", Wrapper(e))
-
-      println(s"EVENT0: $e")
-      onReachabilityEvent(worldView, e) { w =>
-        context.become(
-          hasUnreachableNodes(
-            w,
-            if (w === worldView) stabilityTrigger else resetStabilityTrigger(stabilityTrigger),
-            scheduleInstabilityTrigger()
-          )
-        )
-      }
-
-    case e: ReachableMember =>
-      println(s"EVENT0: $e")
-      onReachabilityEvent(worldView, e) { w =>
-        context.become(
-          noUnreachableNodes(
-            w,
-            if (w === worldView) stabilityTrigger else resetStabilityTrigger(stabilityTrigger)
-          )
-        )
-      }
-
-    case Wrapper(e: UnreachableMember) =>
-      if (e.member === cluster.selfMember) {
-        onReachabilityEvent(worldView, e) { w =>
-          context.become(
-            noUnreachableNodes(
-              w,
-              if (w === worldView) stabilityTrigger else resetStabilityTrigger(stabilityTrigger)
-            )
-          )
-        }
-      }
-  }
-
-  /**
-   * Actor's state when the cluster contains at least one unstable node.
-   *
-   * @param worldView the current world view
-   * @param stabilityTrigger the handle to the stability trigger
-   * @param unstabilityTrigger the handle to the stability trigger
-   */
-  private def hasUnreachableNodes(worldView: WorldView,
-                                  stabilityTrigger: Cancellable,
-                                  unstabilityTrigger: Cancellable): Receive = {
-    case ClusterIsStable =>
-      println("hasUnreachableNodes")
-      runStrategy(worldView)
-      // Does not directly assume all the unreachable nodes have been handled.
-      context.become(hasUnreachableNodes(worldView, scheduleStabilityTrigger(), unstabilityTrigger))
-
-    case ClusterIsUnstable =>
-      unstabilityTrigger.cancel() // also cancel the related timeout
-      downAllNodes(worldView)
-      // Not strictly necessary, the cluster should be down at this point.
-      context.become(noUnreachableNodes(worldView, resetStabilityTrigger(stabilityTrigger)))
-
-    case e: MemberEvent =>
-      println(s"EVENT1: $e")
-      onMemberEvent(worldView, e)(updateState(worldView, stabilityTrigger, unstabilityTrigger))
-
-    case e: UnreachableMember =>
-      mediator ! Publish("info", Wrapper(e)) // to detect indirectly connected nodes.
-      println(s"EVENT1: $e")
-      onReachabilityEvent(worldView, e)(updateState(worldView, stabilityTrigger, unstabilityTrigger))
-
-    case e: ReachableMember =>
-      println(s"EVENT1: $e")
-      onReachabilityEvent(worldView, e)(updateState(worldView, stabilityTrigger, unstabilityTrigger))
-
-    case Wrapper(e: UnreachableMember) =>
-      if (e.member === cluster.selfMember) {
-        onReachabilityEvent(worldView, e)(updateState(worldView, stabilityTrigger, unstabilityTrigger))
-      }
-  }
-
-  /**
-   * Applies `onUpdatedWorldView` on the new world view generated by the event.
-   *
-   * @param worldView the current world view
-   * @param e the event
-   * @param onUpdatedWorldView the function to execute on the new world view
-   */
-  private def onMemberEvent(worldView: WorldView, e: MemberEvent)(onUpdatedWorldView: WorldView => Unit): Unit =
-    worldView.memberEvent(e).map(onUpdatedWorldView).toTry.get
-
-  /**
-   * Applies `onUpdatedWorldView` on the new world view generated by the event.
-   *
-   * @param worldView the current world view
-   * @param e the event
-   * @param onUpdatedWorldView the function to execute on the new world view
-   */
-  private def onReachabilityEvent(worldView: WorldView,
-                                  e: ReachabilityEvent)(onUpdatedWorldView: WorldView => Unit): Unit =
-    worldView.reachabilityEvent(e).map(onUpdatedWorldView).toTry.get
-
-  private def updateState(oldWorldView: WorldView, stabilityTrigger: Cancellable, unstabilityTrigger: Cancellable)(
-    newWorldView: WorldView
-  ): Unit =
-    context.become(
-      hasUnreachableNodes(
-        newWorldView,
-        if (newWorldView === oldWorldView) stabilityTrigger else resetStabilityTrigger(stabilityTrigger),
-        if (newWorldView.unreachableNodes.nonEmpty) unstabilityTrigger else resetUnstabilityTrigger(unstabilityTrigger)
-      )
-    )
-
-  /**
-   * Runs [[strategy]] with the strategy to remove indirectly connected nodes.
-   */
-  private def runStrategy(worldView: WorldView): Unit = {
-    val a = Or(strategy, Indirected).handle(worldView)
-    println(s"LEADER ${cluster.state.leader}")
-
-    runOnLeader {
-      println(s"WV: $worldView")
-      println(s"DECISION $a")
-
-      a.fold(err => {
-          log.error(s"$err")
-          throw err
-        }, identity)
-        .nodesToDown
-        .foreach(node => Cluster(context.system).down(node.node.address))
-    }
-  }
-
-  /**
-   * Downs all the nodes in the cluster.
-   */
-  private def downAllNodes(worldView: WorldView): Unit =
-    runOnLeader {
-      DownAll
-        .handle(worldView)
-        .map(_.nodesToDown.foreach(node => Cluster(context.system).down(node.node.address)))
-        .leftMap { err =>
-          log.error(s"$err")
-          err
-        }
+//      if (cluster.state.leader.contains(cluster.selfAddress)) {
+      Indirected
+        .takeDecision(worldView)
         .toTry
+        .map(execute)
         .get
-    }
+//      }
 
-  private def runOnLeader(f: => Unit): Unit =
-    if (cluster.state.leader.contains(cluster.selfAddress)) {
-      f
-    } else if (cluster.state.leader.nonEmpty) {
-      println("Node is not the leader.")
-    } else {
-      println("There is no leader for this partition.")
-    }
+    case h @ HandleSplitBrain(worldView) =>
+      log.debug("{}", h)
 
-  private def scheduleStabilityTrigger(): Cancellable =
-    context.system.scheduler.scheduleOnce(stableAfter, self, ClusterIsStable)
+//      if (cluster.state.leader.contains(cluster.selfAddress)) {
+      strategy
+        .takeDecision(worldView)
+        .toTry
+        .map(execute)
+        .get
+//      }
 
-  /**
-   * Schedules an instability trigger. In parallel also start a related timeout that will be
-   * used to cancel the instability trigger.
-   *
-   * @return a handle that will cancel both the instability trigger and the related timeout.
-   */
-  private def scheduleInstabilityTrigger(): Cancellable = {
-    val c1 = context.system.scheduler.scheduleOnce(stableAfter * 2, self, ClusterIsUnstableTimeout)
-    val c2 = context.system.scheduler.scheduleOnce(stableAfter + downAllWhenUnstable, self, ClusterIsUnstable)
-    new Cancellable {
-      private val b: AtomicBoolean = new AtomicBoolean(c1.isCancelled && c2.isCancelled)
-
-      override def cancel(): Boolean    = c1.cancel() && c2.cancel()
-      override def isCancelled: Boolean = b.getAndSet(c1.isCancelled && c2.isCancelled)
-    }
+//    case ClusterIsUnstable(worldView) =>
+//      log.debug("Cluster is unstable.")
+//      DownAll.takeDecision(worldView).toTry.map(execute).get
   }
 
-  /**
-   * Resets the stability trigger and returns a new handle.
-   *
-   * @param stabilityTrigger the trigger to reset
-   * @return the new handle
-   */
-  private def resetStabilityTrigger(stabilityTrigger: Cancellable): Cancellable = {
-    stabilityTrigger.cancel()
-    scheduleStabilityTrigger()
+  private def execute(decision: StrategyDecision): Unit = {
+    log.debug("Executing decision: {}", decision.clean)
+    decision.nodesToDown.foreach(node => cluster.down(node.member.address))
   }
-
-  /**
-   * Resets the instability trigger and returns a new handle.
-   *
-   * @param instabilityTrigger the trigger to reset
-   * @return the new handle
-   */
-  private def resetUnstabilityTrigger(instabilityTrigger: Cancellable): Cancellable = {
-    instabilityTrigger.cancel()
-    scheduleInstabilityTrigger()
-  }
-
-  override def preStart(): Unit = {
-    println(s"GLOB: ${cluster.selfAddress.hasGlobalScope}")
-
-    cluster.subscribe(self,
-                      InitialStateAsSnapshot,
-                      classOf[akka.cluster.ClusterEvent.MemberEvent],
-                      classOf[akka.cluster.ClusterEvent.ReachabilityEvent])
-  }
-
-  override def postStop(): Unit =
-    cluster.unsubscribe(self)
 }
 
 object Downer {
@@ -307,9 +60,7 @@ object Downer {
                          downAllWhenUnstable: FiniteDuration): Props =
     Props(new Downer(cluster, strategy, stableAfter, downAllWhenUnstable))
 
-  final case object ClusterIsStable
-  final case object ClusterIsUnstable
-  final case object ClusterIsUnstableTimeout
-
-  final case class Wrapper(e: ReachabilityEvent)
+  final case class HandleSplitBrain(worldView: WorldView)
+//  final case class ClusterIsUnstable(worldView: WorldView)
+  final case class HandleIndirectlyConnected(worldView: WorldView)
 }
