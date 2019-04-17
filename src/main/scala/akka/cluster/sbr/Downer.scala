@@ -2,6 +2,7 @@ package akka.cluster.sbr
 
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.cluster.Cluster
+import akka.cluster.sbr.strategies.Or
 import akka.cluster.sbr.strategies.indirected.Indirected
 import akka.cluster.sbr.strategy.Strategy
 import akka.cluster.sbr.strategy.ops._
@@ -20,27 +21,14 @@ class Downer[A: Strategy](cluster: Cluster,
   private val _ = context.system.actorOf(StabilityReporter.props(self, stableAfter, downAllWhenUnstable, cluster))
 
   override def receive: Receive = {
-    case h @ HandleIndirectlyConnected(worldView) =>
-      log.debug("{}", h)
-
-//      if (cluster.state.leader.contains(cluster.selfAddress)) {
-      Indirected
-        .takeDecision(worldView)
-        .toTry
-        .map(execute)
-        .get
-//      }
-
     case h @ HandleSplitBrain(worldView) =>
       log.debug("{}", h)
 
-//      if (cluster.state.leader.contains(cluster.selfAddress)) {
-      strategy
+      Or(strategy, Indirected)
         .takeDecision(worldView)
         .toTry
         .map(execute)
         .get
-//      }
 
 //    case ClusterIsUnstable(worldView) =>
 //      log.debug("Cluster is unstable.")
@@ -62,5 +50,4 @@ object Downer {
 
   final case class HandleSplitBrain(worldView: WorldView)
 //  final case class ClusterIsUnstable(worldView: WorldView)
-  final case class HandleIndirectlyConnected(worldView: WorldView)
 }
