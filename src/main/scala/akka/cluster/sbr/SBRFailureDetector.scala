@@ -1,10 +1,10 @@
 package akka.cluster.sbr
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash}
+import akka.actor.{Actor, ActorLogging, Props, Stash}
 import akka.cluster.ClusterEvent._
 import akka.cluster.ClusterSettings.DataCenter
 import akka.cluster.sbr.SBRFailureDetector.SBRReachability
-import akka.cluster.{Cluster, HeartbeatNodeRing, Member, Reachability, UniqueAddress}
+import akka.cluster._
 
 /**
  * Actor reporting the reachability status of cluster members based on
@@ -59,8 +59,16 @@ class SBRFailureDetector extends Actor with ActorLogging with Stash {
     _state = _state.copy(ring = _state.ring.copy(nodes = nodes + selfUniqueAddress, unreachable = unreachable))
   }
 
+  /**
+   * Sends the updated reachability states to the parent.
+   */
   private def reachabilityChanged(r: Reachability): Unit = {
-    def idempotentSend(reachability: SBRReachability, member: Member): Unit =
+
+    /**
+     * Sends the `reachability` to the parent if it
+     * previously was in a different reachability state.
+     */
+    def send(reachability: SBRReachability, member: Member): Unit =
       _state.lastReachabilities.get(member.uniqueAddress) match {
         case Some(`reachability`) => ()
         case _ =>
@@ -78,7 +86,7 @@ class SBRFailureDetector extends Actor with ActorLogging with Stash {
         val allReachable = cluster.state.members.map(_.uniqueAddress) -- r.allUnreachableFrom(selfUniqueAddress)
 
         if (unreachableFrom.isEmpty) {
-          idempotentSend(Reachable, member)
+          send(Reachable, member)
         } else {
           // True if there is at least a reachable
           // observer node that can reach the current member.
@@ -88,9 +96,9 @@ class SBRFailureDetector extends Actor with ActorLogging with Stash {
               .exists(m => allReachable.contains(m) && !unreachableFrom.contains(m))
 
           if (isIndirectlyReachable) {
-            idempotentSend(IndirectlyConnected, member)
+            send(IndirectlyConnected, member)
           } else {
-            idempotentSend(Unreachable, member)
+            send(Unreachable, member)
           }
         }
     }
