@@ -17,7 +17,7 @@ class StabilityReporter(downer: ActorRef,
 
   private val _ = context.system.actorOf(SBRFailureDetector.props, "sbr-fd")
 
-  private var _handleSplitBrain: Option[Cancellable] = Some(scheduleHandleSplitBrain())
+  private var _handleSplitBrain: Cancellable = scheduleHandleSplitBrain()
 //  private var clusterIsUnstable: Option[Cancellable]       = None
 
   override def receive: Receive = main(WorldView.init(cluster.selfMember, trackIndirectlyConnected = true))
@@ -76,19 +76,10 @@ class StabilityReporter(downer: ActorRef,
 //      case Some(_) => () // already started
 //    }
 
-  private def resetHandleSplitBrain(): Unit =
-    _handleSplitBrain.foreach { c =>
-//      log.debug("Resetting handleSplitBrain")
-      c.cancel()
-      _handleSplitBrain = Some(scheduleHandleSplitBrain())
-    }
-
-  private def cancelHandleSplitBrain(): Unit =
-    _handleSplitBrain.foreach { c =>
-//      log.debug("Cancelling handleSplitBrain")
-      c.cancel()
-      _handleSplitBrain = None
-    }
+  private def resetHandleSplitBrain(): Unit = {
+    _handleSplitBrain.cancel()
+    _handleSplitBrain = scheduleHandleSplitBrain()
+  }
 
 //
 //  private def startClusterIsUnstable(): Unit =
@@ -119,7 +110,7 @@ class StabilityReporter(downer: ActorRef,
 
   override def postStop(): Unit = {
     cluster.unsubscribe(self)
-    cancelHandleSplitBrain()
+    _handleSplitBrain.cancel()
 //    cancelClusterIsUnstable()
   }
 }
