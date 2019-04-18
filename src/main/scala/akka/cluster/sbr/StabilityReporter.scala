@@ -15,7 +15,7 @@ class StabilityReporter(downer: ActorRef,
     with ActorLogging {
   import StabilityReporter._
 
-  private val _ = context.system.actorOf(SBRFailureDetector.props(self, cluster), "sbr-fd")
+  private val _ = context.system.actorOf(SBRFailureDetector.props, "sbr-fd")
 
   private var _handleSplitBrain: Option[Cancellable] = Some(scheduleHandleSplitBrain())
 //  private var clusterIsUnstable: Option[Cancellable]       = None
