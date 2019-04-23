@@ -2,8 +2,6 @@ package akka.cluster.sbr
 
 import akka.actor.{Actor, ActorLogging, Props, Stash}
 import akka.cluster.ClusterEvent._
-import akka.cluster.ClusterSettings.DataCenter
-import akka.cluster.sbr.SBRFailureDetector.SBRReachability
 import akka.cluster._
 
 /**
@@ -25,13 +23,9 @@ class SBRFailureDetector extends Actor with ActorLogging with Stash {
   private val cluster                          = Cluster(context.system)
   private val parent                           = context.parent
   private val selfUniqueAddress: UniqueAddress = cluster.selfUniqueAddress
-  private val selfDC: DataCenter               = cluster.selfDataCenter
 
-  private var _state: SBRFailureDetectorState = SBRFailureDetectorState(
-    HeartbeatNodeRing(selfUniqueAddress, Set(selfUniqueAddress), Set.empty, cluster.settings.MonitoredByNrOfMembers),
-    Map.empty,
-    cluster.selfMember
-  )
+  private var _state: SBRFailureDetectorState =
+    SBRFailureDetectorState(cluster.selfMember, cluster.settings.MonitoredByNrOfMembers)
 
   override def receive: Receive = initializing
 
@@ -53,10 +47,13 @@ class SBRFailureDetector extends Actor with ActorLogging with Stash {
   }
 
   private def init(s: CurrentClusterState): Unit = {
-    val nodes       = s.members.collect { case m if m.dataCenter == selfDC     => m.uniqueAddress }
-    val unreachable = s.unreachable.collect { case m if m.dataCenter == selfDC => m.uniqueAddress }
+    s.members.foreach { member =>
+      _state = _state.add(member)
+    }
 
-    _state = _state.copy(ring = _state.ring.copy(nodes = nodes + selfUniqueAddress, unreachable = unreachable))
+    s.unreachable.foreach { member =>
+      _state = _state.unreachable(member)
+    }
   }
 
   /**
@@ -80,29 +77,33 @@ class SBRFailureDetector extends Actor with ActorLogging with Stash {
           _state = _state.update(member, reachability)
       }
 
-    r.observersGroupedByUnreachable.foreach {
-      case (node, unreachableFrom) =>
-        val member       = cluster.state.members.find(_.uniqueAddress == node).get // todo better handle potential error
-        val allReachable = cluster.state.members.map(_.uniqueAddress) -- r.allUnreachableFrom(selfUniqueAddress)
+    for {
+      (node, unreachableFrom) <- r.observersGroupedByUnreachable
+      member                  <- memberFromAddress(node)
+    } {
+      val allReachable = cluster.state.members.map(_.uniqueAddress) -- r.allUnreachableFrom(selfUniqueAddress)
 
-        if (unreachableFrom.isEmpty) {
-          send(Reachable, member)
+      if (unreachableFrom.isEmpty) {
+        send(Reachable, member)
+      } else {
+        // True if there is at least a reachable
+        // observer node that can reach the current member.
+        val isIndirectlyReachable =
+          _state.ring
+            .receivers(node)
+            .exists(m => allReachable.contains(m) && !unreachableFrom.contains(m))
+
+        if (isIndirectlyReachable) {
+          send(IndirectlyConnected, member)
         } else {
-          // True if there is at least a reachable
-          // observer node that can reach the current member.
-          val isIndirectlyReachable =
-            _state.ring
-              .receivers(node)
-              .exists(m => allReachable.contains(m) && !unreachableFrom.contains(m))
-
-          if (isIndirectlyReachable) {
-            send(IndirectlyConnected, member)
-          } else {
-            send(Unreachable, member)
-          }
+          send(Unreachable, member)
         }
+      }
     }
   }
+
+  private def memberFromAddress(node: UniqueAddress): Option[Member] =
+    cluster.state.members.find(_.uniqueAddress == node)
 
   private def addMember(m: Member): Unit = _state = _state.add(m)
 
@@ -144,42 +145,4 @@ object SBRFailureDetector {
   final case object Reachable           extends SBRReachability
   final case object Unreachable         extends SBRReachability
   final case object IndirectlyConnected extends SBRReachability
-}
-
-/**
- * State of the SBRFailureDetector.
- *
- * Keeps the `ring` in sync with the one in `ClusterHeartBeatSender`
- * to known who the current observers are of specific nodes.
- */
-final private[sbr] case class SBRFailureDetectorState(ring: HeartbeatNodeRing,
-                                                      lastReachabilities: Map[UniqueAddress, SBRReachability],
-                                                      private val selfMember: Member) {
-  def add(m: Member): SBRFailureDetectorState = {
-    val node = m.uniqueAddress
-    if (node != selfMember.uniqueAddress && !ring.nodes(node) && selfMember.dataCenter == m.dataCenter) {
-      copy(ring = ring :+ node)
-    } else {
-      this
-    }
-  }
-
-  def remove(m: Member): SBRFailureDetectorState = {
-    val lastReachabilities0 = lastReachabilities - m.uniqueAddress
-
-    if (m.dataCenter == selfMember.dataCenter) {
-      copy(ring = ring :- m.uniqueAddress, lastReachabilities = lastReachabilities0)
-    } else {
-      copy(lastReachabilities = lastReachabilities0)
-    }
-  }
-
-  def reachable(m: Member): SBRFailureDetectorState =
-    copy(ring = ring.copy(unreachable = ring.unreachable + m.uniqueAddress))
-
-  def unreachable(m: Member): SBRFailureDetectorState =
-    copy(ring = ring.copy(unreachable = ring.unreachable - m.uniqueAddress))
-
-  def update(member: Member, reachability: SBRReachability): SBRFailureDetectorState =
-    copy(lastReachabilities = lastReachabilities + (member.uniqueAddress -> reachability))
 }
