@@ -28,24 +28,17 @@ class StaticQuorumSpec extends ThreeNodeSpec("StaticQuorum", StaticQuorumSpecCon
         }
       }
 
-      enterBarrier("node3-disconnected")
-
-      runOn(node1, node2) {
-        waitForUp(node1, node2)
-        waitToBecomeUnreachable(node3)
-      }
-
-      enterBarrier("node3-unreachable")
+      enterBarrier("links-disconnected")
 
       runOn(node1, node2) {
         waitForSurvivors(node1, node2)
         waitForDownOrGone(node3)
       }
 
-      enterBarrier("node3-downed")
-
       runOn(node3) {
         waitForSelfDowning
       }
+
+      enterBarrier("split-brain-resolved")
     }
 }

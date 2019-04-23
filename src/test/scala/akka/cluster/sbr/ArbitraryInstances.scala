@@ -3,8 +3,9 @@ package akka.cluster.sbr
 import akka.actor.Address
 import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus._
+import akka.cluster.sbr.SBRFailureDetector.{IndirectlyConnected, Reachable, SBRReachability, Unreachable}
 import akka.cluster.sbr.implicits._
-import akka.cluster.{Member, MemberStatus, UniqueAddress, Reachability => _}
+import akka.cluster.{HeartbeatNodeRing, Member, MemberStatus, UniqueAddress, Reachability => _}
 import cats.data.{NonEmptyMap, NonEmptySet}
 import cats.kernel.Order
 import org.scalacheck.Arbitrary
@@ -214,6 +215,26 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
   implicit val arbStrategyDecision: Arbitrary[StrategyDecision] = Arbitrary(
     oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary, arbDownSelf.arbitrary, arbDownThese.arbitrary)
   )
+
+  implicit val arbSBRReachability: Arbitrary[SBRReachability] = Arbitrary(
+    oneOf(Reachable, Unreachable, IndirectlyConnected)
+  )
+
+  implicit val arbSBRFailureDetectorState: Arbitrary[SBRFailureDetectorState] = Arbitrary(for {
+    selfMember <- arbMember.arbitrary
+    selfR      <- arbSBRReachability.arbitrary
+    members    <- arbitrary[Set[(Member, SBRReachability)]]
+  } yield {
+    val s0 = SBRFailureDetectorState(
+      HeartbeatNodeRing(selfMember.uniqueAddress, Set(selfMember.uniqueAddress), Set.empty, members.size / 2),
+      Map(selfMember.uniqueAddress -> selfR),
+      selfMember
+    )
+
+    members.foldLeft(s0) {
+      case (s, memberAndR) => s.add(memberAndR._1).update(memberAndR._1, memberAndR._2)
+    }
+  })
 }
 
 trait ArbitraryInstances0 {
