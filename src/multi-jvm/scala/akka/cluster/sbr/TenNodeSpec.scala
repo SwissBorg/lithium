@@ -33,94 +33,24 @@ abstract class TenNodeSpec(name: String, config: TenNodeSpecConfig)
   override def initialParticipants: Int = roles.size
 
   s"$name" - {
-    "Start the 1st node" in within(30 seconds) {
+    "Start the cluster" in within(60 seconds) {
       runOn(node1) {
         Cluster(system).join(addressOf(node1))
-        waitForUp(node1)
       }
 
       enterBarrier("node1-up")
-    }
 
-    "Start the 2nd node" in within(30 seconds) {
-      runOn(node2) {
+      runOn(node2, node3, node4, node5, node6, node7, node8, node9, node10) {
         Cluster(system).join(addressOf(node1))
-        waitForUp(node1, node2)
       }
 
-      enterBarrier("node2-up")
-    }
+      enterBarrier("cluster-created")
 
-    "Start the 3rd node" in within(30 seconds) {
-      runOn(node3) {
-        Cluster(system).join(addressOf(node1))
-        waitForUp(node1, node2, node3)
+      runOn(node1, node2, node3, node4, node5, node6, node7, node8, node9, node10) {
+        waitForUp(node1, node2, node3, node4, node5, node6, node7, node8, node9, node10)
       }
 
-      enterBarrier("node3-up")
-    }
-
-    "Start the 4th node" in within(30 seconds) {
-      runOn(node4) {
-        Cluster(system).join(addressOf(node1))
-        waitForUp(node1, node2, node3, node4)
-      }
-
-      enterBarrier("node4-up")
-    }
-
-    "Start the 5th node" in within(30 seconds) {
-      runOn(node5) {
-        Cluster(system).join(addressOf(node1))
-        waitForUp(node1, node2, node3, node4, node5)
-      }
-
-      enterBarrier("node5-up")
-    }
-
-    "Start the 6th node" in within(30 seconds) {
-      runOn(node6) {
-        Cluster(system).join(addressOf(node1))
-        waitForUp(node1, node2, node3, node4, node5, node6)
-      }
-
-      enterBarrier("node6-up")
-    }
-
-    "Start the 7th node" in within(30 seconds) {
-      runOn(node7) {
-        Cluster(system).join(addressOf(node1))
-        waitForUp(node1, node2, node3, node4, node5, node7)
-      }
-
-      enterBarrier("node7-up")
-    }
-
-    "Start the 8th node" in within(30 seconds) {
-      runOn(node8) {
-        Cluster(system).join(addressOf(node1))
-        waitForUp(node1, node2, node3, node4, node5, node7, node8)
-      }
-
-      enterBarrier("node8-up")
-    }
-
-    "Start the 9th node" in within(30 seconds) {
-      runOn(node9) {
-        Cluster(system).join(addressOf(node1))
-        waitForUp(node1, node2, node3, node4, node5, node7, node8, node9)
-      }
-
-      enterBarrier("node9-up")
-    }
-
-    "Start the 10th node" in within(30 seconds) {
-      runOn(node10) {
-        Cluster(system).join(addressOf(node1))
-        waitForUp(node1, node2, node3, node4, node5, node7, node8, node9, node10)
-      }
-
-      enterBarrier("node10-up")
+      enterBarrier("cluster-up")
     }
 
     assertions()
@@ -131,34 +61,53 @@ abstract class TenNodeSpec(name: String, config: TenNodeSpecConfig)
 
   private def addressOf(roleName: RoleName): Address = addresses(roleName)
 
-  protected def waitToBecomeUnreachable(roleNames: RoleName*): Unit = roleNames.map(addressOf).foreach { address =>
-    awaitCond(Cluster(system).state.unreachable.exists(_.address === address))
+  protected def waitToBecomeUnreachable(roleNames: RoleName*): Unit       = awaitCond(allUnreachable(roleNames: _*))
+  protected def waitForUnreachableHandling(): Unit                        = awaitCond(Cluster(system).state.unreachable.isEmpty)
+  protected def waitForSurvivors(roleNames: RoleName*): Unit              = awaitCond(allSurvivors(roleNames: _*))
+  protected def waitForUp(roleNames: RoleName*): Unit                     = awaitCond(allUp(roleNames: _*))
+  protected def waitAllButOneUp(roleNames: RoleName*): Unit               = awaitCond(allButOneUp(roleNames: _*))
+  protected def waitForSelfDowning(implicit system: ActorSystem): Unit    = awaitCond(downedItself)
+  protected def waitForDownOrGone(roleNames: RoleName*): Unit             = awaitCond(allDownOrGone(roleNames: _*))
+  protected def waitAllButOneDownOrGone(roleNames: RoleName*): Unit       = awaitCond(allButOneDownOrGone(roleNames: _*))
+  protected def waitExistsAllDownOrGone(groups: Seq[Seq[RoleName]]): Unit = awaitCond(existsAllDownOrGone(groups))
+
+  private def allUnreachable(roleNames: RoleName*): Boolean =
+    roleNames.forall(role => Cluster(system).state.unreachable.exists(_.address === addressOf(role)))
+
+  private def allSurvivors(roleNames: RoleName*): Boolean =
+    roleNames.forall(role => Cluster(system).state.members.exists(_.address === addressOf(role)))
+
+  private def allUp(roleNames: RoleName*): Boolean =
+    roleNames.forall(
+      role => Cluster(system).state.members.exists(m => m.address === addressOf(role) && m.status === Up)
+    )
+
+  private def allButOneUp(roleNames: RoleName*): Boolean = {
+    val s = roleNames.toSet
+    roleNames.combinations(2).exists(rs => allUp(rs: _*) && allDownOrGone((s -- rs).toSeq: _*))
   }
 
-  protected def waitForUnreachableHandling(): Unit =
-    awaitCond(Cluster(system).state.unreachable.isEmpty)
+  private def existsAllDownOrGone(groups: Seq[Seq[RoleName]]): Boolean =
+    groups.exists(group => allDownOrGone(group: _*))
 
-  protected def waitForSurvivors(roleNames: RoleName*): Unit = roleNames.map(addressOf).foreach { address =>
-    awaitCond(Cluster(system).state.members.exists(_.address === address))
+  private def allButOneDownOrGone(roleNames: RoleName*): Boolean = {
+    val s = roleNames.toSet
+    roleNames.combinations(2).exists(rs => allDownOrGone(rs: _*) && allUp((s -- rs).toSeq: _*))
   }
 
-  protected def waitForUp(roleNames: RoleName*): Unit = roleNames.map(addressOf).foreach { address =>
-    awaitCond(Cluster(system).state.members.exists(m => m.address === address && m.status === Up))
-  }
-
-  protected def waitForSelfDowning(implicit system: ActorSystem): Unit = {
+  private def downedItself(implicit system: ActorSystem): Boolean = {
     val selfAddress = Cluster(system).selfAddress
-    awaitCond(Cluster(system).state.members.exists(m => m.address === selfAddress && m.status === Down))
+    Cluster(system).state.members.exists(m => m.address === selfAddress && m.status === Down)
   }
 
-  protected def waitForDownOrGone(roleNames: RoleName*): Unit = roleNames.map(addressOf).foreach { address =>
-    awaitCond {
+  private def allDownOrGone(roleNames: RoleName*): Boolean =
+    roleNames.forall { role =>
       val members     = Cluster(system).state.members
       val unreachable = Cluster(system).state.unreachable
 
+      val address = addressOf(role)
       unreachable.isEmpty &&                                              // no unreachable members
       (members.exists(m => m.address === address && m.status === Down) || // member is down
       !members.exists(_.address === address)) // member is not in the cluster
     }
-  }
 }

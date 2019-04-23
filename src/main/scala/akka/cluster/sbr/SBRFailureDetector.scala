@@ -1,6 +1,6 @@
 package akka.cluster.sbr
 
-import akka.actor.{Actor, ActorLogging, Props, Stash}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash}
 import akka.cluster.ClusterEvent._
 import akka.cluster._
 
@@ -16,12 +16,13 @@ import akka.cluster._
  * still reach other by taking a different path.
  *
  * This failure detector is eventually consistent.
+ *
+ * @param sendTo the actor to which the event have to be sent.
  */
-class SBRFailureDetector extends Actor with ActorLogging with Stash {
+class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging with Stash {
   import SBRFailureDetector._
 
   private val cluster                          = Cluster(context.system)
-  private val parent                           = context.parent
   private val selfUniqueAddress: UniqueAddress = cluster.selfUniqueAddress
 
   private var _state: SBRFailureDetectorState =
@@ -69,7 +70,7 @@ class SBRFailureDetector extends Actor with ActorLogging with Stash {
       _state.lastReachabilities.get(member.uniqueAddress) match {
         case Some(`reachability`) => ()
         case _ =>
-          parent ! (reachability match {
+          sendTo ! (reachability match {
             case Reachable           => ReachableMember(member)
             case Unreachable         => UnreachableMember(member)
             case IndirectlyConnected => IndirectlyConnectedNode(member)
@@ -107,21 +108,20 @@ class SBRFailureDetector extends Actor with ActorLogging with Stash {
 
   private def addMember(m: Member): Unit = _state = _state.add(m)
 
-  private def removeMember(m: Member): Unit = {
+  private def removeMember(m: Member): Unit =
     if (m.uniqueAddress == selfUniqueAddress) {
       // This node is being stopped. Kill the actor
       // to stop any further updates.
       context.stop(self)
+    } else {
+      _state = _state.remove(m)
     }
-
-    _state = _state.remove(m)
-  }
 
   private def reachableMember(m: Member): Unit = {
     _state = _state.reachable(m)
 
     // No need to check as all the monitoring nodes see the member as reachable.
-    parent ! ReachableMember(m)
+    sendTo ! ReachableMember(m)
   }
 
   private def unreachableMember(m: Member): Unit = _state = _state.unreachable(m)
@@ -139,7 +139,7 @@ class SBRFailureDetector extends Actor with ActorLogging with Stash {
 }
 
 object SBRFailureDetector {
-  def props: Props = Props(new SBRFailureDetector)
+  def props(sendTo: ActorRef): Props = Props(new SBRFailureDetector(sendTo))
 
   sealed abstract class SBRReachability extends Product with Serializable
   final case object Reachable           extends SBRReachability
