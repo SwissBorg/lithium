@@ -31,18 +31,18 @@ scalacOptions ++=
     "-deprecation"
   )
 
-val akkaVersion                = "2.5.21"
-val akkaHTTPVersion            = "10.1.7"
+val akkaVersion                = "2.5.22"
+val akkaHTTPVersion            = "10.1.8"
 val catsVersion                = "1.6.0"
 val catsEffectVersion          = "1.2.0"
 val scalatestVersion           = "3.0.7"
 val monocleVersion             = "1.5.0"
 val scoptVersion               = "4.0.0-RC2"
 val shapelessVersion           = "2.3.3"
-val refinedVersion             = "0.9.4"
+val refinedVersion             = "0.9.5"
 val pureConfigVersion          = "0.10.2"
 val scalacheckShapelessVersion = "1.1.8"
-val refinedScalacheckVersion   = "0.9.4"
+val refinedScalacheckVersion   = "0.9.5"
 val logbackVersion             = "1.2.3"
 
 libraryDependencies ++= Seq(

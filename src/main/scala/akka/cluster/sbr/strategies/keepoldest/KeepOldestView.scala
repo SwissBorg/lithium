@@ -10,8 +10,6 @@ object KeepOldestView {
   def apply(worldView: WorldView, downIfAlone: Boolean, role: String): Either[NoOldestNode.type, KeepOldestView] = {
     val allNodesSortedByAge = worldView.consideredNodesWithRole(role).toList.sortBy(_.member)(Member.ageOrdering)
 
-    println("OLDEST " + allNodesSortedByAge.headOption)
-
     allNodesSortedByAge.headOption.fold[Either[NoOldestNode.type, KeepOldestView]](NoOldestNode.asLeft) {
       case _: ReachableNode | _: IndirectlyConnectedNode =>
         if (!downIfAlone || worldView.consideredReachableNodes.size > 1) OldestReachable.asRight
