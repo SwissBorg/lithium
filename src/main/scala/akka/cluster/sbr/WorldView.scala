@@ -2,7 +2,7 @@ package akka.cluster.sbr
 
 import akka.cluster.ClusterEvent._
 import akka.cluster.Member
-import akka.cluster.MemberStatus.{Down, Joining, Removed, WeaklyUp}
+import akka.cluster.MemberStatus.{Joining, WeaklyUp}
 import akka.cluster.sbr.implicits._
 import cats.Eq
 import cats.data.NonEmptySet

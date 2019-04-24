@@ -3,8 +3,6 @@ package akka.cluster.sbr
 import cats.Monoid
 import monocle.Getter
 
-import scala.collection.immutable.SortedSet
-
 /**
  * Represents the strategy that needs to be taken
  * to resolve a potential split-brain issue.
