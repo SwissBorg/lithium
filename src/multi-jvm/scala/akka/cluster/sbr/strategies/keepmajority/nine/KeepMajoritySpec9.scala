@@ -20,7 +20,7 @@ class KeepMajoritySpec9MultiJvmNode10 extends KeepMajoritySpec9
  * Node2 and node3 are indirectly connected in a ten node cluster
  * Node9 and node10 are indirectly connected in a ten node cluster
  */
-class KeepMajoritySpec9 extends TenNodeSpec("StaticQuorum", KeepMajoritySpec9Config) {
+class KeepMajoritySpec9 extends TenNodeSpec("KeepMajority", KeepMajoritySpec9Config) {
   override def assertions(): Unit =
     "Unidirectional link failure" in within(120 seconds) {
       runOn(node1) {
