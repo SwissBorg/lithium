@@ -7,6 +7,12 @@ import cats.{Eq, Order}
 sealed abstract class Node extends Product with Serializable {
   val member: Member
   def copyMember(member: Member): Node
+
+  override def hashCode: Int = member.uniqueAddress.##
+  override def equals(other: Any): Boolean = other match {
+    case n: Node ⇒ member.uniqueAddress == n.member.uniqueAddress
+    case _       ⇒ false
+  }
 }
 
 object Node {
@@ -29,7 +35,6 @@ final case class UnreachableNode(member: Member) extends Node {
 object UnreachableNode {
   implicit val unreachableNodeOrdering: Ordering[UnreachableNode] = Ordering.by(_.member)
   implicit val unreachableNodeOrder: Order[UnreachableNode]       = Order.fromOrdering
-  implicit val unreachableNodeEq: Eq[UnreachableNode]             = unreachableNodeOrdering.equiv(_, _)
 }
 
 final case class ReachableNode(member: Member) extends Node {
@@ -38,7 +43,6 @@ final case class ReachableNode(member: Member) extends Node {
 object ReachableNode {
   implicit val reachableNodeOrdering: Ordering[ReachableNode] = Ordering.by(_.member)
   implicit val reachableNodeOrder: Order[ReachableNode]       = Order.fromOrdering
-  implicit val reachableNodeEq: Eq[ReachableNode]             = reachableNodeOrdering.equiv(_, _)
 }
 
 final case class IndirectlyConnectedNode(member: Member) extends Node {
@@ -47,5 +51,4 @@ final case class IndirectlyConnectedNode(member: Member) extends Node {
 object IndirectlyConnectedNode {
   implicit val indirectlyConnectedNodeOrdering: Ordering[IndirectlyConnectedNode] = Ordering.by(_.member)
   implicit val indirectlyConnectedNodeOrder: Order[IndirectlyConnectedNode]       = Order.fromOrdering
-  implicit val indirectlyReachableNodeEq: Eq[IndirectlyConnectedNode]             = indirectlyConnectedNodeOrdering.equiv(_, _)
 }

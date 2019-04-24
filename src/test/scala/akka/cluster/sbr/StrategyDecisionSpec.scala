@@ -51,9 +51,10 @@ class StrategyDecisionSpec extends MySpec {
               .foldRight(Monoid[StrategyDecision].empty)(Monoid[StrategyDecision].combine)
               .nodesToDown should ===(SortedSet(node))
           case None =>
-            SortedSet(decisions.flatMap(_.nodesToDown.toSeq): _*) should ===(
+            (decisions.flatMap(_.nodesToDown).toSet should contain).theSameElementsAs(
               decisions.foldRight(Monoid[StrategyDecision].empty)(Monoid[StrategyDecision].combine).nodesToDown
             )
+
           case _ => fail
         }
       }
