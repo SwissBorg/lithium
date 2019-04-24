@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.keepmajority.two
 
 import akka.cluster.sbr.FiveNodeSpec
+import akka.cluster.sbr.strategies.keepmajority.KeepMajoritySpecFiveNodeConfig
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
@@ -11,7 +12,7 @@ class KeepMajoritySpec2MultiJvmNode3 extends KeepMajoritySpec2
 class KeepMajoritySpec2MultiJvmNode4 extends KeepMajoritySpec2
 class KeepMajoritySpec2MultiJvmNode5 extends KeepMajoritySpec2
 
-class KeepMajoritySpec2 extends FiveNodeSpec("KeepMajority", KeepMajoritySpec2Config) {
+class KeepMajoritySpec2 extends FiveNodeSpec("KeepMajority", KeepMajoritySpecFiveNodeConfig) {
   override def assertions(): Unit =
     "Three partitions, bidirectional link failure" in within(60 seconds) {
       runOn(node1) {

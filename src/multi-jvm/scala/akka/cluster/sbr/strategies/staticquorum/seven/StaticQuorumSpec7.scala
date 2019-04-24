@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.staticquorum.seven
 
 import akka.cluster.sbr.TenNodeSpec
+import akka.cluster.sbr.strategies.staticquorum.StaticQuorumSpec3Config
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
@@ -19,7 +20,7 @@ class StaticQuorumSpec7MultiJvmNode10 extends StaticQuorumSpec7
 /**
  * Node9 and node10 are indirectly connected in a ten node cluster
  */
-class StaticQuorumSpec7 extends TenNodeSpec("StaticQuorum", StaticQuorumSpec7Config) {
+class StaticQuorumSpec7 extends TenNodeSpec("StaticQuorum", StaticQuorumSpec3Config) {
   override def assertions(): Unit =
     "Unidirectional link failure" in within(120 seconds) {
       runOn(node1) {

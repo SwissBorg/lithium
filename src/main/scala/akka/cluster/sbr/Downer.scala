@@ -35,15 +35,15 @@ class Downer[A: Strategy](cluster: Cluster,
 //      DownAll.takeDecision(worldView).toTry.map(execute).get
   }
 
-  private def execute(decision: StrategyDecision): Unit =
-    cluster.state.leader.foreach { leader =>
-      if (cluster.selfMember.address == leader) {
-        log.debug("Executing decision: {}", decision.clean)
-        decision.nodesToDown.foreach(node => cluster.down(node.member.address))
-      } else {
-        log.debug("Not the leader.")
-      }
-    }
+  private def execute(decision: StrategyDecision): Unit = {
+//    cluster.state.leader.foreach { leader =>
+//      if (cluster.selfMember.address == leader) {
+    log.debug("Executing decision: {}", decision.clean)
+    decision.nodesToDown.foreach(node => cluster.down(node.member.address))
+//      } else {
+//        log.debug("Not the leader.")
+//      }
+  }
 }
 
 object Downer {

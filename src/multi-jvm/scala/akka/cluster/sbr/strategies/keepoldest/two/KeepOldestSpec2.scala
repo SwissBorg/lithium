@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.keepoldest.two
 
 import akka.cluster.sbr.FiveNodeSpec
+import akka.cluster.sbr.strategies.keepoldest.KeepOldestSpecFiveNodeConfig
 import akka.cluster.sbr.util.linksToKillForPartitions
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
@@ -22,7 +23,7 @@ class KeepOldestSpec2MultiJvmNode5 extends KeepOldestSpec2
  * (2) should down itself as it does not contain the oldest.
  * (3) should down itself as it does not contain the oldest.
  */
-class KeepOldestSpec2 extends FiveNodeSpec("KeepOldest", KeepOldestSpec2Config) {
+class KeepOldestSpec2 extends FiveNodeSpec("KeepOldest", KeepOldestSpecFiveNodeConfig) {
   override def assertions(): Unit =
     "Three partitions, bidirectional link failure" in within(120 seconds) {
       runOn(node1) {

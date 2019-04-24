@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.keepoldest.one
 
 import akka.cluster.sbr.ThreeNodeSpec
+import akka.cluster.sbr.strategies.keepoldest.KeepOldestSpecThreeNodeConfig
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
@@ -17,7 +18,7 @@ class KeepOldestSpecMultiJvmNode3 extends KeepOldestSpec
   * (1) should survive as it contains the oldest.
   * (2) should down itself as it does not contain the oldest.
   */
-class KeepOldestSpec extends ThreeNodeSpec("KeepOldest", KeepOldestSpecConfig) {
+class KeepOldestSpec extends ThreeNodeSpec("KeepOldest", KeepOldestSpecThreeNodeConfig) {
   override def assertions(): Unit =
     "Bidirectional link failure" in within(60 seconds) {
       runOn(node1) {

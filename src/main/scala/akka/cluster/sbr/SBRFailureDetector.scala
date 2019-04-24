@@ -96,7 +96,8 @@ class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging w
 
         if (isIndirectlyReachable) {
           send(IndirectlyConnected, member)
-        } else {
+        } else if (selfUniqueAddress != member.uniqueAddress) {
+          // Self cannot become unreachable.
           send(Unreachable, member)
         }
       }
