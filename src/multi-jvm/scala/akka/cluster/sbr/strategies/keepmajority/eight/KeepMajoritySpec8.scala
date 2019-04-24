@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.keepmajority.eight
 
 import akka.cluster.sbr.TenNodeSpec
+import akka.cluster.sbr.strategies.keepmajority.KeepMajoritySpecTenNodeConfig
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
@@ -19,7 +20,7 @@ class KeepMajoritySpec8MultiJvmNode10 extends KeepMajority8
 /**
  * Node9 and node10 are indirectly connected in a ten node cluster
  */
-class KeepMajority8 extends TenNodeSpec("StaticQuorum", KeepMajoritySpec8Config) {
+class KeepMajority8 extends TenNodeSpec("StaticQuorum", KeepMajoritySpecTenNodeConfig) {
   override def assertions(): Unit =
     "Split-brain" in within(120 seconds) {
       runOn(node1) {

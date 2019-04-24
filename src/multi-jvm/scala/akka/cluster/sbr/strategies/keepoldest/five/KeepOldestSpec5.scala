@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.keepoldest.five
 
 import akka.cluster.sbr.FiveNodeSpec
+import akka.cluster.sbr.strategies.keepoldest.KeepOldestSpecFiveNodeConfig
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
@@ -17,7 +18,7 @@ class KeepOldestSpec5MultiJvmNode5 extends KeepOldestSpec5
  * Node4 and node5 should down themselves as they are indirectly connected.
  * The three other nodes survive as they can reach the oldest.
  */
-class KeepOldestSpec5 extends FiveNodeSpec("KeepReferee", KeepOldestSpec5Config) {
+class KeepOldestSpec5 extends FiveNodeSpec("KeepReferee", KeepOldestSpecFiveNodeConfig) {
   override def assertions(): Unit =
     "Unidirectional link failure" in within(60 seconds) {
       runOn(node1) {

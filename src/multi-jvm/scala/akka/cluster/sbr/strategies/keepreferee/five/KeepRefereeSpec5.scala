@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.keepreferee.five
 
 import akka.cluster.sbr.FiveNodeSpec
+import akka.cluster.sbr.strategies.keepreferee.KeepRefereeSpecFiveNodeConfig
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
@@ -17,7 +18,7 @@ class KeepRefereeSpec5MultiJvmNode5 extends KeepRefereeSpec5
  * Node4 and node5 should down themselves as they are indirectly connected.
  * The three other nodes survive as they contain the referee.
  */
-class KeepRefereeSpec5 extends FiveNodeSpec("KeepReferee", KeepRefereeSpec5Config) {
+class KeepRefereeSpec5 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNodeConfig) {
   override def assertions(): Unit =
     "Unidirectional link failure" in within(60 seconds) {
       runOn(node1) {

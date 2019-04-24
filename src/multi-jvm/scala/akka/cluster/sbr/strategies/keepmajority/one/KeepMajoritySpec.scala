@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.keepmajority.one
 
 import akka.cluster.sbr.ThreeNodeSpec
+import akka.cluster.sbr.strategies.keepmajority.KeepMajoritySpecThreeNodeConfig
 import akka.cluster.sbr.util.linksToKillForPartitions
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
@@ -10,7 +11,7 @@ class KeepMajoritySpecMultiJvmNode1 extends KeepMajoritySpec
 class KeepMajoritySpecMultiJvmNode2 extends KeepMajoritySpec
 class KeepMajoritySpecMultiJvmNode3 extends KeepMajoritySpec
 
-class KeepMajoritySpec extends ThreeNodeSpec("KeepMajority", KeepMajoritySpecConfig) {
+class KeepMajoritySpec extends ThreeNodeSpec("KeepMajority", KeepMajoritySpecThreeNodeConfig) {
   override def assertions(): Unit =
     "Bidirectional link failure" in within(60 seconds) {
       runOn(node1) {

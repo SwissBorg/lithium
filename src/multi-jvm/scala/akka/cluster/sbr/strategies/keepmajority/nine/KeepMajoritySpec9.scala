@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.keepmajority.nine
 
 import akka.cluster.sbr.TenNodeSpec
+import akka.cluster.sbr.strategies.keepmajority.KeepMajoritySpecTenNodeConfig
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
@@ -20,7 +21,7 @@ class KeepMajoritySpec9MultiJvmNode10 extends KeepMajoritySpec9
  * Node2 and node3 are indirectly connected in a ten node cluster
  * Node9 and node10 are indirectly connected in a ten node cluster
  */
-class KeepMajoritySpec9 extends TenNodeSpec("KeepMajority", KeepMajoritySpec9Config) {
+class KeepMajoritySpec9 extends TenNodeSpec("KeepMajority", KeepMajoritySpecTenNodeConfig) {
   override def assertions(): Unit =
     "Unidirectional link failure" in within(120 seconds) {
       runOn(node1) {

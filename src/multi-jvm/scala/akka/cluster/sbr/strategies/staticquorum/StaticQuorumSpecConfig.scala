@@ -1,4 +1,4 @@
-package akka.cluster.sbr.strategies.staticquorum.one
+package akka.cluster.sbr.strategies.staticquorum
 
 import akka.cluster.sbr.ThreeNodeSpecConfig
 

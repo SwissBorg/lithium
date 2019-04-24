@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.staticquorum.eight
 
 import akka.cluster.sbr.TenNodeSpec
+import akka.cluster.sbr.strategies.staticquorum.StaticQuorumSpec3Config
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
@@ -20,7 +21,7 @@ class StaticQuorumSpec8MultiJvmNode10 extends StaticQuorumSpec8
  * Node2 and node3 are indirectly connected in a ten node cluster
  * Node9 and node10 are indirectly connected in a ten node cluster
  */
-class StaticQuorumSpec8 extends TenNodeSpec("StaticQuorum", StaticQuorumSpec8Config) {
+class StaticQuorumSpec8 extends TenNodeSpec("StaticQuorum", StaticQuorumSpec3Config) {
   override def assertions(): Unit =
     "Split-brain" in within(120 seconds) {
       runOn(node1) {

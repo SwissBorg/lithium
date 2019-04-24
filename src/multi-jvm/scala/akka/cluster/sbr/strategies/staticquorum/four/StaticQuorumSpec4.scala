@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.staticquorum.four
 
 import akka.cluster.sbr.ThreeNodeSpec
+import akka.cluster.sbr.strategies.staticquorum.StaticQuorumSpecConfig
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
@@ -15,7 +16,7 @@ class StaticQuorumSpec4MultiJvmNode3 extends StaticQuorumSpec4
  * Node2 and node3 should down themselves as they are indirectly connected.
  * Node1 should down itself since its not a quorum.
  */
-class StaticQuorumSpec4 extends ThreeNodeSpec("StaticQuorum", StaticQuorumSpec4Config) {
+class StaticQuorumSpec4 extends ThreeNodeSpec("StaticQuorum", StaticQuorumSpecConfig) {
   override def assertions(): Unit =
     "Unidirectional link failure" in within(120 seconds) {
       runOn(node1) {

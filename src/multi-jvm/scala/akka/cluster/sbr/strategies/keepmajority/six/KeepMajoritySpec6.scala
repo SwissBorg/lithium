@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.keepmajority.six
 
 import akka.cluster.sbr.FiveNodeSpec
+import akka.cluster.sbr.strategies.keepmajority.KeepMajoritySpecFiveNodeConfig
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
@@ -18,7 +19,7 @@ class KeepMajoritySpec6MultiJvmNode5 extends KeepMajoritySpec6
  * All nodes but node1 downs itself because they are indirectly connected.
  * Node1 survives as it is a majority (only node left).
  */
-class KeepMajoritySpec6 extends FiveNodeSpec("KeepMajority", KeepMajoritySpec6Config) {
+class KeepMajoritySpec6 extends FiveNodeSpec("KeepMajority", KeepMajoritySpecFiveNodeConfig) {
   override def assertions(): Unit =
     "Unidirectional link failure" in within(120 seconds) {
       runOn(node1) {

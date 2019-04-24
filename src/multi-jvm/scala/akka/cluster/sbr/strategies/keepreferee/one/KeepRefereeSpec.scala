@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.keepreferee.one
 
 import akka.cluster.sbr.ThreeNodeSpec
+import akka.cluster.sbr.strategies.keepreferee.KeepRefereeSpecThreeNodeConfig
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
@@ -17,7 +18,7 @@ class KeepRefereeSpecMultiJvmNode3 extends KeepRefereeSpec
  * (1) should survive as it contains the referee.
  * (2) should down itself as it does not contain the referee.
  */
-class KeepRefereeSpec extends ThreeNodeSpec("KeepReferee", KeepRefereeSpecConfig) {
+class KeepRefereeSpec extends ThreeNodeSpec("KeepReferee", KeepRefereeSpecThreeNodeConfig) {
   override def assertions(): Unit =
     "Bidirectional link failure" in within(60 seconds) {
       runOn(node1) {

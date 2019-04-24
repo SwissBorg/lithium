@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.keepreferee.two
 
 import akka.cluster.sbr.FiveNodeSpec
+import akka.cluster.sbr.strategies.keepreferee.KeepRefereeSpecFiveNodeConfig
 import akka.cluster.sbr.util.linksToKillForPartitions
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
@@ -24,7 +25,7 @@ class KeepRefereeSpec2MultiJvmNode5 extends KeepRefereeSpec2
  * (3) should down itself as it does not contain the referee.
  * (4) should down itself as it does not contain the referee.
  */
-class KeepRefereeSpec2 extends FiveNodeSpec("KeepReferee", KeepRefereeSpec2Config) {
+class KeepRefereeSpec2 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNodeConfig) {
   override def assertions(): Unit =
     "Three partitions, bidirectional link failure" in within(60 seconds) {
       runOn(node1) {

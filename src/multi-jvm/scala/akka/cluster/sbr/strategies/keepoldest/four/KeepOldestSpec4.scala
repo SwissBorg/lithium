@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.keepoldest.four
 
 import akka.cluster.sbr.ThreeNodeSpec
+import akka.cluster.sbr.strategies.keepoldest.KeepOldestSpecThreeNodeConfig
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
@@ -15,7 +16,7 @@ class KeepOldestSpec4MultiJvmNode3 extends KeepOldestSpec4
  * Node1 and node2 should down themselves as they are indirectly connected.
  * Node3 should down itself as its not the oldest.
  */
-class KeepOldestSpec4 extends ThreeNodeSpec("KeepOldest", KeepOldestSpec4Config) {
+class KeepOldestSpec4 extends ThreeNodeSpec("KeepOldest", KeepOldestSpecThreeNodeConfig) {
   override def assertions(): Unit =
     "Unidirectional link failure" in within(120 seconds) {
       runOn(node1) {

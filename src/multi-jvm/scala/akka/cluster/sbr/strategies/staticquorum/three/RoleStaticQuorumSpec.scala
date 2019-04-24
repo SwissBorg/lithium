@@ -1,6 +1,7 @@
 package akka.cluster.sbr.strategies.staticquorum.three
 
 import akka.cluster.sbr.FiveNodeSpec
+import akka.cluster.sbr.strategies.staticquorum.RoleStaticQuorumSpecConfig
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
