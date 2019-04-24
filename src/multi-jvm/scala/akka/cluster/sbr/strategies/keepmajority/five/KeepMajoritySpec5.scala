@@ -19,46 +19,13 @@ class KeepMajoritySpec5 extends FiveNodeSpec("StaticQuorum", KeepMajoritySpec5Co
         val _ = testConductor.blackhole(node4, node5, Direction.Receive).await
       }
 
-      enterBarrier("node5-disconnected")
-
-      runOn(node4) {
-        waitForUp(node4)
-        waitToBecomeUnreachable(node5)
-      }
-
-      enterBarrier("node5-unreachable")
-
-      runOn(node5) {
-        waitForUp(node5)
-        waitToBecomeUnreachable(node4)
-      }
-
-      enterBarrier("node4-unreachable")
-
-      runOn(node1, node2, node3) {
-        waitForUp(node1, node2, node3)
-        waitToBecomeUnreachable(node4, node5)
-      }
-
-      enterBarrier("node4-5-unreachable")
+      enterBarrier("links-disconnected")
 
       runOn(node1, node2, node3) {
         waitForSurvivors(node1, node2, node3)
-        waitForDownOrGone(node4, node5)
+        waitExistsAllDownOrGone(Seq(Seq(node4), Seq(node5)))
       }
 
-      enterBarrier("node1-2-3-ok")
-
-      runOn(node4) {
-        waitForSelfDowning
-      }
-
-      enterBarrier("node4-suicide")
-
-      runOn(node5) {
-        waitForSelfDowning
-      }
-
-      enterBarrier("node5-suicide")
+      enterBarrier("split-brain-resolved")
     }
 }
