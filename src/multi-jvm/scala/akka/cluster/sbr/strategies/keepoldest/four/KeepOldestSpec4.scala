@@ -51,10 +51,14 @@ class KeepOldestSpec4 extends ThreeNodeSpec("KeepOldest", KeepOldestSpecThreeNod
 
       enterBarrier("node2-3-unreachable")
 
-      runOn(node1, node2, node3) {
+      runOn(node3) {
+        waitForDownOrGone(node1, node2)
+      }
+
+      runOn(node1, node2) {
         waitForSelfDowning
       }
 
-      enterBarrier("node1-2-3-suicide")
+      enterBarrier("split-brain-resolved")
     }
 }
