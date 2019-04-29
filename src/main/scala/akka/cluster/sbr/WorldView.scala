@@ -118,8 +118,8 @@ final case class WorldView private[sbr] (private[sbr] val selfNode: Node,
    */
   def reachabilityEvent(event: ReachabilityEvent): WorldView =
     event match {
-      case UnreachableMember(member) => becomeUnreachable(member)
-      case ReachableMember(member)   => becomeReachable(member)
+      case UnreachableMember(member) => unreachableMember(member)
+      case ReachableMember(member)   => reachableMember(member)
     }
 
   def indirectlyConnected(member: Member): WorldView =
@@ -170,12 +170,12 @@ final case class WorldView private[sbr] (private[sbr] val selfNode: Node,
   /**
    * Change the `node`'s status to `Unreachable`.
    */
-  private def becomeUnreachable(member: Member): WorldView = updateNode(UnreachableNode(member))
+  private def unreachableMember(member: Member): WorldView = updateNode(UnreachableNode(member))
 
   /**
    * Change the `node`'s state to `Reachable`.
    */
-  private def becomeReachable(member: Member): WorldView = updateNode(ReachableNode(member))
+  private def reachableMember(member: Member): WorldView = updateNode(ReachableNode(member))
 
   private def updateMember(member: Member): WorldView =
     if (member === selfNode.member) {
