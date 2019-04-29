@@ -5,6 +5,7 @@ import akka.cluster.ClusterEvent._
 import akka.cluster._
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Subscribe, Unsubscribe}
+import akka.cluster.sbr.SBRFailureDetectorState.{Observer, Subject}
 
 /**
  * Actor reporting the reachability status of cluster members based on
@@ -28,7 +29,7 @@ class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging w
   private val selfUniqueAddress = cluster.selfUniqueAddress
   private val failureDetector   = cluster.failureDetector
 
-  private var _state: SBRFailureDetectorState = SBRFailureDetectorState(selfUniqueAddress)
+  private var _state: SBRFailureDetectorState = SBRFailureDetectorState.empty
 
   private val mediator: ActorRef = DistributedPubSub(context.system).mediator
   mediator ! Subscribe("sbr", self)
@@ -39,7 +40,6 @@ class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging w
     case s: CurrentClusterState =>
 //      init(s)
       unstashAll()
-      log.debug("active")
       context.become(active)
 
     case _ => stash()
@@ -57,17 +57,18 @@ class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging w
 
   private def reachabilityChanged(r: Reachability): Unit =
     r.observersGroupedByUnreachable.foreach {
-      case (unreachableNode, observers) =>
+      case (subject, observers) =>
         observers.foreach { observer =>
-          if (isLocallyReachable(unreachableNode)) {
+          unreachable(observer, subject)
+
+          if (isLocallyReachable(subject)) {
             r.recordsFrom(observer)
-              .find(r => r.subject == unreachableNode && r.status == Reachability.Unreachable)
+              .find(r => r.subject == subject && r.status == Reachability.Unreachable)
               .foreach { record =>
                 publishContention(record.observer, record.subject, record.version)
               }
           } else {
-            unreachable(unreachableNode)
-            sendStatus(unreachableNode)
+            sendStatus(subject)
           }
         }
     }
@@ -81,7 +82,7 @@ class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging w
       // to stop any further updates.
       context.stop(self)
     } else {
-      _state = _state.removeSubject(node).removeObserver(node)
+      _state = _state.remove(node)
     }
 
   private def reachable(node: UniqueAddress): Unit = {
@@ -89,8 +90,7 @@ class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging w
     sendStatus(node)
   }
 
-  private def unreachable(node: UniqueAddress): Unit =
-    _state = _state.unreachable(node)
+  private def unreachable(observer: Observer, subject: Subject): Unit = _state = _state.unreachable(observer, subject)
 
   private def sendStatus(node: UniqueAddress): Unit = {
     val (status, state) = _state.status(node)
