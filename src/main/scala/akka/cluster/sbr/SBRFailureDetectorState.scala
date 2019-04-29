@@ -13,32 +13,28 @@ final private[sbr] case class SBRFailureDetectorState private (
 ) {
 
   /**
-   * Returns the `subject`'s status and the updated state.
+   * Returns the `subject`'s status if it has changed since the last time
+   * this method was called.
    *
    * The status is `None` when it has not changed since the last status retrieval.
    */
-  def status(subject: Subject): (Option[SBRReachability], SBRFailureDetectorState) =
+  def updatedStatus(subject: Subject): (Option[SBRReachability], SBRFailureDetectorState) =
     reachabilities
       .get(subject)
       .map { r =>
-        r.previous
-          .map { previous =>
-            if (previous != r.current) {
-              // The reachability has changed since the last retrieval
-              (Some(r.current), copy(reachabilities = reachabilities + (subject -> r.advance)))
-            } else {
-              (None, this)
-            }
-          }
-          .getOrElse(
-            // First retrieval
-            (Some(r.current), copy(reachabilities = reachabilities + (subject -> r.advance)))
-          )
+        if (!r.retrieved) {
+          // The reachability has changed since the last retrieval
+          (Some(r.reachability), copy(reachabilities = reachabilities + (subject -> r.tagAsRetrieved)))
+        } else {
+          (None, this)
+        }
       }
       .getOrElse {
         // The node is seen for the 1st time.
         // It is reachable by default.
-        (Some(Reachable), reachable(subject))
+        val r = reachable(subject)
+        (Some(Reachable),
+         r.copy(reachabilities = r.reachabilities + (subject -> r.reachabilities(subject).tagAsRetrieved)))
       }
 
   /**
@@ -150,7 +146,7 @@ final private[sbr] case class SBRFailureDetectorState private (
     val diff = reachabilities
       .get(subject)
       .map(_.update(IndirectlyConnected))
-      .getOrElse(VersionedReachability(None, IndirectlyConnected))
+      .getOrElse(VersionedReachability.init(IndirectlyConnected))
 
     reachabilities + (subject -> diff)
   }
@@ -164,21 +160,17 @@ private[sbr] object SBRFailureDetectorState {
 
   /**
    * Represents the reachability of a node.
-   * `previous` is used to detect a change in reachability when retrieving the nodes status.
    */
-  final case class VersionedReachability(previous: Option[SBRReachability], current: SBRReachability) {
+  final case class VersionedReachability(reachability: SBRReachability, retrieved: Boolean) {
     // lazy else the computation of the hashcode explodes
-    lazy val advance: VersionedReachability = copy(previous = Some(current))
+    lazy val tagAsRetrieved: VersionedReachability = copy(retrieved = true)
+
     def update(r: SBRReachability): VersionedReachability =
-      if (current != r) {
-        copy(previous = Some(current), current = r)
-      } else {
-        this
-      }
+      if (r != reachability) copy(reachability = r, retrieved = false) else this
   }
 
   object VersionedReachability {
-    def init(r: SBRReachability): VersionedReachability = VersionedReachability(None, r)
+    def init(r: SBRReachability): VersionedReachability = VersionedReachability(r, retrieved = false)
   }
 
   /**

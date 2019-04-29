@@ -93,7 +93,7 @@ class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging w
   private def unreachable(observer: Observer, subject: Subject): Unit = _state = _state.unreachable(observer, subject)
 
   private def sendStatus(node: UniqueAddress): Unit = {
-    val (status, state) = _state.status(node)
+    val (status, state) = _state.updatedStatus(node)
     _state = state
     status.foreach(
       s =>
@@ -137,6 +137,7 @@ object SBRFailureDetector {
   final case object IndirectlyConnected extends SBRReachability
 
   final case class IndirectlyConnected(member: Member, versions: Map[UniqueAddress, Long])
+
   final case class UnreachabilityContention(node: UniqueAddress,
                                             observer: UniqueAddress,
                                             subject: UniqueAddress,
