@@ -3,6 +3,8 @@ package akka.cluster.sbr
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash}
 import akka.cluster.ClusterEvent._
 import akka.cluster._
+import akka.cluster.pubsub.DistributedPubSub
+import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Subscribe, Unsubscribe}
 
 /**
  * Actor reporting the reachability status of cluster members based on
@@ -22,110 +24,96 @@ import akka.cluster._
 class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging with Stash {
   import SBRFailureDetector._
 
-  private val cluster                          = Cluster(context.system)
-  private val selfUniqueAddress: UniqueAddress = cluster.selfUniqueAddress
+  private val cluster           = Cluster(context.system)
+  private val selfUniqueAddress = cluster.selfUniqueAddress
+  private val failureDetector   = cluster.failureDetector
 
-  private var _state: SBRFailureDetectorState =
-    SBRFailureDetectorState(cluster.selfMember, cluster.settings.MonitoredByNrOfMembers)
+  private var _state: SBRFailureDetectorState = SBRFailureDetectorState(selfUniqueAddress)
+
+  private val mediator: ActorRef = DistributedPubSub(context.system).mediator
+  mediator ! Subscribe("sbr", self)
 
   override def receive: Receive = initializing
 
   private def initializing: Receive = {
     case s: CurrentClusterState =>
-      init(s)
+//      init(s)
       unstashAll()
+      log.debug("active")
       context.become(active)
 
     case _ => stash()
   }
 
   private def active: Receive = {
-    case ReachabilityChanged(r) => reachabilityChanged(r)
-    case MemberRemoved(m, _)    => removeMember(m)
-    case e: MemberEvent         => addMember(e.member)
-    case ReachableMember(m)     => reachableMember(m)
-    case UnreachableMember(m)   => unreachableMember(m)
+    case ReachabilityChanged(r)                                     => reachabilityChanged(r)
+    case MemberRemoved(m, _)                                        => removeMember(m.uniqueAddress)
+    case ReachableMember(m)                                         => reachable(m.uniqueAddress)
+    case UnreachabilityContention(node, observer, subject, version) => contention(node, observer, subject, version)
   }
 
-  private def init(s: CurrentClusterState): Unit = {
-    s.members.foreach { member =>
-      _state = _state.add(member)
-    }
+  private def isLocallyReachable(unreachableNode: UniqueAddress): Boolean =
+    failureDetector.isMonitoring(unreachableNode.address) && failureDetector.isAvailable(unreachableNode.address)
 
-    s.unreachable.foreach { member =>
-      _state = _state.unreachable(member)
-    }
-  }
-
-  /**
-   * Sends the updated reachability states to the parent.
-   */
-  private def reachabilityChanged(r: Reachability): Unit = {
-
-    /**
-     * Sends the `reachability` to the parent if it
-     * previously was in a different reachability state.
-     */
-    def send(reachability: SBRReachability, member: Member): Unit =
-      _state.lastReachabilities.get(member.uniqueAddress) match {
-        case Some(`reachability`) => ()
-        case _ =>
-          sendTo ! (reachability match {
-            case Reachable           => ReachableMember(member)
-            case Unreachable         => UnreachableMember(member)
-            case IndirectlyConnected => IndirectlyConnectedNode(member)
-          })
-          _state = _state.update(member, reachability)
-      }
-
-    for {
-      (node, unreachableFrom) <- r.observersGroupedByUnreachable
-      member                  <- memberFromAddress(node)
-    } {
-      val allReachable = cluster.state.members.map(_.uniqueAddress) -- r.allUnreachableFrom(selfUniqueAddress)
-
-      if (unreachableFrom.isEmpty) {
-        send(Reachable, member)
-      } else {
-        // True if there is at least a reachable
-        // observer node that can reach the current member.
-        val isIndirectlyReachable =
-          _state.ring
-            .receivers(node)
-            .exists(m => allReachable.contains(m) && !unreachableFrom.contains(m))
-
-        if (isIndirectlyReachable) {
-          send(IndirectlyConnected, member)
-        } else if (selfUniqueAddress != member.uniqueAddress) {
-          // Self cannot become unreachable.
-          send(Unreachable, member)
+  private def reachabilityChanged(r: Reachability): Unit =
+    r.observersGroupedByUnreachable.foreach {
+      case (unreachableNode, observers) =>
+        observers.foreach { observer =>
+          if (isLocallyReachable(unreachableNode)) {
+            r.recordsFrom(observer)
+              .find(r => r.subject == unreachableNode && r.status == Reachability.Unreachable)
+              .foreach { record =>
+                publishContention(record.observer, record.subject, record.version)
+              }
+          } else {
+            unreachable(unreachableNode)
+            sendStatus(unreachableNode)
+          }
         }
-      }
     }
-  }
 
   private def memberFromAddress(node: UniqueAddress): Option[Member] =
     cluster.state.members.find(_.uniqueAddress == node)
 
-  private def addMember(m: Member): Unit = _state = _state.add(m)
-
-  private def removeMember(m: Member): Unit =
-    if (m.uniqueAddress == selfUniqueAddress) {
+  private def removeMember(node: UniqueAddress): Unit =
+    if (node == selfUniqueAddress) {
       // This node is being stopped. Kill the actor
       // to stop any further updates.
       context.stop(self)
     } else {
-      _state = _state.remove(m)
+      _state = _state.removeSubject(node).removeObserver(node)
     }
 
-  private def reachableMember(m: Member): Unit = {
-    _state = _state.reachable(m)
-
-    // No need to check as all the monitoring nodes see the member as reachable.
-    sendTo ! ReachableMember(m)
+  private def reachable(node: UniqueAddress): Unit = {
+    _state = _state.reachable(node)
+    sendStatus(node)
   }
 
-  private def unreachableMember(m: Member): Unit = _state = _state.unreachable(m)
+  private def unreachable(node: UniqueAddress): Unit =
+    _state = _state.unreachable(node)
+
+  private def sendStatus(node: UniqueAddress): Unit = {
+    val (status, state) = _state.status(node)
+    _state = state
+    status.foreach(
+      s =>
+        memberFromAddress(node).foreach { m =>
+          sendTo ! (s match {
+            case Reachable           => ReachableMember(m)
+            case IndirectlyConnected => IndirectlyConnectedNode(m)
+            case Unreachable         => UnreachableMember(m)
+          })
+      }
+    )
+  }
+
+  private def publishContention(observer: UniqueAddress, subject: UniqueAddress, version: Long): Unit =
+    mediator ! Publish("sbr", UnreachabilityContention(selfUniqueAddress, observer, subject, version))
+
+  private def contention(node: UniqueAddress, observer: UniqueAddress, subject: UniqueAddress, version: Long): Unit = {
+    _state = _state.contention(node, observer, subject, version)
+    sendStatus(subject)
+  }
 
   override def preStart(): Unit = {
     cluster.subscribe(self, classOf[MemberEvent], classOf[ReachabilityEvent])
@@ -136,6 +124,7 @@ class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging w
   override def postStop(): Unit = {
     cluster.unsubscribe(self)
     context.system.eventStream.unsubscribe(self)
+    mediator ! Unsubscribe("sbr", self)
   }
 }
 
@@ -146,4 +135,10 @@ object SBRFailureDetector {
   final case object Reachable           extends SBRReachability
   final case object Unreachable         extends SBRReachability
   final case object IndirectlyConnected extends SBRReachability
+
+  final case class IndirectlyConnected(member: Member, versions: Map[UniqueAddress, Long])
+  final case class UnreachabilityContention(node: UniqueAddress,
+                                            observer: UniqueAddress,
+                                            subject: UniqueAddress,
+                                            version: Long)
 }
