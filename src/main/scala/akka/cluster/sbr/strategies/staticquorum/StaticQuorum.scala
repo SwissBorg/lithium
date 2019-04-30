@@ -1,17 +1,12 @@
 package akka.cluster.sbr.strategies.staticquorum
 
 import akka.cluster.sbr._
-import akka.cluster.sbr.strategy.Strategy
+import akka.cluster.sbr.strategy.{Strategy, StrategyReader}
 import cats.implicits._
 
-final case class StaticQuorum(role: String, quorumSize: QuorumSize)
-
-object StaticQuorum {
-  def staticQuorum(strategy: StaticQuorum, worldView: WorldView): StrategyDecision = {
-    val a = (ReachableNodes(worldView, strategy.quorumSize, strategy.role),
-             UnreachableNodes(worldView, strategy.quorumSize, strategy.role))
-
-    a match {
+final case class StaticQuorum(role: String, quorumSize: QuorumSize) extends Strategy {
+  override def takeDecision(worldView: WorldView): Either[Throwable, StrategyDecision] =
+    ((ReachableNodes(worldView, quorumSize, role), UnreachableNodes(worldView, quorumSize, role)) match {
 
       /**
        * If we decide DownReachable the entire cluster will shutdown. Always?
@@ -43,14 +38,9 @@ object StaticQuorum {
        * Happens when to many nodes crash at the same time. The cluster will shutdown.
        */
       case (ReachableSubQuorum, _) => DownReachable(worldView)
-    }
-  }
+    }).asRight
+}
 
-  implicit val staticQuorumStrategy: Strategy[StaticQuorum] = new Strategy[StaticQuorum] {
-    override def takeDecision(strategy: StaticQuorum, worldView: WorldView): Either[Throwable, StrategyDecision] =
-      staticQuorum(strategy, worldView).asRight
-  }
-
-  implicit val staticQuorumStrategyReader: StrategyReader[StaticQuorum] = StrategyReader.fromName("static-quorum")
-//  implicit val staticQuorumReader: ConfigReader[StaticQuorum] = deriveReader[StaticQuorum]
+object StaticQuorum extends StrategyReader[StaticQuorum] {
+  override val name: String = "static-quorum"
 }

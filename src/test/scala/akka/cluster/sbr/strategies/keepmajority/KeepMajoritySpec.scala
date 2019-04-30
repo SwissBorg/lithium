@@ -1,6 +1,5 @@
 package akka.cluster.sbr.strategies.keepmajority
 
-import akka.cluster.sbr.strategy.ops._
 import akka.cluster.sbr._
 import akka.cluster.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario}
 import akka.cluster.sbr.strategies.keepmajority.ArbitraryInstances._

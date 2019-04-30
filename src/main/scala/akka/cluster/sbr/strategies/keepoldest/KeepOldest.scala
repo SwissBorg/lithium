@@ -1,8 +1,7 @@
 package akka.cluster.sbr.strategies.keepoldest
 
 import akka.cluster.sbr._
-import akka.cluster.sbr.strategies.keepoldest.KeepOldestView.NoOldestNode
-import akka.cluster.sbr.strategy.Strategy
+import akka.cluster.sbr.strategy.{Strategy, StrategyReader}
 
 /**
  * Strategy that will down a partition if it does NOT contain the oldest node.
@@ -13,19 +12,14 @@ import akka.cluster.sbr.strategy.Strategy
  *
  *
  */
-final case class KeepOldest(downIfAlone: Boolean, role: String)
-
-object KeepOldest {
-  def keepOldest(strategy: KeepOldest, worldView: WorldView): Either[NoOldestNode.type, StrategyDecision] =
-    KeepOldestView(worldView, strategy.downIfAlone, strategy.role).map {
+final case class KeepOldest(downIfAlone: Boolean, role: String) extends Strategy {
+  override def takeDecision(worldView: WorldView): Either[Throwable, StrategyDecision] =
+    KeepOldestView(worldView, downIfAlone, role).map {
       case OldestReachable                 => DownUnreachable(worldView)
       case OldestAlone | OldestUnreachable => DownReachable(worldView)
     }
+}
 
-  implicit val keepOldestStrategy: Strategy[KeepOldest] = new Strategy[KeepOldest] {
-    override def takeDecision(strategy: KeepOldest, worldView: WorldView): Either[Throwable, StrategyDecision] =
-      keepOldest(strategy, worldView)
-  }
-
-  implicit val keepOldestStrategyReader: StrategyReader[KeepOldest] = StrategyReader.fromName("keep-oldest")
+object KeepOldest extends StrategyReader[KeepOldest] {
+  override val name: String = "keep-oldest"
 }

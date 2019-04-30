@@ -1,24 +1,19 @@
 package akka.cluster.sbr.strategies.keepreferee
 
 import akka.cluster.sbr._
-import akka.cluster.sbr.strategy.Strategy
+import akka.cluster.sbr.strategy.{Strategy, StrategyReader}
 import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 
-final case class KeepReferee(address: String, downAllIfLessThanNodes: Int Refined Positive)
-
-object KeepReferee {
-  def keepReferee(strategy: KeepReferee, worldView: WorldView): StrategyDecision =
-    KeepRefereeView(worldView, strategy.address, strategy.downAllIfLessThanNodes) match {
+final case class KeepReferee(address: String, downAllIfLessThanNodes: Int Refined Positive) extends Strategy {
+  override def takeDecision(worldView: WorldView): Either[Throwable, StrategyDecision] =
+    (KeepRefereeView(worldView, address, downAllIfLessThanNodes) match {
       case RefereeReachable                          => DownUnreachable(worldView)
       case TooFewReachableNodes | RefereeUnreachable => DownReachable(worldView)
-    }
+    }).asRight
+}
 
-  implicit val keepRefereeStrategy: Strategy[KeepReferee] = new Strategy[KeepReferee] {
-    override def takeDecision(strategy: KeepReferee, worldView: WorldView): Either[Throwable, StrategyDecision] =
-      keepReferee(strategy, worldView).asRight
-  }
-
-  implicit val keepRefereeStrategyReader: StrategyReader[KeepReferee] = StrategyReader.fromName("keep-referee")
+object KeepReferee extends StrategyReader[KeepReferee] {
+  override val name: String = "keep-referee"
 }
