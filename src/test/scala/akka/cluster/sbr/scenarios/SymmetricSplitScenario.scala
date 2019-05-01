@@ -1,5 +1,6 @@
 package akka.cluster.sbr.scenarios
 
+import akka.actor.Address
 import akka.cluster.ClusterEvent.UnreachableMember
 import akka.cluster.sbr.ArbitraryInstances._
 import akka.cluster.sbr.{Node, ReachableNode, WorldView}
@@ -23,7 +24,11 @@ object SymmetricSplitScenario {
     def partitionedWorldView[N <: Node](nodes: NonEmptySet[N])(partition: NonEmptySet[N]): WorldView = {
       val otherNodes = nodes -- partition
 
-      val worldView0 = new WorldView(ReachableNode(partition.head.member), partition.tail.map(identity), false)
+      val worldView0 = new WorldView(ReachableNode(partition.head.member),
+                                     Set.empty,
+                                     partition.tail.map(_ -> Set.empty[Address]).toMap,
+                                     Map.empty,
+                                     trackIndirectlyConnected = false)
 
       otherNodes.foldLeft[WorldView](worldView0) {
         case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node.member))

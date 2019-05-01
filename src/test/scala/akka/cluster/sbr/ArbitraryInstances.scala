@@ -94,13 +94,25 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
   )
 
   implicit val arbWorldView: Arbitrary[WorldView] = Arbitrary(
-    arbNonEmptySet[Node].arbitrary.map(nodes => new WorldView(ReachableNode(nodes.head.member), nodes.tail, false))
+    arbNonEmptySet[Node].arbitrary
+      .map(
+        nodes =>
+          new WorldView(ReachableNode(nodes.head.member),
+                        Set.empty,
+                        nodes.tail.map(n => n -> Set.empty[Address]).toMap,
+                        Map.empty,
+                        trackIndirectlyConnected = false)
+      )
   )
 
   implicit val arbHealthyWorldView: Arbitrary[HealthyWorldView] = Arbitrary(
     for {
       nodes <- arbNonEmptySet[ReachableNode].arbitrary // todo considered
-      worldView = new WorldView(nodes.head, nodes.tail.map(identity), false)
+      worldView = new WorldView(nodes.head,
+                                Set.empty,
+                                nodes.tail.map(n => n -> Set.empty[Address]).toMap,
+                                Map.empty,
+                                trackIndirectlyConnected = false)
     } yield tag[HealthyTag][WorldView](worldView)
   )
 
@@ -112,7 +124,11 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
         case (weaklyUpMember, ix) => ReachableNode(weaklyUpMember.copyUp(ix))
       }.toNes
 
-      worldView = new WorldView(nodeStatuses.head, nodeStatuses.tail.map(identity), false)
+      worldView = new WorldView(nodeStatuses.head,
+                                Set.empty,
+                                nodeStatuses.tail.map(_ -> Set.empty[Address]).toMap,
+                                Map.empty,
+                                trackIndirectlyConnected = false)
     } yield tag[UpNumberConsistentTag][WorldView](worldView)
   )
 

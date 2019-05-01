@@ -11,6 +11,8 @@ sealed abstract private[keepmajority] class KeepMajorityView extends Product wit
 
 private[keepmajority] object KeepMajorityView {
   def apply(worldView: WorldView, role: String): Either[NoMajority.type, KeepMajorityView] = {
+//    val delta = if (worldView.unreachableNodes.forall(n => worldView.seenBy(n.member.address))) 0 else worldView.
+
     val totalNodes = worldView.consideredNodesWithRole(role).size
 
     val majority =

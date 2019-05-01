@@ -29,7 +29,7 @@ object OldestRemovedScenario {
         .map { n =>
           if (n === 1)
             // Remove oldest node
-            worldView.memberEvent(MemberRemoved(oldestNode.member.copy(Removed), Exiting))
+            worldView.memberEvent(MemberRemoved(oldestNode.member.copy(Removed), Exiting), Set.empty)
           else if (n === 2)
             // Oldest node is unreachable
             worldView.reachabilityEvent(UnreachableMember(oldestNode.member))
@@ -38,8 +38,8 @@ object OldestRemovedScenario {
         .map { worldView =>
           // Change `self`
           val worldView0 = worldView.copy(
-            selfNode = ReachableNode(partition.head.member), // only clean partitions
-            otherNodes = worldView.otherNodes + worldView.selfNode - partition.head // add old self and remove new one
+            selfNode = ReachableNode(partition.head.member), // only clean partitions // todo correct seenBy
+            otherNodes = worldView.otherNodes - partition.head + (worldView.selfNode -> worldView.selfSeenBy) // add old self and remove new one
           )
 
           otherNodes.foldLeft[WorldView](worldView0) {
