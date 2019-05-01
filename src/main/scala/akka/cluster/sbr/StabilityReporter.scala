@@ -46,7 +46,11 @@ class StabilityReporter(downer: ActorRef,
     case e: ReachabilityEvent =>
       log.debug("{}", e)
       resetHandleSplitBrain()
-      _state = _state.reachabilityEvent(e)
+
+      e match {
+        case UnreachableMember(member) => _state = _state.unreachableMember(member)
+        case ReachableMember(member)   => _state = _state.reachableMember(member)
+      }
 
     case i @ IndirectlyConnectedNode(member) =>
       log.debug("{}", i)

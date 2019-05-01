@@ -117,15 +117,16 @@ final case class WorldView private[sbr] (
   }
 
   /**
-   * Update the given the world view given the reachability event.
+   * Change the `node`'s state to `Reachable`.
    */
-  def reachabilityEvent(event: ReachabilityEvent): WorldView =
-    event match {
-      case UnreachableMember(member) => unreachableMember(member)
-      case ReachableMember(member)   => reachableMember(member)
-    }
+  def reachableMember(member: Member): WorldView = updateNode(ReachableNode(member))
 
-  def indirectlyConnected(member: Member): WorldView =
+  /**
+   * Change the `node`'s status to `Unreachable`.
+   */
+  def unreachableMember(member: Member): WorldView = updateNode(UnreachableNode(member))
+
+  def indirectlyConnectedMember(member: Member): WorldView =
     if (member === selfNode.member) {
       copy(selfNode = IndirectlyConnectedNode(member))
     } else {
@@ -143,16 +144,6 @@ final case class WorldView private[sbr] (
   def wasSeenBy(node: Node): Set[Address] =
     if (node === selfNode) selfSeenBy
     else otherNodes.getOrElse(node, Set.empty)
-
-  /**
-   * Change the `node`'s status to `Unreachable`.
-   */
-  private def unreachableMember(member: Member): WorldView = updateNode(UnreachableNode(member))
-
-  /**
-   * Change the `node`'s state to `Reachable`.
-   */
-  private def reachableMember(member: Member): WorldView = updateNode(ReachableNode(member))
 
   private def updateMember(member: Member, seenBy: Set[Address]): WorldView =
     if (member === selfNode.member) {
@@ -223,7 +214,7 @@ object WorldView {
             case _       => w.unreachableMember(member)
           }
       }
-      .copy(selfSeenBy = state.seenBy)
+      .seenBy(state.seenBy)
   }
 
   implicit val worldViewEq: Eq[WorldView] = new Eq[WorldView] {

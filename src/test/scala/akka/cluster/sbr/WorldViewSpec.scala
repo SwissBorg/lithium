@@ -112,11 +112,11 @@ class WorldViewSpec extends MySpec {
       forAll { (worldView: WorldView, event: ReachabilityEvent) =>
         event match {
           case UnreachableMember(member) =>
-            val w = worldView.reachabilityEvent(event)
+            val w = worldView.unreachableMember(member)
             w.nodes.contains(UnreachableNode(member)) shouldBe true
 
           case ReachableMember(member) =>
-            val w = worldView.reachabilityEvent(event)
+            val w = worldView.reachableMember(member)
             w.nodes.contains(ReachableNode(member)) shouldBe true
         }
       }

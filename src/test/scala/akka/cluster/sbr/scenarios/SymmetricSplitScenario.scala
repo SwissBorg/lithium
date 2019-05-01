@@ -1,7 +1,6 @@
 package akka.cluster.sbr.scenarios
 
 import akka.actor.Address
-import akka.cluster.ClusterEvent.UnreachableMember
 import akka.cluster.sbr.ArbitraryInstances._
 import akka.cluster.sbr.{Node, ReachableNode, WorldView}
 import cats.data.{NonEmptyList, NonEmptySet}
@@ -31,7 +30,7 @@ object SymmetricSplitScenario {
                                      trackIndirectlyConnected = false)
 
       otherNodes.foldLeft[WorldView](worldView0) {
-        case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node.member))
+        case (worldView, node) => worldView.unreachableMember(node.member)
       }
     }
 

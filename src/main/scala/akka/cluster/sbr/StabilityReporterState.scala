@@ -2,7 +2,7 @@ package akka.cluster.sbr
 
 import StabilityReporterState.ChangeQueue
 import akka.actor.Address
-import akka.cluster.ClusterEvent.{CurrentClusterState, MemberEvent, ReachabilityEvent}
+import akka.cluster.ClusterEvent.{CurrentClusterState, MemberEvent}
 import akka.cluster.Member
 
 import scala.collection.immutable.Queue
@@ -27,8 +27,9 @@ final case class StabilityReporterState(worldView: WorldView, changeQueue: Chang
       case _                      => changeQueue
     })
 
-  def reachabilityEvent(e: ReachabilityEvent): StabilityReporterState = copy(worldView = worldView.reachabilityEvent(e))
-  def indirectlyConnected(m: Member): StabilityReporterState          = copy(worldView = worldView.indirectlyConnected(m))
+  def reachableMember(m: Member): StabilityReporterState     = copy(worldView = worldView.reachableMember(m))
+  def unreachableMember(m: Member): StabilityReporterState   = copy(worldView = worldView.unreachableMember(m))
+  def indirectlyConnected(m: Member): StabilityReporterState = copy(worldView = worldView.indirectlyConnectedMember(m))
 }
 
 object StabilityReporterState {

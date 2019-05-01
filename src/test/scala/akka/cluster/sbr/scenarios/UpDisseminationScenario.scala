@@ -1,6 +1,6 @@
 package akka.cluster.sbr.scenarios
 
-import akka.cluster.ClusterEvent.{MemberUp, UnreachableMember}
+import akka.cluster.ClusterEvent.MemberUp
 import akka.cluster.MemberStatus.{Joining, WeaklyUp}
 import akka.cluster.sbr.ArbitraryInstances._
 import akka.cluster.sbr.testImplicits._
@@ -41,7 +41,7 @@ object UpDisseminationScenario {
           )
 
           otherNodes.foldLeft[WorldView](worldView0) {
-            case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node.member))
+            case (worldView, node) => worldView.unreachableMember(node.member)
           }
         }
 

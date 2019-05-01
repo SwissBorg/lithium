@@ -1,18 +1,18 @@
 package akka.cluster.sbr.scenarios
 
-import akka.cluster.ClusterEvent.{MemberRemoved, UnreachableMember}
+import akka.cluster.ClusterEvent.MemberRemoved
 import akka.cluster.Member
 import akka.cluster.MemberStatus.{Exiting, Removed}
 import akka.cluster.sbr.ArbitraryInstances._
+import akka.cluster.sbr.testImplicits._
 import akka.cluster.sbr.{Node, ReachableNode, WorldView}
 import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
-import org.scalacheck.Arbitrary
-import org.scalacheck.Gen._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
-import akka.cluster.sbr.testImplicits._
+import org.scalacheck.Arbitrary
+import org.scalacheck.Gen._
 
 final case class OldestRemovedScenario(worldViews: NonEmptyList[WorldView], clusterSize: Int Refined Positive)
 
@@ -32,7 +32,7 @@ object OldestRemovedScenario {
             worldView.memberEvent(MemberRemoved(oldestNode.member.copy(Removed), Exiting), Set.empty)
           else if (n === 2)
             // Oldest node is unreachable
-            worldView.reachabilityEvent(UnreachableMember(oldestNode.member))
+            worldView.unreachableMember(oldestNode.member)
           else worldView // info not disseminated
         }
         .map { worldView =>
@@ -43,7 +43,7 @@ object OldestRemovedScenario {
           )
 
           otherNodes.foldLeft[WorldView](worldView0) {
-            case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node.member))
+            case (worldView, node) => worldView.unreachableMember(node.member)
           }
         }
     }
