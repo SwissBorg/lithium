@@ -12,6 +12,7 @@ import org.scalacheck.Arbitrary._
 import org.scalacheck.Gen._
 import org.scalacheck.Prop.classify
 import org.scalacheck.{Arbitrary, Prop}
+import cats.implicits._
 
 class StaticQuorumSpec extends MySpec {
 

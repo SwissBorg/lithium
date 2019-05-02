@@ -2,7 +2,6 @@ package akka.cluster.sbr
 
 import akka.actor.Address
 import akka.cluster.{ClusterSettings, Member, MemberStatus, UniqueAddress}
-import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
@@ -14,18 +13,18 @@ package object utils {
 
   /**
    * Splits `as` in `parts` parts of arbitrary sizes.
-   * If `parts` is less than or more than the size of `as` it will return `NonEmptySet(as)`.
+   * If `parts` is less than or more than the size of `as` it will return `Set(as)`.
    */
-  def splitIn[A](parts: Int Refined Positive, as: NonEmptySet[A]): Arbitrary[NonEmptyList[NonEmptySet[A]]] =
+  def splitIn[A](parts: Int Refined Positive, as: Set[A]): Arbitrary[List[Set[A]]] =
     Arbitrary {
-      if (parts <= 1 || parts > as.length) const(NonEmptyList.of(as))
+      if (parts <= 1 || parts > as.size) const(List(as))
       else {
         for {
-          takeN <- chooseNum(1, as.length - parts + 1) // leave enough `as` to have at least 1 element per part
-          newSet = as.toSortedSet.take(takeN.toInt)
+          takeN <- chooseNum(1, as.size - parts + 1) // leave enough `as` to have at least 1 element per part
+          newSet = as.take(takeN.toInt)
           newSets <- splitIn(refineV[Positive](parts - 1).right.get, // parts > takeN
-                             NonEmptySet.fromSetUnsafe(as.toSortedSet -- newSet)).arbitrary
-        } yield NonEmptySet.fromSetUnsafe(newSet) :: newSets
+                             as -- newSet).arbitrary
+        } yield newSet :: newSets
       }
     }
 

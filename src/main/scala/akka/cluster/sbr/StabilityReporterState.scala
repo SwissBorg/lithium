@@ -2,7 +2,7 @@ package akka.cluster.sbr
 
 import StabilityReporterState.ChangeQueue
 import akka.actor.Address
-import akka.cluster.ClusterEvent.{CurrentClusterState, MemberEvent}
+import akka.cluster.ClusterEvent._
 import akka.cluster.Member
 
 import scala.collection.immutable.Queue
@@ -13,9 +13,23 @@ final case class StabilityReporterState(worldView: WorldView, changeQueue: Chang
   def flush(seenBy: Set[Address]): StabilityReporterState =
     copy(
       worldView = changeQueue match {
-        case Empty                  => worldView.seenBy(seenBy)
-        case AwaitingEvents(events) => events.foldLeft(worldView)(_.memberEvent(_, seenBy))
-        case _                      => worldView
+        case Empty => worldView.allSeenBy(seenBy)
+        case AwaitingEvents(events) =>
+          events.foldLeft(worldView) {
+            case (w, event) =>
+              event match {
+                case MemberJoined(member)     => w.updateMember(member, seenBy)
+                case MemberWeaklyUp(member)   => w.updateMember(member, seenBy)
+                case MemberUp(member)         => w.updateMember(member, seenBy)
+                case MemberLeft(member)       => w.updateMember(member, seenBy)
+                case MemberExited(member)     => w.updateMember(member, seenBy)
+                case MemberDowned(member)     => w.updateMember(member, seenBy)
+                case MemberRemoved(member, _) => w.memberRemoved(member, seenBy)
+              }
+          }
+
+        //events.foldLeft(worldView)(_.memberEvent(_, seenBy))
+        case _ => worldView
       },
       changeQueue = Empty
     )
@@ -34,10 +48,10 @@ final case class StabilityReporterState(worldView: WorldView, changeQueue: Chang
 
 object StabilityReporterState {
   def apply(selfMember: Member): StabilityReporterState =
-    StabilityReporterState(WorldView.init(selfMember, trackIndirectlyConnected = true), Empty)
+    StabilityReporterState(WorldView.init(selfMember), Empty)
 
   def fromSnapshot(s: CurrentClusterState, selfMember: Member): StabilityReporterState =
-    StabilityReporterState(WorldView.fromSnapshot(selfMember, trackIndirectlyConnected = true, s), Empty)
+    StabilityReporterState(WorldView.fromSnapshot(selfMember, s), Empty)
 
   sealed abstract class ChangeQueue
   final case object Empty                                                     extends ChangeQueue

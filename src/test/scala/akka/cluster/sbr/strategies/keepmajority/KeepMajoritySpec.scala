@@ -5,6 +5,7 @@ import akka.cluster.sbr._
 import akka.cluster.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario}
 import akka.cluster.sbr.strategies.keepmajority.ArbitraryInstances._
 import akka.cluster.sbr.utils.PostResolution
+import cats.implicits._
 
 class KeepMajoritySpec extends MySpec {
   "KeepMajority" - {

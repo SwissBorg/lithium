@@ -3,13 +3,13 @@ package akka.cluster.sbr.scenarios
 import akka.actor.Address
 import akka.cluster.sbr.ArbitraryInstances._
 import akka.cluster.sbr.{Node, ReachableNode, WorldView}
-import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
 import org.scalacheck.Arbitrary
+import org.scalacheck.Arbitrary._
 
-final case class SymmetricSplitScenario(worldViews: NonEmptyList[WorldView], clusterSize: Int Refined Positive)
+final case class SymmetricSplitScenario(worldViews: List[WorldView], clusterSize: Int Refined Positive)
 
 object SymmetricSplitScenario {
 
@@ -20,14 +20,13 @@ object SymmetricSplitScenario {
    */
   implicit val arbSplitScenario: Arbitrary[SymmetricSplitScenario] = Arbitrary {
 
-    def partitionedWorldView[N <: Node](nodes: NonEmptySet[N])(partition: NonEmptySet[N]): WorldView = {
+    def partitionedWorldView[N <: Node](nodes: Set[N])(partition: Set[N]): WorldView = {
       val otherNodes = nodes -- partition
 
-      val worldView0 = new WorldView(ReachableNode(partition.head.member),
-                                     Set.empty,
-                                     partition.tail.map(_ -> Set.empty[Address]).toMap,
-                                     Map.empty,
-                                     trackIndirectlyConnected = false)
+      val worldView0 = WorldView.fromNodes(ReachableNode(partition.head.member),
+                                           Set.empty,
+                                           partition.tail.map(_ -> Set.empty[Address]).toMap,
+                                           Map.empty)
 
       otherNodes.foldLeft[WorldView](worldView0) {
         case (worldView, node) => worldView.unreachableMember(node.member)
@@ -35,14 +34,16 @@ object SymmetricSplitScenario {
     }
 
     for {
-      nodes <- arbNonEmptySet[ReachableNode].arbitrary
+      selfNode <- arbReachableNode.arbitrary
+      nodes    <- arbitrary[Set[ReachableNode]]
+      allNodes = nodes + selfNode
 
       // Split the allNodes in `nSubCluster`.
-      partitions <- splitCluster(nodes)
+      partitions <- splitCluster(allNodes)
 
       // Each sub-allNodes sees the other nodes as unreachable.
-      partitionedWorldViews = partitions.map(partitionedWorldView(nodes))
-    } yield SymmetricSplitScenario(partitionedWorldViews, refineV[Positive](nodes.length).right.get)
+      partitionedWorldViews = partitions.map(partitionedWorldView(allNodes))
+    } yield SymmetricSplitScenario(partitionedWorldViews, refineV[Positive](allNodes.size).right.get)
   }
 
 }

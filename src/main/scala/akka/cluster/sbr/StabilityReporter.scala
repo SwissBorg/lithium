@@ -52,7 +52,7 @@ class StabilityReporter(downer: ActorRef,
         case ReachableMember(member)   => _state = _state.reachableMember(member)
       }
 
-    case i @ IndirectlyConnectedNode(member) =>
+    case i @ IndirectlyConnectedMember(member) =>
       log.debug("{}", i)
       resetHandleSplitBrain()
       _state = _state.indirectlyConnected(member)
@@ -97,4 +97,5 @@ object StabilityReporter {
    * For internal use.
    */
   final case object HandleSplitBrain
+  final case class IndirectlyConnectedMember(member: Member)
 }

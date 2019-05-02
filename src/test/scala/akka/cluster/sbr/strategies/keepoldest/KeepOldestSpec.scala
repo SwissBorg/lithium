@@ -5,6 +5,7 @@ import akka.cluster.sbr.strategy.ops._
 import akka.cluster.sbr.scenarios.{SymmetricSplitScenario, UpDisseminationScenario}
 import akka.cluster.sbr.strategies.keepoldest.ArbitraryInstances._
 import akka.cluster.sbr.utils.PostResolution
+import cats.implicits._
 
 class KeepOldestSpec extends MySpec {
   "KeepOldest" - {
@@ -14,6 +15,8 @@ class KeepOldestSpec extends MySpec {
           keepOldest.takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
         }
 
+//        println(s"scenario = ${scenario.worldViews.map(_.nodes)}")
+//        println(s"remainingPartitions = $remainingPartitions")
         remainingPartitions.noSplitBrain shouldBe true
       }
     }

@@ -6,6 +6,7 @@ import akka.cluster._
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Subscribe, Unsubscribe}
 import akka.cluster.sbr.SBRFailureDetectorState.{Observer, Subject}
+import akka.cluster.sbr.StabilityReporter.IndirectlyConnectedMember
 
 /**
  * Actor reporting the reachability status of cluster members based on
@@ -100,7 +101,7 @@ class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging w
         memberFromAddress(node).foreach { m =>
           sendTo ! (s match {
             case Reachable           => ReachableMember(m)
-            case IndirectlyConnected => IndirectlyConnectedNode(m)
+            case IndirectlyConnected => IndirectlyConnectedMember(m)
             case Unreachable         => UnreachableMember(m)
           })
       }
@@ -135,8 +136,6 @@ object SBRFailureDetector {
   final case object Reachable           extends SBRReachability
   final case object Unreachable         extends SBRReachability
   final case object IndirectlyConnected extends SBRReachability
-
-  final case class IndirectlyConnected(member: Member, versions: Map[UniqueAddress, Long])
 
   final case class UnreachabilityContention(node: UniqueAddress,
                                             observer: UniqueAddress,

@@ -20,14 +20,14 @@ class KeepRefereeViewSpec extends MySpec {
             KeepRefereeView(worldView, keepReferee.address, keepReferee.downAllIfLessThanNodes) match {
               case RefereeReachable =>
                 worldView.consideredReachableNodes.size should be >= keepReferee.downAllIfLessThanNodes.value
-                worldView.consideredReachableNodes.find(_.member.address.toString === keepReferee.address) shouldBe defined
+                worldView.consideredReachableNodes.find(_.member.address.toString == keepReferee.address) shouldBe defined
 
               case TooFewReachableNodes =>
                 worldView.consideredReachableNodes.size should be < keepReferee.downAllIfLessThanNodes.value
-                worldView.consideredReachableNodes.find(_.member.address.toString === keepReferee.address) shouldBe defined
+                worldView.consideredReachableNodes.find(_.member.address.toString == keepReferee.address) shouldBe defined
 
               case RefereeUnreachable =>
-                worldView.consideredReachableNodes.find(_.member.address.toString === keepReferee.address) shouldBe empty
+                worldView.consideredReachableNodes.find(_.member.address.toString == keepReferee.address) shouldBe empty
             }
           }
         }

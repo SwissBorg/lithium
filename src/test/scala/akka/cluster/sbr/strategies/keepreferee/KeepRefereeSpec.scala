@@ -7,6 +7,7 @@ import akka.cluster.sbr.utils.PostResolution
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.scalacheck.all._
+import cats.implicits._
 
 class KeepRefereeSpec extends MySpec {
   "KeepReferee" - {
