@@ -10,10 +10,10 @@ class HealthyWorldViewSpec extends MySpec {
       }
     }
 
-    "2 - should have at least a considered reachable node" in {
-      forAll { worldView: HealthyWorldView =>
-        worldView.consideredReachableNodes shouldBe 'nonEmpty
-      }
-    }
+//    "2 - should have at least a considered reachable node" in {
+//      forAll { worldView: HealthyWorldView =>
+//        worldView.consideredReachableNodes shouldBe 'nonEmpty
+//      }
+//    }
   }
 }

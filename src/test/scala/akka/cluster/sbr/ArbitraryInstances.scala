@@ -42,14 +42,9 @@ trait ArbitraryInstances {
   type UpNumberConsistentWorldView = WorldView @@ UpNumberConsistentTag
 
   implicit val arbJoiningMember: Arbitrary[JoiningMember] = Arbitrary {
-    val randJoiningMember = for {
+    for {
       uniqueAddress <- arbitrary[UniqueAddress]
     } yield tag[JoiningTag][Member](Member(uniqueAddress, Set("dc-datacenter")))
-
-    oneOf(
-      randJoiningMember,
-      const(tag[JoiningTag][Member](Member(UniqueAddress(Address("proto", "sys"), 0L), Set("dc-datacenter"))))
-    )
   }
 
   implicit val arbWeaklyUpMember: Arbitrary[WeaklyUpMember] = Arbitrary(
@@ -78,12 +73,12 @@ trait ArbitraryInstances {
 
   implicit val arbMember: Arbitrary[Member] = Arbitrary(
     oneOf(
-//      arbJoiningMember.arbitrary,
-//      arbWeaklyUpMember.arbitrary,
+      arbJoiningMember.arbitrary,
+      arbWeaklyUpMember.arbitrary,
       arbUpMember.arbitrary,
       arbLeavingMember.arbitrary,
       arbDownMember.arbitrary,
-      arbRemovedMember.arbitrary,
+//      arbRemovedMember.arbitrary,
       arbExitingMember.arbitrary
     )
   )
@@ -94,10 +89,7 @@ trait ArbitraryInstances {
       nodes    <- arbitrary[Set[Node]]
       nodes0 = nodes - selfNode
     } yield
-      WorldView.fromNodes(ReachableNode(selfNode.member),
-                          Set.empty,
-                          nodes0.map(n => n -> Set.empty[Address]).toMap,
-                          Map.empty)
+      WorldView.fromNodes(ReachableNode(selfNode.member), Set.empty, nodes0.map(n => n -> Set.empty[Address]).toMap)
   )
 
   implicit val arbHealthyWorldView: Arbitrary[HealthyWorldView] = Arbitrary(
@@ -105,7 +97,7 @@ trait ArbitraryInstances {
       selfNode <- arbitrary[ReachableNode]
       nodes    <- arbitrary[Set[ReachableNode]]
       nodes0    = nodes - selfNode
-      worldView = WorldView.fromNodes(selfNode, Set.empty, nodes0.map(n => n -> Set.empty[Address]).toMap, Map.empty)
+      worldView = WorldView.fromNodes(selfNode, Set.empty, nodes0.map(n => n -> Set.empty[Address]).toMap)
     } yield tag[HealthyTag][WorldView](worldView)
   )
 
@@ -122,8 +114,7 @@ trait ArbitraryInstances {
 
       worldView = WorldView.fromNodes(ReachableNode(selfNodeStatuses),
                                       Set.empty,
-                                      nodes0Statuses.map(_ -> Set.empty[Address]).toMap,
-                                      Map.empty)
+                                      nodes0Statuses.map(_ -> Set.empty[Address]).toMap)
     } yield tag[UpNumberConsistentTag][WorldView](worldView)
   )
 

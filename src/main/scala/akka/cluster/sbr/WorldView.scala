@@ -5,7 +5,9 @@ import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus.{Joining, Removed, WeaklyUp}
 import akka.cluster.sbr.SBRFailureDetector.{IndirectlyConnected, Reachable, SBRReachability, Unreachable}
 import akka.cluster.sbr.WorldView.Status
-import akka.cluster.{Member, UniqueAddress}
+import akka.cluster.{Member, MemberStatus, UniqueAddress}
+
+import scala.collection.immutable.SortedSet
 
 /**
  * Represents the view of the cluster from the point of view of the
@@ -32,23 +34,22 @@ final case class WorldView private[sbr] (
    */
   private[sbr] val removedMembersSeenBy: Map[UniqueAddress, Set[Address]] // todo when to cleanup?
 ) {
-  assert(!otherMembersStatus.contains(selfUniqueAddress))
+  assert(!otherMembersStatus.contains(selfUniqueAddress), s"$otherMembersStatus <- $selfUniqueAddress")
 
   lazy val selfNode: Node = toNode(selfStatus.member, selfStatus.reachability)
-
-  lazy val members: Set[Member] =
-    Set(selfStatus.member +: otherMembersStatus.values.map(_.member).toSeq: _*)
 
   /**
    * All the nodes in the cluster.
    */
-  lazy val nodes: Set[Node] = {
+  lazy val nodes: SortedSet[Node] = {
     val otherNodes: Seq[Node] = otherMembersStatus.values.map {
       case Status(member, reachability, _) => toNode(member, reachability)
     }(collection.breakOut)
 
-    Set(selfNode +: otherNodes: _*)
+    SortedSet(selfNode +: otherNodes: _*)
   }
+
+  lazy val members: SortedSet[Member] = nodes.map(_.member)
 
   /**
    * The nodes that need to be considered in split-brain resolutions.
@@ -117,10 +118,10 @@ final case class WorldView private[sbr] (
     if (member.uniqueAddress == selfUniqueAddress) {
       copy(selfUniqueAddress = member.uniqueAddress, selfStatus = selfStatus.withMember(member).withSeenBy(seenBy))
     } else {
-      // Assumes the member is reachable if seen for the 1st time.
       otherMembersStatus
         .get(member.uniqueAddress)
         .fold(
+          // Assumes the member is reachable if seen for the 1st time.
           copy(otherMembersStatus = otherMembersStatus + (member.uniqueAddress -> Status(member, Reachable, seenBy)))
         )(
           s =>
@@ -169,6 +170,30 @@ final case class WorldView private[sbr] (
       otherMembersStatus
         .get(member.uniqueAddress)
         .fold(removedMembersSeenBy.getOrElse(member.uniqueAddress, Set.empty))(_.seenBy)
+
+  def changeSelf(member: Member): WorldView =
+    if (member.uniqueAddress == selfUniqueAddress) this
+    else {
+      val newSelfStatus = otherMembersStatus.getOrElse(member.uniqueAddress, Status(member, Reachable, Set.empty))
+
+      selfStatus.member.status match {
+        case Removed =>
+          copy(
+            selfUniqueAddress = member.uniqueAddress,
+            selfStatus = newSelfStatus,
+            otherMembersStatus = otherMembersStatus - member.uniqueAddress,
+            removedMembersSeenBy = removedMembersSeenBy - member.uniqueAddress + (selfUniqueAddress -> selfStatus.seenBy)
+          )
+
+        case _ =>
+          copy(
+            selfUniqueAddress = member.uniqueAddress,
+            selfStatus = newSelfStatus,
+            otherMembersStatus = otherMembersStatus - member.uniqueAddress + (selfUniqueAddress -> selfStatus),
+            removedMembersSeenBy = removedMembersSeenBy - member.uniqueAddress
+          )
+      }
+    }
 
   private def updateReachability(member: Member, reachability: SBRReachability): WorldView =
     if (member.uniqueAddress == selfUniqueAddress) {
@@ -235,19 +260,18 @@ object WorldView {
       .allSeenBy(state.seenBy)
   }
 
-  def fromNodes(selfNode: Node,
-                seenBy: Set[Address],
-                otherNodesSeenBy: Map[Node, Set[Address]],
-                removedMembersSeenBy: Map[UniqueAddress, Set[Address]]): WorldView = {
+  def fromNodes(selfNode: Node, seenBy: Set[Address], otherNodesSeenBy: Map[Node, Set[Address]]): WorldView = {
     assert(!otherNodesSeenBy.contains(selfNode))
 
     val (selfUniqueAddress, selfStatus) = convert(selfNode, seenBy)
 
+    val (removed, others) = otherNodesSeenBy.partition(_._1.member.status == Removed)
+
     WorldView(
       selfUniqueAddress,
       selfStatus,
-      otherNodesSeenBy.map((convert _).tupled),
-      removedMembersSeenBy
+      others.map((convert _).tupled),
+      removed.map((convert _).tupled).mapValues(_.seenBy)
     )
   }
 

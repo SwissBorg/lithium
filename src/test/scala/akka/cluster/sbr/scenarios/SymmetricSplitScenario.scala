@@ -25,8 +25,7 @@ object SymmetricSplitScenario {
 
       val worldView0 = WorldView.fromNodes(ReachableNode(partition.head.member),
                                            Set.empty,
-                                           partition.tail.map(_ -> Set.empty[Address]).toMap,
-                                           Map.empty)
+                                           partition.tail.map(_ -> Set.empty[Address]).toMap)
 
       otherNodes.foldLeft[WorldView](worldView0) {
         case (worldView, node) => worldView.unreachableMember(node.member)

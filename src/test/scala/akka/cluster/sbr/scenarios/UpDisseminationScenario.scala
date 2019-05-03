@@ -31,11 +31,14 @@ object UpDisseminationScenario {
           val otherNodes = allNodes -- partition
 
           // Change `self`
-          val worldView0 = worldView.copy(
-            selfUniqueAddress = partition.head.member.uniqueAddress, // only clean partitions // todo correct seenBy
-            selfStatus = Status(partition.head.member, Reachable, Set.empty),
-            otherMembersStatus = worldView.otherMembersStatus - partition.head.member.uniqueAddress + (worldView.selfNode.member.uniqueAddress -> worldView.selfStatus) // add old self and remove new one
-          )
+          val worldView0 = worldView.changeSelf(partition.head.member)
+
+
+//            copy(
+//            selfUniqueAddress = partition.head.member.uniqueAddress, // only clean partitions // todo correct seenBy
+//            selfStatus = Status(partition.head.member, Reachable, Set.empty),
+//            otherMembersStatus = worldView.otherMembersStatus - partition.head.member.uniqueAddress + (worldView.selfNode.member.uniqueAddress -> worldView.selfStatus) // add old self and remove new one
+//          )
 
           otherNodes.foldLeft[WorldView](worldView0) {
             case (worldView, node) => worldView.unreachableMember(node.member)
