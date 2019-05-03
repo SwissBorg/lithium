@@ -3,13 +3,14 @@ package akka.cluster.sbr.strategies.keepmajority
 import akka.cluster.sbr.strategies.keepmajority.ArbitraryInstances._
 import akka.cluster.sbr.strategies.keepmajority.KeepMajorityView.NoMajority
 import akka.cluster.sbr.{MySpec, WorldView}
+import cats.implicits._
 
 class KeepMajorityViewSpec extends MySpec {
   "NodesMajority" - {
     "1 - should instantiate the correct instance" in {
       forAll { (worldView: WorldView, keepMajority: KeepMajority) =>
         val totalNodes = worldView.consideredNodesWithRole(keepMajority.role).size
-        val majority   = if (totalNodes === 0) 1 else totalNodes / 2 + 1
+        val majority   = if (totalNodes == 0) 1 else totalNodes / 2 + 1
 
         KeepMajorityView(worldView, keepMajority.role)
           .map {
