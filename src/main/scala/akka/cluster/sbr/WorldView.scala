@@ -13,7 +13,7 @@ import cats.data.NonEmptySet
  * Represents the view of the cluster from the point of view of the
  * `selfNode`.
  */
-final case class WorldView private[sbr] (
+final case class WorldView private (
   private[sbr] val selfUniqueAddress: UniqueAddress,
   private[sbr] val selfStatus: Status,
   /**
@@ -116,7 +116,7 @@ final case class WorldView private[sbr] (
 
   def updateMember(member: Member, seenBy: Set[Address]): WorldView =
     if (member.uniqueAddress == selfUniqueAddress) {
-      copy(selfUniqueAddress = member.uniqueAddress, selfStatus = selfStatus.withMember(member).withSeenBy(seenBy))
+      copy(selfStatus = selfStatus.withMember(member).withSeenBy(seenBy))
     } else {
       otherMembersStatus
         .get(member.uniqueAddress)
@@ -135,7 +135,7 @@ final case class WorldView private[sbr] (
 
   def memberRemoved(member: Member, seenBy: Set[Address]): WorldView =
     if (member.uniqueAddress == selfUniqueAddress) {
-      copy(selfUniqueAddress = member.uniqueAddress, selfStatus = selfStatus.withMember(member).withSeenBy(seenBy)) // ignore only update // todo is it safe?
+      copy(member.uniqueAddress, selfStatus = selfStatus.withMember(member).withSeenBy(seenBy)) // ignore only update // todo is it safe?
     } else {
       otherMembersStatus
         .get(member.uniqueAddress)
@@ -161,8 +161,11 @@ final case class WorldView private[sbr] (
   def indirectlyConnectedMember(member: Member): WorldView = updateReachability(member, IndirectlyConnected)
 
   def allSeenBy(seenBy: Set[Address]): WorldView =
-    copy(selfStatus = selfStatus.withSeenBy(seenBy),
-         otherMembersStatus = otherMembersStatus.mapValues(s => s.withSeenBy(seenBy)))
+    copy(
+      selfStatus = selfStatus.withSeenBy(seenBy),
+      otherMembersStatus = otherMembersStatus.mapValues(s => s.withSeenBy(seenBy)),
+      removedMembersSeenBy = removedMembersSeenBy.mapValues(_ => seenBy)
+    )
 
   def seenBy(member: Member): Set[Address] =
     if (member.uniqueAddress == selfUniqueAddress) selfStatus.seenBy
@@ -199,7 +202,7 @@ final case class WorldView private[sbr] (
 
   private def updateReachability(member: Member, reachability: SBRReachability): WorldView =
     if (member.uniqueAddress == selfUniqueAddress) {
-      copy(selfUniqueAddress = member.uniqueAddress, selfStatus = selfStatus.withReachability(reachability))
+      copy(selfUniqueAddress, selfStatus = selfStatus.withReachability(reachability))
     } else {
       otherMembersStatus
         .get(member.uniqueAddress)

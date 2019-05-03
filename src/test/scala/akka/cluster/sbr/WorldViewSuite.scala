@@ -2,7 +2,10 @@ package akka.cluster.sbr
 
 import akka.actor.Address
 import akka.cluster.ClusterEvent._
+import akka.cluster.Member
 import akka.cluster.MemberStatus._
+import akka.cluster.sbr.SBRFailureDetector.Reachable
+import akka.cluster.sbr.WorldView.Status
 import akka.cluster.sbr.implicits._
 import akka.cluster.sbr.utils._
 import org.scalatest.{Matchers, WordSpec}
@@ -24,16 +27,57 @@ class WorldViewSuite extends WordSpec with Matchers {
   val down     = TestMember(Address("akka.tcp", "sys", "down", 2552), Down)
   val removed  = TestMember(Address("akka.tcp", "sys", "removed", 2552), Removed)
 
-  "SBRFailureDetectorState" must {
-    "initialize the seenBy from a snapshot" in {
+  "WorldView" must {
+    "init" in {
+      val w = WorldView.init(aa)
+      w.members should ===(Set(aa))
+      w.reachableNodes.map(_.member) should ===(Set(aa))
+      w.removedMembers should ===(Set.empty[Member])
+      w.seenBy(aa) should ===(Set(aa.address))
+    }
+
+    "build from a snapshot" in {
       val w = WorldView.fromSnapshot(
         aa,
-        CurrentClusterState(SortedSet(aa, bb, cc), Set.empty, seenBy = Set(aa.address, bb.address, cc.address))
+        CurrentClusterState(SortedSet(aa, bb, cc, dd, removed),
+                            Set(dd),
+                            seenBy = Set(aa.address, bb.address, cc.address))
       )
+
+      w.reachableNodes.map(_.member) should ===(Set(aa, bb, cc))
+      w.unreachableNodes.map(_.member) should ===(Set(dd))
+      w.indirectlyConnectedNodes should ===(Set.empty[Node])
+      w.removedMembers should ===(Set(removed.uniqueAddress))
 
       w.seenBy(aa) should ===(Set(aa.address, bb.address, cc.address))
       w.seenBy(bb) should ===(Set(aa.address, bb.address, cc.address))
       w.seenBy(cc) should ===(Set(aa.address, bb.address, cc.address))
+      w.seenBy(dd) should ===(Set(aa.address, bb.address, cc.address))
+      w.seenBy(removed) should ===(Set(aa.address, bb.address, cc.address))
+    }
+
+    "build from nodes" in {
+      val w = WorldView.fromNodes(
+        IndirectlyConnectedNode(aa),
+        Set(aa.address, bb.address, cc.address),
+        Map(
+          ReachableNode(bb)           -> Set(bb.address, cc.address),
+          IndirectlyConnectedNode(cc) -> Set(aa.address, cc.address),
+          UnreachableNode(dd)         -> Set(aa.address, bb.address),
+          ReachableNode(removed)      -> Set(aa.address, dd.address)
+        )
+      )
+
+      w.reachableNodes.map(_.member) should ===(Set(bb))
+      w.unreachableNodes.map(_.member) should ===(Set(dd))
+      w.indirectlyConnectedNodes.map(_.member) should ===(Set(aa, cc))
+      w.removedMembers should ===(Set(removed.uniqueAddress))
+
+      w.seenBy(aa) should ===(Set(aa.address, bb.address, cc.address))
+      w.seenBy(bb) should ===(Set(bb.address, cc.address))
+      w.seenBy(cc) should ===(Set(aa.address, cc.address))
+      w.seenBy(dd) should ===(Set(aa.address, bb.address))
+      w.seenBy(removed) should ===(Set(aa.address, dd.address))
     }
 
     "update the seenBy set when a member is updated" in {
@@ -60,6 +104,16 @@ class WorldViewSuite extends WordSpec with Matchers {
       w.seenBy(aa) should ===(Set(aa.address, bb.address, cc.address, dd.address))
       w.seenBy(bb) should ===(Set(aa.address, bb.address, cc.address, dd.address))
       w.seenBy(cc) should ===(Set(aa.address, bb.address, cc.address, dd.address))
+    }
+
+    "get an empty seen-set for unknown members" in {
+      val w = WorldView
+        .fromSnapshot(
+          aa,
+          CurrentClusterState(SortedSet(aa), Set.empty, seenBy = Set(aa.address))
+        )
+
+      w.seenBy(bb) should ===(Set.empty[Address])
     }
 
     "correctly classify nodes from a snapshot" in {
@@ -268,6 +322,17 @@ class WorldViewSuite extends WordSpec with Matchers {
           CurrentClusterState(SortedSet(joining, weaklyUp, up, leaving, exiting, down, removed), seenBy = Set.empty)
         )
       w.consideredNodes.map(_.member) should ===(Set(up, leaving, exiting, down))
+    }
+
+    "update self" in {
+      val w = WorldView
+        .fromSnapshot(
+          aa,
+          CurrentClusterState(SortedSet(aa, bb), seenBy = Set(aa.address, bb.address))
+        )
+        .updateMember(aa.copy(Leaving), Set(aa.address))
+
+      w.selfStatus should ===(Status(aa.copy(Leaving), Reachable, Set(aa.address)))
     }
   }
 }
