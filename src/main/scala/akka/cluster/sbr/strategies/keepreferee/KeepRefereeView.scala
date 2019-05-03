@@ -18,6 +18,6 @@ private[keepreferee] object KeepRefereeView {
       }
 }
 
-final private[keepreferee] case object RefereeReachable     extends KeepRefereeView
-final private[keepreferee] case object TooFewReachableNodes extends KeepRefereeView
-final private[keepreferee] case object RefereeUnreachable   extends KeepRefereeView
+private[keepreferee] case object RefereeReachable     extends KeepRefereeView
+private[keepreferee] case object TooFewReachableNodes extends KeepRefereeView
+private[keepreferee] case object RefereeUnreachable   extends KeepRefereeView

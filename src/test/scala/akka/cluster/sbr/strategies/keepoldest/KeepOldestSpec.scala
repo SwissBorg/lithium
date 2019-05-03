@@ -15,8 +15,6 @@ class KeepOldestSpec extends MySpec {
           keepOldest.takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
         }
 
-//        println(s"scenario = ${scenario.worldViews.map(_.nodes)}")
-//        println(s"remainingPartitions = $remainingPartitions")
         remainingPartitions.noSplitBrain shouldBe true
       }
     }

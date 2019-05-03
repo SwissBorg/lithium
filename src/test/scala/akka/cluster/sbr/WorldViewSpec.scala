@@ -17,51 +17,9 @@ class WorldViewSpec extends MySpec {
     "2 - memberEvent" in {
       forAll { (worldView: WorldView, event: MemberEvent, seenBy: Set[Address]) =>
         event match {
-//          case MemberJoined(member) =>
-//            val w = worldView.updateMember(member, Set.empty)
-//
-//            if (worldView.members(member)) {
-//              w.nodes.exists { node =>
-//                node.member == member && node.member.status == Joining
-//              } shouldBe true
-//            } else {
-//              w.nodes.contains(ReachableNode(member)) shouldBe true
-//            }
-//
-//            w.consideredNodes.exists(_.member == member) shouldBe false
-//
-//          case MemberWeaklyUp(member) =>
-//            val w = worldView.updateMember(member, Set.empty)
-//
-//            if (worldView.members(member)) {
-//              w.nodes.exists { node =>
-//                node.member == member && node.member.status == WeaklyUp
-//              } shouldBe true
-//            } else {
-//              w.nodes.contains(ReachableNode(member)) shouldBe true
-//            }
-//
-//            w.consideredNodes.exists(_.member == member) shouldBe false
-//
-//          case MemberLeft(member) =>
-//            val w = worldView.updateMember(member, Set.empty)
-//
-//            if (worldView.members(member)) {
-//              w.nodes.exists { node =>
-//                node.member == member && node.member.status == Leaving
-//              } shouldBe true
-//            } else {
-//              w.nodes.contains(ReachableNode(member)) shouldBe true
-//            }
-//
-//            w.consideredNodes.exists(n => cats.Eq[Member].eqv(n.member, member)) shouldBe true
-
           case MemberRemoved(member, _) =>
             val w = worldView.memberRemoved(member, seenBy)
             if (w.selfUniqueAddress != member.uniqueAddress) {
-//              println(s"w.members = ${w.members} -> $member")
-//              println(s"w.members = ${w.members.map(_.uniqueAddress)(Order.from(_.compare(_)))} -> ${member.uniqueAddress}")
-//              println(s"w.members(member) = ${w.members(member)}")
               w.members(member) shouldBe false
               w.removedMembers(member.uniqueAddress) shouldBe true
             } else {
@@ -76,40 +34,6 @@ class WorldViewSpec extends MySpec {
             val w = worldView.updateMember(e.member, seenBy)
             w.members(e.member) shouldBe true
             w.seenBy(e.member) should ===(seenBy)
-
-//          case MemberDowned(member) =>
-//            val w = worldView.updateMember(member, Set.empty)
-//
-//            if (worldView.members(member)) {
-//              w.nodes.exists { node =>
-//                node.member == member && node.member.status == Down
-//              } shouldBe true
-//            } else {
-//              w.nodes.contains(ReachableNode(member)) shouldBe true
-//            }
-//
-//            w.consideredNodes.exists(_.member == member) shouldBe true
-//
-//          case MemberRemoved(member, _) =>
-//            val w = worldView.memberRemoved(member, Set.empty)
-//            if (w.selfMember != member) {
-//              w.nodes.find(_.member == member).isEmpty shouldBe true
-//            } else {
-//              w.selfMember should ===(member)
-//            }
-//
-//          case MemberUp(member) =>
-//            val w = worldView.updateMember(member, Set.empty)
-//
-//            if (worldView.members(member)) {
-//              w.nodes.exists { node =>
-//                node.member == member && node.member.status == Up
-//              } shouldBe true
-//            } else {
-//              w.nodes.contains(ReachableNode(member)) shouldBe true
-//            }
-//
-//            w.consideredNodes.exists(_.member == member) shouldBe true
         }
       }
     }

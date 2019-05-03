@@ -1,7 +1,7 @@
 package akka.cluster.sbr.scenarios
 
 import akka.cluster.Member
-import akka.cluster.MemberStatus.Removed
+import akka.cluster.MemberStatus.{Leaving, Removed}
 import akka.cluster.sbr.ArbitraryInstances._
 import akka.cluster.sbr.testImplicits._
 import akka.cluster.sbr.{Node, WorldView}
@@ -23,14 +23,14 @@ object OldestRemovedScenario {
       Arbitrary {
         val otherNodes = allNodes -- partition
 
-        val oldestNode = partition.toList.sortBy(_.member)(Member.ageOrdering).head
+        val oldestNode = partition.toList.sortBy(_.member)(Member.ageOrdering).head.updateMember(_.copy(Leaving))
 
         chooseNum(1, 3)
           .map { n =>
-            if (n === 1)
+            if (n == 1)
               // Remove oldest node
               worldView.memberRemoved(oldestNode.member.copy(Removed), Set.empty)
-            else if (n === 2)
+            else if (n == 2)
               // Oldest node is unreachable
               worldView.unreachableMember(oldestNode.member)
             else worldView // info not disseminated
@@ -46,7 +46,7 @@ object OldestRemovedScenario {
       }
 
     for {
-      initWorldView <- arbHealthyWorldView.arbitrary
+      initWorldView <- arbNonRemovedWorldView.arbitrary
       nodes = initWorldView.nodes
       partitions         <- splitCluster(nodes)
       divergedWorldViews <- partitions.traverse(divergeWorldView(initWorldView, nodes, _)).arbitrary

@@ -19,7 +19,6 @@ object KeepOldest {
         case OldestReachable                 => DownUnreachable(worldView)
         case OldestAlone | OldestUnreachable => DownReachable(worldView)
       }
-//    println(s"DECISION = $res")
     res
   }
 

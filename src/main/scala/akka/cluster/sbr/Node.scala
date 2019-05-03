@@ -8,6 +8,8 @@ sealed abstract class Node extends Product with Serializable {
   val member: Member
   def copyMember(member: Member): Node
 
+  def updateMember(f: Member => Member): Node = copyMember(f(member))
+
   override def hashCode: Int = member.hashCode()
   override def equals(other: Any): Boolean = other match {
     case n: Node ⇒ member.equals(n.member)

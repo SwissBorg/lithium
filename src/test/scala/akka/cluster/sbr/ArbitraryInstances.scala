@@ -42,8 +42,17 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
   sealed trait HealthyTag
   type HealthyWorldView = WorldView @@ HealthyTag
 
+  sealed trait NonRemovedTag
+  type NonRemovedWorldView = WorldView @@ NonRemovedTag
+
   sealed trait UpNumberConsistentTag
   type UpNumberConsistentWorldView = WorldView @@ UpNumberConsistentTag
+
+  sealed trait NonRemovedMemberTag
+  type NonRemovedMember = Member @@ NonRemovedMemberTag
+
+  sealed trait NonRemovedReachableNodeTag
+  type NonRemovedReachableNode = ReachableNode @@ NonRemovedReachableNodeTag
 
   implicit val arbJoiningMember: Arbitrary[JoiningMember] = Arbitrary {
     for {
@@ -103,6 +112,15 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
       nodes0    = nodes - selfNode
       worldView = WorldView.fromNodes(selfNode, Set.empty, nodes0.map(n => n -> Set.empty[Address]).toMap)
     } yield tag[HealthyTag][WorldView](worldView)
+  )
+
+  implicit val arbNonRemovedWorldView: Arbitrary[NonRemovedWorldView] = Arbitrary(
+    for {
+      selfNode <- arbLeavingMember.arbitrary.map(ReachableNode(_))
+      nodes    <- arbitrary[Set[LeavingMember]].map(_.map(ReachableNode(_)))
+      nodes0    = nodes - selfNode
+      worldView = WorldView.fromNodes(selfNode, Set.empty, nodes0.map(n => n -> Set.empty[Address]).toMap)
+    } yield tag[NonRemovedTag][WorldView](worldView)
   )
 
   implicit val arbUpNumberConsistentWorldView: Arbitrary[UpNumberConsistentWorldView] = Arbitrary(

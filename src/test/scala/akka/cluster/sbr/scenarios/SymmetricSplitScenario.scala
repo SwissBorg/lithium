@@ -33,9 +33,9 @@ object SymmetricSplitScenario {
     }
 
     for {
-      selfNode <- arbReachableNode.arbitrary
-      nodes    <- arbNonEmptySet[ReachableNode].arbitrary
-      allNodes = nodes.add(selfNode)
+//      selfNode <- arbReachableNode.arbitrary
+      allNodes <- arbNonEmptySet[ReachableNode].arbitrary
+//      allNodes = nodes.add(selfNode)
 
       // Split the allNodes in `nSubCluster`.
       partitions <- splitCluster(allNodes)
