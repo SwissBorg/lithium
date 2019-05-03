@@ -3,13 +3,13 @@ package akka.cluster.sbr.scenarios
 import akka.actor.Address
 import akka.cluster.sbr.ArbitraryInstances._
 import akka.cluster.sbr.{Node, ReachableNode, WorldView}
+import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
 import org.scalacheck.Arbitrary
-import org.scalacheck.Arbitrary._
 
-final case class SymmetricSplitScenario(worldViews: List[WorldView], clusterSize: Int Refined Positive)
+final case class SymmetricSplitScenario(worldViews: NonEmptyList[WorldView], clusterSize: Int Refined Positive)
 
 object SymmetricSplitScenario {
 
@@ -20,7 +20,7 @@ object SymmetricSplitScenario {
    */
   implicit val arbSplitScenario: Arbitrary[SymmetricSplitScenario] = Arbitrary {
 
-    def partitionedWorldView[N <: Node](nodes: Set[N])(partition: Set[N]): WorldView = {
+    def partitionedWorldView[N <: Node](nodes: NonEmptySet[N])(partition: NonEmptySet[N]): WorldView = {
       val otherNodes = nodes -- partition
 
       val worldView0 = WorldView.fromNodes(ReachableNode(partition.head.member),
@@ -34,15 +34,15 @@ object SymmetricSplitScenario {
 
     for {
       selfNode <- arbReachableNode.arbitrary
-      nodes    <- arbitrary[Set[ReachableNode]]
-      allNodes = nodes + selfNode
+      nodes    <- arbNonEmptySet[ReachableNode].arbitrary
+      allNodes = nodes.add(selfNode)
 
       // Split the allNodes in `nSubCluster`.
       partitions <- splitCluster(allNodes)
 
       // Each sub-allNodes sees the other nodes as unreachable.
       partitionedWorldViews = partitions.map(partitionedWorldView(allNodes))
-    } yield SymmetricSplitScenario(partitionedWorldViews, refineV[Positive](allNodes.size).right.get)
+    } yield SymmetricSplitScenario(partitionedWorldViews, refineV[Positive](allNodes.length).right.get)
   }
 
 }

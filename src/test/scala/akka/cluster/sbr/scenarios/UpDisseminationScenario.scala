@@ -2,15 +2,16 @@ package akka.cluster.sbr.scenarios
 
 import akka.cluster.MemberStatus.{Joining, WeaklyUp}
 import akka.cluster.sbr.ArbitraryInstances._
-import akka.cluster.sbr.SBRFailureDetector.Reachable
-import akka.cluster.sbr.WorldView.Status
 import akka.cluster.sbr.testImplicits._
 import akka.cluster.sbr.{Node, WorldView}
+import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
 import org.scalacheck.Arbitrary
 import org.scalacheck.Gen._
 
-final case class UpDisseminationScenario(worldViews: List[WorldView])
+import scala.collection.immutable.SortedSet
+
+final case class UpDisseminationScenario(worldViews: NonEmptyList[WorldView])
 
 object UpDisseminationScenario {
   implicit val arbUpDisseminationScenario: Arbitrary[UpDisseminationScenario] = Arbitrary {
@@ -21,7 +22,9 @@ object UpDisseminationScenario {
      * as unreachable and sees some members up that others
      * do not see.
      */
-    def divergeWorldView(worldView: WorldView, allNodes: Set[Node], partition: Set[Node]): Arbitrary[WorldView] =
+    def divergeWorldView(worldView: WorldView,
+                         allNodes: NonEmptySet[Node],
+                         partition: NonEmptySet[Node]): Arbitrary[WorldView] =
       pickStrictSubset(partition)
         .map(_.filter(e => e.member.status == Joining || e.member.status == WeaklyUp).foldLeft(worldView) {
           case (worldView, upEvent) =>
@@ -32,13 +35,6 @@ object UpDisseminationScenario {
 
           // Change `self`
           val worldView0 = worldView.changeSelf(partition.head.member)
-
-
-//            copy(
-//            selfUniqueAddress = partition.head.member.uniqueAddress, // only clean partitions // todo correct seenBy
-//            selfStatus = Status(partition.head.member, Reachable, Set.empty),
-//            otherMembersStatus = worldView.otherMembersStatus - partition.head.member.uniqueAddress + (worldView.selfNode.member.uniqueAddress -> worldView.selfStatus) // add old self and remove new one
-//          )
 
           otherNodes.foldLeft[WorldView](worldView0) {
             case (worldView, node) => worldView.unreachableMember(node.member)
@@ -59,10 +55,10 @@ object UpDisseminationScenario {
     } yield UpDisseminationScenario(divergedWorldViews)
   }
 
-  def pickStrictSubset[A](as: Set[A]): Arbitrary[Set[A]] = Arbitrary {
+  def pickStrictSubset[A: Ordering](as: NonEmptySet[A]): Arbitrary[SortedSet[A]] = Arbitrary {
     for {
       n      <- chooseNum(0, as.size - 1)
-      subset <- pick(n.toInt, as)
-    } yield Set(subset: _*)
+      subset <- pick(n.toInt, as.toSortedSet)
+    } yield SortedSet(subset: _*)
   }
 }

@@ -5,15 +5,19 @@ import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus._
 import akka.cluster.sbr.SBRFailureDetector.{IndirectlyConnected, Reachable, SBRReachability, Unreachable}
 import akka.cluster.{Member, MemberStatus, UniqueAddress, Reachability => _}
+import cats.Order
+import cats.data.{NonEmptyMap, NonEmptySet}
 import org.scalacheck.Arbitrary
 import org.scalacheck.Arbitrary._
 import org.scalacheck.Gen._
 import shapeless.tag
 import shapeless.tag.@@
 
+import scala.collection.immutable.{SortedMap, SortedSet}
+
 object ArbitraryInstances extends ArbitraryInstances
 
-trait ArbitraryInstances {
+trait ArbitraryInstances extends ArbitraryInstances0 {
   sealed trait JoiningTag
   type JoiningMember = Member @@ JoiningTag
 
@@ -223,4 +227,24 @@ trait ArbitraryInstances {
   implicit val arbSBRReachability: Arbitrary[SBRReachability] = Arbitrary(
     oneOf(Reachable, Unreachable, IndirectlyConnected)
   )
+}
+
+trait ArbitraryInstances0 {
+  implicit def arbSortedSet[A: Arbitrary: Order]: Arbitrary[SortedSet[A]] =
+    Arbitrary(arbitrary[Set[A]].map(s => SortedSet.empty[A](implicitly[Order[A]].toOrdering) ++ s))
+
+  implicit def arbSortedMap[K: Arbitrary: Order, V: Arbitrary]: Arbitrary[SortedMap[K, V]] =
+    Arbitrary(arbitrary[Map[K, V]].map(s => SortedMap.empty[K, V](implicitly[Order[K]].toOrdering) ++ s))
+
+  implicit def arbNonEmptySet[A](implicit O: Order[A], A: Arbitrary[A]): Arbitrary[NonEmptySet[A]] =
+    Arbitrary(implicitly[Arbitrary[SortedSet[A]]].arbitrary.flatMap(fa => A.arbitrary.map(a => NonEmptySet(a, fa))))
+
+  implicit def arbNonEmptyMap[K, A](implicit O: Order[K],
+                                    A: Arbitrary[A],
+                                    K: Arbitrary[K]): Arbitrary[NonEmptyMap[K, A]] =
+    Arbitrary(for {
+      fa <- arbSortedMap[K, A].arbitrary
+      k  <- K.arbitrary
+      a  <- A.arbitrary
+    } yield NonEmptyMap((k, a), fa))
 }

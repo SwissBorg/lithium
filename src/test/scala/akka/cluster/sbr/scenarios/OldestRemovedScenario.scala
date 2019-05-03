@@ -7,6 +7,7 @@ import akka.cluster.sbr.SBRFailureDetector.Reachable
 import akka.cluster.sbr.WorldView.Status
 import akka.cluster.sbr.testImplicits._
 import akka.cluster.sbr.{Node, WorldView}
+import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
@@ -14,11 +15,13 @@ import eu.timepit.refined.refineV
 import org.scalacheck.Arbitrary
 import org.scalacheck.Gen._
 
-final case class OldestRemovedScenario(worldViews: List[WorldView], clusterSize: Int Refined Positive)
+final case class OldestRemovedScenario(worldViews: NonEmptyList[WorldView], clusterSize: Int Refined Positive)
 
 object OldestRemovedScenario {
   implicit val arbOldestRemovedScenario: Arbitrary[OldestRemovedScenario] = Arbitrary {
-    def divergeWorldView(worldView: WorldView, allNodes: Set[Node], partition: Set[Node]): Arbitrary[WorldView] =
+    def divergeWorldView(worldView: WorldView,
+                         allNodes: NonEmptySet[Node],
+                         partition: NonEmptySet[Node]): Arbitrary[WorldView] =
       Arbitrary {
         val otherNodes = allNodes -- partition
 
@@ -49,6 +52,6 @@ object OldestRemovedScenario {
       nodes = initWorldView.nodes
       partitions         <- splitCluster(nodes)
       divergedWorldViews <- partitions.traverse(divergeWorldView(initWorldView, nodes, _)).arbitrary
-    } yield OldestRemovedScenario(divergedWorldViews, refineV[Positive](nodes.size).right.get)
+    } yield OldestRemovedScenario(divergedWorldViews, refineV[Positive](nodes.length).right.get)
   }
 }

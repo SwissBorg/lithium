@@ -5,9 +5,9 @@ import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus.{Joining, Removed, WeaklyUp}
 import akka.cluster.sbr.SBRFailureDetector.{IndirectlyConnected, Reachable, SBRReachability, Unreachable}
 import akka.cluster.sbr.WorldView.Status
-import akka.cluster.{Member, MemberStatus, UniqueAddress}
-
-import scala.collection.immutable.SortedSet
+import akka.cluster.sbr.implicits._
+import akka.cluster.{Member, UniqueAddress}
+import cats.data.NonEmptySet
 
 /**
  * Represents the view of the cluster from the point of view of the
@@ -41,15 +41,15 @@ final case class WorldView private[sbr] (
   /**
    * All the nodes in the cluster.
    */
-  lazy val nodes: SortedSet[Node] = {
+  lazy val nodes: NonEmptySet[Node] = {
     val otherNodes: Seq[Node] = otherMembersStatus.values.map {
       case Status(member, reachability, _) => toNode(member, reachability)
     }(collection.breakOut)
 
-    SortedSet(selfNode +: otherNodes: _*)
+    NonEmptySet.of(selfNode, otherNodes: _*)
   }
 
-  lazy val members: SortedSet[Member] = nodes.map(_.member)
+  lazy val members: NonEmptySet[Member] = nodes.map(_.member)
 
   /**
    * The nodes that need to be considered in split-brain resolutions.
@@ -174,7 +174,9 @@ final case class WorldView private[sbr] (
   def changeSelf(member: Member): WorldView =
     if (member.uniqueAddress == selfUniqueAddress) this
     else {
-      val newSelfStatus = otherMembersStatus.getOrElse(member.uniqueAddress, Status(member, Reachable, Set.empty))
+      val newSelfStatus = otherMembersStatus
+        .getOrElse(member.uniqueAddress, Status(member, Reachable, Set.empty))
+        .withReachability(Reachable)
 
       selfStatus.member.status match {
         case Removed =>
@@ -267,11 +269,13 @@ object WorldView {
 
     val (removed, others) = otherNodesSeenBy.partition(_._1.member.status == Removed)
 
+    val convertF = (convert _).tupled
+
     WorldView(
       selfUniqueAddress,
       selfStatus,
-      others.map((convert _).tupled),
-      removed.map((convert _).tupled).mapValues(_.seenBy)
+      others.map(convertF),
+      removed.map(convertF).mapValues(_.seenBy)
     )
   }
 

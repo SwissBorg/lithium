@@ -1,24 +1,28 @@
 package akka.cluster.sbr.utils
 
 import akka.cluster.sbr.MySpec
+import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.scalacheck.all._
 import org.scalacheck.Arbitrary
+import cats.implicits._
+
+import scala.collection.immutable.SortedSet
 
 class UtilSpec extends MySpec {
   "Util" - {
     "1 - splitIn" in {
-      forAll { (parts: Int Refined Positive, head: Int, tail: Set[Int]) =>
-        val nes = tail + head
+      forAll { (parts: Int Refined Positive, head: Int, tail: SortedSet[Int]) =>
+        val nes = NonEmptySet(head, tail)
 
-        implicit val _: Arbitrary[List[Set[Int]]] = splitIn(parts, nes)
+        implicit val _: Arbitrary[NonEmptyList[NonEmptySet[Int]]] = splitIn(parts, nes)
 
-        forAll { res: List[Set[Int]] =>
+        forAll { res: NonEmptyList[NonEmptySet[Int]] =>
           if (parts.value >= 0 && parts.value <= (tail.size + 1)) {
-            (res should have).length(parts.value.toLong)
-            res.fold(Set.empty)(_ ++ _) should ===(nes)
-          } else res.head should ===(nes)
+            (res.toList should have).length(parts.value.toLong)
+            res.foldMap(_.toSortedSet) should ===(nes.toSortedSet)
+          } else res should ===(NonEmptyList.of(nes))
         }
       }
     }
