@@ -1,7 +1,7 @@
 package akka.cluster.sbr.strategies.downall
 
 import akka.cluster.sbr._
-import akka.cluster.sbr.strategy.Strategy
+import akka.cluster.sbr.strategy.{Strategy, StrategyReader}
 import cats.implicits._
 
 /**
@@ -9,12 +9,12 @@ import cats.implicits._
  *
  * This strategy is useful when the cluster is unstable. todo add more info
  */
-final case object DownAll {
-  implicit val downAllStrategy: Strategy[DownAll.type] = new Strategy[DownAll.type] {
-    override def takeDecision(strategy: DownAll.type, worldView: WorldView): Either[Throwable, StrategyDecision] =
-      // When self is indirectly connected it is not reachable.
-      DownThese(DownSelf(worldView), DownReachable(worldView)).asRight
-  }
+final case class DownAll() extends Strategy {
+  override def takeDecision(worldView: WorldView): Either[Throwable, StrategyDecision] =
+    // When self is indirectly connected it is not reachable.
+    DownThese(DownSelf(worldView), DownReachable(worldView)).asRight
+}
 
-  implicit val downAllStrategyReader: StrategyReader[DownAll.type] = StrategyReader.fromName("down-all")
+object DownAll extends StrategyReader[DownAll] {
+  override val name: String = "down-all"
 }

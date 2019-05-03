@@ -5,26 +5,23 @@ import akka.cluster.Cluster
 import akka.cluster.sbr.strategies.Or
 import akka.cluster.sbr.strategies.indirected.Indirected
 import akka.cluster.sbr.strategy.Strategy
-import akka.cluster.sbr.strategy.ops._
 
 import scala.concurrent.duration._
 
-class Downer[A: Strategy](cluster: Cluster,
-                          strategy: A,
-                          stableAfter: FiniteDuration,
-                          downAllWhenUnstable: FiniteDuration)
+class Downer(cluster: Cluster, strategy: Strategy, stableAfter: FiniteDuration, downAllWhenUnstable: FiniteDuration)
     extends Actor
     with ActorLogging {
 
   import Downer._
 
-  private val _ = context.system.actorOf(StabilityReporter.props(self, stableAfter, downAllWhenUnstable, cluster))
+  private val indirected = new Indirected
+  private val _          = context.system.actorOf(StabilityReporter.props(self, stableAfter, downAllWhenUnstable, cluster))
 
   override def receive: Receive = {
     case h @ HandleSplitBrain(worldView) =>
       log.debug("{}", h)
 
-      Or(strategy, Indirected)
+      Or(strategy, indirected)
         .takeDecision(worldView)
         .toTry
         .map(execute)
@@ -47,10 +44,10 @@ class Downer[A: Strategy](cluster: Cluster,
 }
 
 object Downer {
-  def props[A: Strategy](cluster: Cluster,
-                         strategy: A,
-                         stableAfter: FiniteDuration,
-                         downAllWhenUnstable: FiniteDuration): Props =
+  def props(cluster: Cluster,
+            strategy: Strategy,
+            stableAfter: FiniteDuration,
+            downAllWhenUnstable: FiniteDuration): Props =
     Props(new Downer(cluster, strategy, stableAfter, downAllWhenUnstable))
 
   final case class HandleSplitBrain(worldView: WorldView)

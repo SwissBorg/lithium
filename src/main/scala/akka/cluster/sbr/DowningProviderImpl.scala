@@ -3,12 +3,12 @@ package akka.cluster.sbr
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorSystem, Props}
-import akka.cluster.sbr.StrategyReader.UnknownStrategy
 import akka.cluster.sbr.strategies.downall.DownAll
 import akka.cluster.sbr.strategies.keepmajority.KeepMajority
 import akka.cluster.sbr.strategies.keepoldest.KeepOldest
 import akka.cluster.sbr.strategies.keepreferee.KeepReferee
 import akka.cluster.sbr.strategies.staticquorum.StaticQuorum
+import akka.cluster.sbr.strategy.StrategyReader.UnknownStrategy
 import akka.cluster.{Cluster, DowningProvider}
 import cats.implicits._
 import eu.timepit.refined.pureconfig._
@@ -24,31 +24,31 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
   override def downRemovalMargin: FiniteDuration = config.stableAfter
 
   override def downingActorProps: Option[Props] = {
-    val keepMajority = StrategyReader[KeepMajority].name
-    val keepOldest   = StrategyReader[KeepOldest].name
-    val keepReferee  = StrategyReader[KeepReferee].name
-    val staticQuorum = StrategyReader[StaticQuorum].name
-    val downAll      = StrategyReader[DownAll.type].name
+    val keepMajority = KeepMajority.name
+    val keepOldest   = KeepOldest.name
+    val keepReferee  = KeepReferee.name
+    val staticQuorum = StaticQuorum.name
+    val downAll      = DownAll.name
 
     val strategy = config.activeStrategy match {
       case `keepMajority` =>
-        StrategyReader[KeepMajority].load
+        KeepMajority.load
           .map(Downer.props(Cluster(system), _, config.stableAfter, config.downAllWhenUnstable))
 
       case `keepOldest` =>
-        StrategyReader[KeepOldest].load
+        KeepOldest.load
           .map(Downer.props(Cluster(system), _, config.stableAfter, config.downAllWhenUnstable))
 
       case `keepReferee` =>
-        StrategyReader[KeepReferee].load
+        KeepReferee.load
           .map(Downer.props(Cluster(system), _, config.stableAfter, config.downAllWhenUnstable))
 
       case `staticQuorum` =>
-        StrategyReader[StaticQuorum].load
+        StaticQuorum.load
           .map(Downer.props(Cluster(system), _, config.stableAfter, config.downAllWhenUnstable))
 
       case `downAll` =>
-        Downer.props(Cluster(system), DownAll, config.stableAfter, config.downAllWhenUnstable).asRight
+        Downer.props(Cluster(system), DownAll(), config.stableAfter, config.downAllWhenUnstable).asRight
 
       case unknownStrategy => UnknownStrategy(unknownStrategy).asLeft
     }
