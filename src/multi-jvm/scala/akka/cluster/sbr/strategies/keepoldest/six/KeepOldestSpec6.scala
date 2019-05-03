@@ -2,7 +2,6 @@ package akka.cluster.sbr.strategies.keepoldest.six
 
 import akka.cluster.sbr.FiveNodeSpec
 import akka.cluster.sbr.strategies.keepoldest.KeepOldestSpecFiveNodeConfig
-import akka.cluster.sbr.strategies.staticquorum.StaticQuorumSpec2Config
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._

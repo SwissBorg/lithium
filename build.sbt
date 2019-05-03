@@ -1,5 +1,5 @@
-import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
+import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 
 organization := "com.swissborg"
 name := "akka-sbr"

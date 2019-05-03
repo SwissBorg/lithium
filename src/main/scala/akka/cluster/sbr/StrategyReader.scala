@@ -1,8 +1,8 @@
 package akka.cluster.sbr
 
-import pureconfig.{ConfigReader, Derivation}
-import pureconfig.error.ConfigReaderFailures
 import cats.implicits._
+import pureconfig.error.ConfigReaderFailures
+import pureconfig.{ConfigReader, Derivation}
 
 trait StrategyReader[A] {
   import StrategyReader._

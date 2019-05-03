@@ -1,10 +1,10 @@
 package akka.cluster.sbr.strategies.keepreferee
 
 import akka.cluster.sbr.WorldView
+import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
-import cats.implicits._
 
 sealed abstract private[keepreferee] class KeepRefereeView extends Product with Serializable
 

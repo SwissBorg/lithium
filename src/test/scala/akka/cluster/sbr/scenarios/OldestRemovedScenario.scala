@@ -3,8 +3,6 @@ package akka.cluster.sbr.scenarios
 import akka.cluster.Member
 import akka.cluster.MemberStatus.Removed
 import akka.cluster.sbr.ArbitraryInstances._
-import akka.cluster.sbr.SBRFailureDetector.Reachable
-import akka.cluster.sbr.WorldView.Status
 import akka.cluster.sbr.testImplicits._
 import akka.cluster.sbr.{Node, WorldView}
 import cats.data.{NonEmptyList, NonEmptySet}

@@ -1,9 +1,9 @@
 package akka.cluster.sbr
 
-import StabilityReporterState.ChangeQueue
 import akka.actor.Address
 import akka.cluster.ClusterEvent._
 import akka.cluster.Member
+import akka.cluster.sbr.StabilityReporterState.ChangeQueue
 
 import scala.collection.immutable.Queue
 

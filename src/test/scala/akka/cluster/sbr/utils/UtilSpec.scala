@@ -2,11 +2,11 @@ package akka.cluster.sbr.utils
 
 import akka.cluster.sbr.MySpec
 import cats.data.{NonEmptyList, NonEmptySet}
+import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.scalacheck.all._
 import org.scalacheck.Arbitrary
-import cats.implicits._
 
 import scala.collection.immutable.SortedSet
 

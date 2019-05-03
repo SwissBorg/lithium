@@ -1,8 +1,8 @@
 package akka.cluster.sbr
 
+import akka.actor.Address
 import akka.cluster.UniqueAddress
 import akka.cluster.sbr.SBRFailureDetector._
-import akka.actor.Address
 import org.scalatest.{Matchers, WordSpec}
 
 class SBRFailureDetectorStateSuite extends WordSpec with Matchers {

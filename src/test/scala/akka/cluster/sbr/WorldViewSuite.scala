@@ -3,8 +3,8 @@ package akka.cluster.sbr
 import akka.actor.Address
 import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus._
-import akka.cluster.sbr.utils._
 import akka.cluster.sbr.implicits._
+import akka.cluster.sbr.utils._
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.collection.immutable.SortedSet

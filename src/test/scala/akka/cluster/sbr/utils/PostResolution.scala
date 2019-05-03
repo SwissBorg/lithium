@@ -2,9 +2,9 @@ package akka.cluster.sbr.utils
 
 import akka.cluster.Member
 import akka.cluster.sbr._
+import akka.cluster.sbr.implicits._
 import cats.Monoid
 import cats.implicits._
-import akka.cluster.sbr.implicits._
 
 import scala.collection.SortedSet
 
