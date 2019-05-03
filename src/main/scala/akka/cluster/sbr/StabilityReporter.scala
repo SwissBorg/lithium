@@ -1,8 +1,8 @@
 package akka.cluster.sbr
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, Props}
-import akka.cluster.Cluster
+import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, Props, Stash}
 import akka.cluster.ClusterEvent._
+import akka.cluster.{Cluster, Member}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
@@ -12,106 +12,77 @@ class StabilityReporter(downer: ActorRef,
                         downAllWhenUnstable: FiniteDuration,
                         cluster: Cluster)
     extends Actor
+    with Stash
     with ActorLogging {
   import StabilityReporter._
+
+  private val selfMember: Member = cluster.selfMember
 
   private val _ = context.system.actorOf(SBRFailureDetector.props(self), "sbr-fd")
 
   private var _handleSplitBrain: Cancellable = scheduleHandleSplitBrain()
-//  private var clusterIsUnstable: Option[Cancellable]       = None
 
-  override def receive: Receive = main(WorldView.init(cluster.selfMember, trackIndirectlyConnected = true))
+  private var _state: StabilityReporterState = StabilityReporterState(selfMember)
 
-  /**
-   * The actors main receive.
-   *
-   * @param worldView the current world view of the cluster from the point of view of current cluster node.
-   */
-  def main(worldView: WorldView): Receive = {
-    def stabilityAndBecome(updatedWorldView: WorldView): Unit = {
-      if (!updatedWorldView.isStableChange(worldView)) {
-        resetHandleSplitBrain()
-      }
+  override def receive: Receive = initializing
 
-//      if (updatedWorldView.hasSplitBrain) {
-//        // Start the instability timeout when a split-brain
-//        // scenario occurs for the first time.
-//        startClusterIsUnstable()
-//      } else {
-//        // Cancel the instability timeout when a split-brain
-//        // scenario disappears.
-//        cancelClusterIsUnstable()
-//      }
+  private def initializing: Receive = {
+    case s: CurrentClusterState =>
+      unstashAll()
+      _state = StabilityReporterState.fromSnapshot(s, selfMember)
+      context.become(active)
 
-      context.become(main(updatedWorldView))
-    }
-
-    {
-      case e: MemberEvent => stabilityAndBecome(worldView.memberEvent(e))
-
-      case e: ReachabilityEvent =>
-        log.debug("{}", e)
-        stabilityAndBecome(worldView.reachabilityEvent(e))
-
-      case i @ IndirectlyConnectedNode(member) =>
-        log.debug("{}", i)
-        stabilityAndBecome(worldView.indirectlyConnected(member))
-
-      case HandleSplitBrain =>
-//        cancelClusterIsUnstable()
-        log.debug("Handle split brain")
-        downer ! Downer.HandleSplitBrain(worldView)
-
-//      case ClusterIsUnstable =>
-//        cancelDownIndirectlyConnected()
-//        downer ! Downer.ClusterIsUnstable(worldView)
-    }
+    case _ => stash()
   }
 
-  /* ------ Split brain ------ */
+  private def active: Receive = {
+    case e: MemberEvent =>
+      resetHandleSplitBrain()
+      _state = _state.enqueue(e)
 
-//  private def startHandleSplitBrain(): Unit =
-//    _handleSplitBrain match {
-//      case None    => _handleSplitBrain = Some(scheduleHandleSplitBrain())
-//      case Some(_) => () // already started
-//    }
+    case SeenChanged(convergence, seenBy) =>
+      _state = _state.flush(seenBy)
+
+    case e: ReachabilityEvent =>
+      log.debug("{}", e)
+      resetHandleSplitBrain()
+
+      e match {
+        case UnreachableMember(member) => _state = _state.unreachableMember(member)
+        case ReachableMember(member)   => _state = _state.reachableMember(member)
+      }
+
+    case i @ IndirectlyConnectedMember(member) =>
+      log.debug("{}", i)
+      resetHandleSplitBrain()
+      _state = _state.indirectlyConnected(member)
+
+    case HandleSplitBrain =>
+      //        cancelClusterIsUnstable()
+      log.debug("Handle split brain")
+      downer ! Downer.HandleSplitBrain(_state.worldView)
+  }
 
   private def resetHandleSplitBrain(): Unit = {
     _handleSplitBrain.cancel()
     _handleSplitBrain = scheduleHandleSplitBrain()
   }
 
-//
-//  private def startClusterIsUnstable(): Unit =
-//    clusterIsUnstable match {
-//      case None =>
-//        log.debug("Starting clusterIsUnstable")
-//        clusterIsUnstable = Some(scheduleClusterIsUnstable())
-//      case Some(_) => () // do nothing
-//    }
-//
-//  private def cancelClusterIsUnstable(): Unit =
-//    clusterIsUnstable.foreach { c =>
-//      log.debug("Cancelling clusterIsUnstable")
-//      c.cancel()
-//      clusterIsUnstable = None
-//    }
-
   private def scheduleHandleSplitBrain(): Cancellable =
     context.system.scheduler.scheduleOnce(stableAfter, self, HandleSplitBrain)
 
-//  private def scheduleClusterIsUnstable(): Cancellable =
-//    context.system.scheduler.scheduleOnce(stableAfter + downAllWhenUnstable, self, ClusterIsUnstable)
-
   implicit private val ec: ExecutionContext = context.system.dispatcher
 
-  override def preStart(): Unit =
+  override def preStart(): Unit = {
     cluster.subscribe(self, InitialStateAsSnapshot, classOf[akka.cluster.ClusterEvent.MemberEvent])
+    context.system.eventStream.subscribe(self, classOf[SeenChanged])
+
+  }
 
   override def postStop(): Unit = {
     cluster.unsubscribe(self)
+    context.system.eventStream.unsubscribe(self)
     _handleSplitBrain.cancel()
-//    cancelClusterIsUnstable()
   }
 }
 
@@ -126,6 +97,5 @@ object StabilityReporter {
    * For internal use.
    */
   final case object HandleSplitBrain
-  final case object HandleIndirectlyConnected
-//  final case object ClusterIsUnstable
+  final case class IndirectlyConnectedMember(member: Member)
 }

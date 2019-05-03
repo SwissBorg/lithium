@@ -4,10 +4,9 @@ import akka.actor.Address
 import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus._
 import akka.cluster.sbr.SBRFailureDetector.{IndirectlyConnected, Reachable, SBRReachability, Unreachable}
-import akka.cluster.sbr.implicits._
 import akka.cluster.{Member, MemberStatus, UniqueAddress, Reachability => _}
+import cats.Order
 import cats.data.{NonEmptyMap, NonEmptySet}
-import cats.kernel.Order
 import org.scalacheck.Arbitrary
 import org.scalacheck.Arbitrary._
 import org.scalacheck.Gen._
@@ -43,18 +42,22 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
   sealed trait HealthyTag
   type HealthyWorldView = WorldView @@ HealthyTag
 
+  sealed trait NonRemovedTag
+  type NonRemovedWorldView = WorldView @@ NonRemovedTag
+
   sealed trait UpNumberConsistentTag
   type UpNumberConsistentWorldView = WorldView @@ UpNumberConsistentTag
 
+  sealed trait NonRemovedMemberTag
+  type NonRemovedMember = Member @@ NonRemovedMemberTag
+
+  sealed trait NonRemovedReachableNodeTag
+  type NonRemovedReachableNode = ReachableNode @@ NonRemovedReachableNodeTag
+
   implicit val arbJoiningMember: Arbitrary[JoiningMember] = Arbitrary {
-    val randJoiningMember = for {
+    for {
       uniqueAddress <- arbitrary[UniqueAddress]
     } yield tag[JoiningTag][Member](Member(uniqueAddress, Set("dc-datacenter")))
-
-    oneOf(
-      randJoiningMember,
-      const(tag[JoiningTag][Member](Member(UniqueAddress(Address("proto", "sys"), 0L), Set("dc-datacenter"))))
-    )
   }
 
   implicit val arbWeaklyUpMember: Arbitrary[WeaklyUpMember] = Arbitrary(
@@ -83,36 +86,57 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
 
   implicit val arbMember: Arbitrary[Member] = Arbitrary(
     oneOf(
-//      arbJoiningMember.arbitrary,
-//      arbWeaklyUpMember.arbitrary,
+      arbJoiningMember.arbitrary,
+      arbWeaklyUpMember.arbitrary,
       arbUpMember.arbitrary,
       arbLeavingMember.arbitrary,
       arbDownMember.arbitrary,
-      arbRemovedMember.arbitrary,
+//      arbRemovedMember.arbitrary,
       arbExitingMember.arbitrary
     )
   )
 
   implicit val arbWorldView: Arbitrary[WorldView] = Arbitrary(
-    arbNonEmptySet[Node].arbitrary.map(nodes => new WorldView(ReachableNode(nodes.head.member), nodes.tail, false))
+    for {
+      selfNode <- arbitrary[Node]
+      nodes    <- arbitrary[Set[Node]]
+      nodes0 = nodes - selfNode
+    } yield
+      WorldView.fromNodes(ReachableNode(selfNode.member), Set.empty, nodes0.map(n => n -> Set.empty[Address]).toMap)
   )
 
   implicit val arbHealthyWorldView: Arbitrary[HealthyWorldView] = Arbitrary(
     for {
-      nodes <- arbNonEmptySet[ReachableNode].arbitrary // todo considered
-      worldView = new WorldView(nodes.head, nodes.tail.map(identity), false)
+      selfNode <- arbitrary[ReachableNode]
+      nodes    <- arbitrary[Set[ReachableNode]]
+      nodes0    = nodes - selfNode
+      worldView = WorldView.fromNodes(selfNode, Set.empty, nodes0.map(n => n -> Set.empty[Address]).toMap)
     } yield tag[HealthyTag][WorldView](worldView)
+  )
+
+  implicit val arbNonRemovedWorldView: Arbitrary[NonRemovedWorldView] = Arbitrary(
+    for {
+      selfNode <- arbLeavingMember.arbitrary.map(ReachableNode(_))
+      nodes    <- arbitrary[Set[LeavingMember]].map(_.map(ReachableNode(_)))
+      nodes0    = nodes - selfNode
+      worldView = WorldView.fromNodes(selfNode, Set.empty, nodes0.map(n => n -> Set.empty[Address]).toMap)
+    } yield tag[NonRemovedTag][WorldView](worldView)
   )
 
   implicit val arbUpNumberConsistentWorldView: Arbitrary[UpNumberConsistentWorldView] = Arbitrary(
     for {
-      nodes <- arbNonEmptySet[WeaklyUpMember](taggedOrder[Member, WeaklyUpTag], arbWeaklyUpMember).arbitrary
+      selfNode <- arbitrary[WeaklyUpMember]
+      nodes    <- arbitrary[Set[WeaklyUpMember]]
+      nodes0 = nodes - selfNode
 
-      nodeStatuses = nodes.toNonEmptyList.zipWithIndex.map {
-        case (weaklyUpMember, ix) => ReachableNode(weaklyUpMember.copyUp(ix))
-      }.toNes
+      selfNodeStatuses = selfNode.copyUp(0)
+      nodes0Statuses = nodes0.toList.zipWithIndex.map {
+        case (weaklyUpMember, ix) => ReachableNode(weaklyUpMember.copyUp(ix + 1))
+      }.toSet
 
-      worldView = new WorldView(nodeStatuses.head, nodeStatuses.tail.map(identity), false)
+      worldView = WorldView.fromNodes(ReachableNode(selfNodeStatuses),
+                                      Set.empty,
+                                      nodes0Statuses.map(_ -> Set.empty[Address]).toMap)
     } yield tag[UpNumberConsistentTag][WorldView](worldView)
   )
 
@@ -138,7 +162,9 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
     Arbitrary(for {
       protocol <- alphaNumStr
       system   <- alphaNumStr
-    } yield Address(protocol, system, None, None))
+      host     <- alphaNumStr
+      port     <- arbitrary[Int]
+    } yield Address(protocol, system, Some(host), Some(port)))
 
   implicit val arbMemberStatus: Arbitrary[MemberStatus] =
     Arbitrary(

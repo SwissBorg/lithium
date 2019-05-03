@@ -1,18 +1,18 @@
 package akka.cluster.sbr
 
+import akka.actor.Address
 import akka.cluster.UniqueAddress
 import akka.cluster.sbr.SBRFailureDetector._
-import akka.actor.Address
 import org.scalatest.{Matchers, WordSpec}
 
-class SBRFailureDetectorStateSpec extends WordSpec with Matchers {
-  "SBRFailureDetectorState" must {
-    val aa = UniqueAddress(Address("akka.tcp", "sys", "a", 2552), 1L)
-    val bb = UniqueAddress(Address("akka.tcp", "sys", "b", 2552), 2L)
-    val cc = UniqueAddress(Address("akka.tcp", "sys", "c", 2552), 3L)
-    val dd = UniqueAddress(Address("akka.tcp", "sys", "d", 2552), 4L)
-    val ee = UniqueAddress(Address("akka.tcp", "sys", "e", 2552), 5L)
+class SBRFailureDetectorStateSuite extends WordSpec with Matchers {
+  val aa = UniqueAddress(Address("akka.tcp", "sys", "a", 2552), 1L)
+  val bb = UniqueAddress(Address("akka.tcp", "sys", "b", 2552), 2L)
+  val cc = UniqueAddress(Address("akka.tcp", "sys", "c", 2552), 3L)
+  val dd = UniqueAddress(Address("akka.tcp", "sys", "d", 2552), 4L)
+  val ee = UniqueAddress(Address("akka.tcp", "sys", "e", 2552), 5L)
 
+  "SBRFailureDetectorState" must {
     "be reachable when empty" in {
       val s = SBRFailureDetectorState.empty
       s.updatedStatus(aa)._1 should ===(Some(Reachable))

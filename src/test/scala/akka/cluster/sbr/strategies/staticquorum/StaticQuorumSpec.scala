@@ -1,9 +1,10 @@
 package akka.cluster.sbr.strategies.staticquorum
 
-import akka.cluster.sbr.strategy.ops._
 import akka.cluster.sbr._
 import akka.cluster.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario}
+import akka.cluster.sbr.strategy.ops._
 import akka.cluster.sbr.utils.PostResolution
+import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive

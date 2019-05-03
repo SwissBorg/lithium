@@ -6,7 +6,6 @@ import akka.cluster.MemberStatus.{Down, Up}
 import akka.remote.testconductor.RoleName
 import akka.remote.testkit.MultiNodeSpec
 import akka.testkit.ImplicitSender
-import org.jboss.netty.logging.Slf4JLoggerFactory
 import org.scalatest.concurrent.{Eventually, IntegrationPatience}
 
 import scala.concurrent.duration._

@@ -1,7 +1,6 @@
 package akka.cluster.sbr
 
 import akka.cluster.sbr.ArbitraryInstances._
-import akka.cluster.sbr.implicits._
 
 class NodeSpec extends MySpec {
   "Node" - {

@@ -7,20 +7,20 @@ import akka.cluster.sbr.strategy.Strategy
 /**
  * Strategy that will down a partition if it does NOT contain the oldest node.
  *
- * A `role` can be provided (@see [[akka.cluster.sbr.strategies.keepmajority.KeepMajority.Config]]
- * to only take in account the nodes with that role in the decision. This can be useful if there
- * are nodes that are more important than others.
- *
- *
+ * A `role` can be provided to only take in account the nodes with that role in the decision.
+ * This can be useful if there are nodes that are more important than others.
  */
 final case class KeepOldest(downIfAlone: Boolean, role: String)
 
 object KeepOldest {
-  def keepOldest(strategy: KeepOldest, worldView: WorldView): Either[NoOldestNode.type, StrategyDecision] =
-    KeepOldestView(worldView, strategy.downIfAlone, strategy.role).map {
-      case OldestReachable                 => DownUnreachable(worldView)
-      case OldestAlone | OldestUnreachable => DownReachable(worldView)
-    }
+  def keepOldest(strategy: KeepOldest, worldView: WorldView): Either[NoOldestNode.type, StrategyDecision] = {
+    val res =
+      KeepOldestView(worldView, strategy.downIfAlone, strategy.role).map {
+        case OldestReachable                 => DownUnreachable(worldView)
+        case OldestAlone | OldestUnreachable => DownReachable(worldView)
+      }
+    res
+  }
 
   implicit val keepOldestStrategy: Strategy[KeepOldest] = new Strategy[KeepOldest] {
     override def takeDecision(strategy: KeepOldest, worldView: WorldView): Either[Throwable, StrategyDecision] =

@@ -1,10 +1,9 @@
 package akka.cluster.sbr.scenarios
 
-import akka.cluster.ClusterEvent.{MemberUp, UnreachableMember}
 import akka.cluster.MemberStatus.{Joining, WeaklyUp}
 import akka.cluster.sbr.ArbitraryInstances._
 import akka.cluster.sbr.testImplicits._
-import akka.cluster.sbr.{Node, ReachableNode, WorldView}
+import akka.cluster.sbr.{Node, WorldView}
 import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
 import org.scalacheck.Arbitrary
@@ -29,19 +28,16 @@ object UpDisseminationScenario {
       pickStrictSubset(partition)
         .map(_.filter(e => e.member.status == Joining || e.member.status == WeaklyUp).foldLeft(worldView) {
           case (worldView, upEvent) =>
-            worldView.memberEvent(MemberUp(upEvent.member.copyUp(Integer.MAX_VALUE)))
+            worldView.updateMember(upEvent.member.copyUp(Integer.MAX_VALUE), Set.empty)
         })
         .map { worldView =>
           val otherNodes = allNodes -- partition
 
           // Change `self`
-          val worldView0 = worldView.copy(
-            selfNode = ReachableNode(partition.head.member), // only clean partitions
-            otherNodes = worldView.otherNodes + worldView.selfNode - partition.head // add old self and remove new one
-          )
+          val worldView0 = worldView.changeSelf(partition.head.member)
 
           otherNodes.foldLeft[WorldView](worldView0) {
-            case (worldView, node) => worldView.reachabilityEvent(UnreachableMember(node.member))
+            case (worldView, node) => worldView.unreachableMember(node.member)
           }
         }
 

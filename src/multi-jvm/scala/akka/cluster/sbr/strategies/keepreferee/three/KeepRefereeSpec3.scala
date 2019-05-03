@@ -1,7 +1,7 @@
 package akka.cluster.sbr.strategies.keepreferee.three
 
 import akka.cluster.sbr.ThreeNodeSpec
-import akka.cluster.sbr.strategies.keepreferee.{KeepRefereeSpecFiveNodeConfig, KeepRefereeSpecThreeNodeConfig}
+import akka.cluster.sbr.strategies.keepreferee.KeepRefereeSpecThreeNodeConfig
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._
