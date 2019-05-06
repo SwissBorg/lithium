@@ -31,25 +31,11 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
     val downAll      = DownAll.name
 
     val strategy = config.activeStrategy match {
-      case `keepMajority` =>
-        KeepMajority.load
-          .map(SBResolver.props(_, config.stableAfter, config.downAllWhenUnstable))
-
-      case `keepOldest` =>
-        KeepOldest.load
-          .map(SBResolver.props(_, config.stableAfter, config.downAllWhenUnstable))
-
-      case `keepReferee` =>
-        KeepReferee.load
-          .map(SBResolver.props(_, config.stableAfter, config.downAllWhenUnstable))
-
-      case `staticQuorum` =>
-        StaticQuorum.load
-          .map(SBResolver.props(_, config.stableAfter, config.downAllWhenUnstable))
-
-      case `downAll` =>
-        SBResolver.props(DownAll(), config.stableAfter, config.downAllWhenUnstable).asRight
-
+      case `keepMajority`  => KeepMajority.load.map(SBResolver.props(_, config.stableAfter, config.downAllWhenUnstable))
+      case `keepOldest`    => KeepOldest.load.map(SBResolver.props(_, config.stableAfter, config.downAllWhenUnstable))
+      case `keepReferee`   => KeepReferee.load.map(SBResolver.props(_, config.stableAfter, config.downAllWhenUnstable))
+      case `staticQuorum`  => StaticQuorum.load.map(SBResolver.props(_, config.stableAfter, config.downAllWhenUnstable))
+      case `downAll`       => SBResolver.props(DownAll(), config.stableAfter, config.downAllWhenUnstable).asRight
       case unknownStrategy => UnknownStrategy(unknownStrategy).asLeft
     }
 
