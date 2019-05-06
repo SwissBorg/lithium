@@ -87,3 +87,6 @@ testOptions in Test += Tests.Argument("-oF")
 coverageEnabled := true
 
 parallelExecution in MultiJvm := false
+
+resolvers += Resolver.sonatypeRepo("releases")
+addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.0")

@@ -3,7 +3,7 @@ package akka.cluster.sbr
 import akka.actor.Address
 import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus._
-import akka.cluster.sbr.SBRFailureDetector.{IndirectlyConnected, Reachable, SBRReachability, Unreachable}
+import akka.cluster.sbr.SBFailureDetector.{IndirectlyConnected, Reachable, SBRReachability, Unreachable}
 import akka.cluster.{Member, MemberStatus, UniqueAddress, Reachability => _}
 import cats.Order
 import cats.data.{NonEmptyMap, NonEmptySet}

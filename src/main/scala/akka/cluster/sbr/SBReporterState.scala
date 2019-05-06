@@ -3,14 +3,14 @@ package akka.cluster.sbr
 import akka.actor.Address
 import akka.cluster.ClusterEvent._
 import akka.cluster.Member
-import akka.cluster.sbr.StabilityReporterState.ChangeQueue
+import akka.cluster.sbr.SBReporterState.ChangeQueue
 
 import scala.collection.immutable.Queue
 
-final case class StabilityReporterState(worldView: WorldView, changeQueue: ChangeQueue) {
-  import StabilityReporterState._
+final case class SBReporterState(worldView: WorldView, changeQueue: ChangeQueue) {
+  import SBReporterState._
 
-  def flush(seenBy: Set[Address]): StabilityReporterState =
+  def flush(seenBy: Set[Address]): SBReporterState =
     copy(
       worldView = changeQueue match {
         case Empty => worldView.allSeenBy(seenBy)
@@ -28,30 +28,29 @@ final case class StabilityReporterState(worldView: WorldView, changeQueue: Chang
               }
           }
 
-        //events.foldLeft(worldView)(_.memberEvent(_, seenBy))
         case _ => worldView
       },
       changeQueue = Empty
     )
 
-  def enqueue(e: MemberEvent): StabilityReporterState =
+  def enqueue(e: MemberEvent): SBReporterState =
     copy(changeQueue = changeQueue match {
       case Empty                  => AwaitingEvents(Queue(e))
       case AwaitingEvents(events) => AwaitingEvents(events.enqueue(e))
       case _                      => changeQueue
     })
 
-  def reachableMember(m: Member): StabilityReporterState     = copy(worldView = worldView.reachableMember(m))
-  def unreachableMember(m: Member): StabilityReporterState   = copy(worldView = worldView.unreachableMember(m))
-  def indirectlyConnected(m: Member): StabilityReporterState = copy(worldView = worldView.indirectlyConnectedMember(m))
+  def reachableMember(m: Member): SBReporterState     = copy(worldView = worldView.reachableMember(m))
+  def unreachableMember(m: Member): SBReporterState   = copy(worldView = worldView.unreachableMember(m))
+  def indirectlyConnected(m: Member): SBReporterState = copy(worldView = worldView.indirectlyConnectedMember(m))
 }
 
-object StabilityReporterState {
-  def apply(selfMember: Member): StabilityReporterState =
-    StabilityReporterState(WorldView.init(selfMember), Empty)
+object SBReporterState {
+  def apply(selfMember: Member): SBReporterState =
+    SBReporterState(WorldView.init(selfMember), Empty)
 
-  def fromSnapshot(s: CurrentClusterState, selfMember: Member): StabilityReporterState =
-    StabilityReporterState(WorldView.fromSnapshot(selfMember, s), Empty)
+  def fromSnapshot(s: CurrentClusterState, selfMember: Member): SBReporterState =
+    SBReporterState(WorldView.fromSnapshot(selfMember, s), Empty)
 
   sealed abstract class ChangeQueue
   final case object Empty                                                     extends ChangeQueue
