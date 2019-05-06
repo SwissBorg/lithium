@@ -2,10 +2,10 @@ package akka.cluster.sbr.strategies.keepmajority
 
 import akka.cluster.sbr.strategies.keepmajority.ArbitraryInstances._
 import akka.cluster.sbr.strategies.keepmajority.KeepMajorityView.NoMajority
-import akka.cluster.sbr.{MySpec, WorldView}
+import akka.cluster.sbr.{SBSpec, WorldView}
 import cats.implicits._
 
-class KeepMajorityViewSpec extends MySpec {
+class KeepMajorityViewSpec extends SBSpec {
   "NodesMajority" - {
     "1 - should instantiate the correct instance" in {
       forAll { (worldView: WorldView, keepMajority: KeepMajority) =>

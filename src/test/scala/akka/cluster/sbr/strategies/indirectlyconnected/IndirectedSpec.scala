@@ -3,7 +3,7 @@ package akka.cluster.sbr.strategies.indirectlyconnected
 import akka.cluster.sbr.ArbitraryInstances._
 import akka.cluster.sbr._
 
-class IndirectedSpec extends MySpec {
+class IndirectedSpec extends SBSpec {
   "Indirected" - {
     "1 - should down self if unreachable" in {
       forAll { worldView: WorldView =>

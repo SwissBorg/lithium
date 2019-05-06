@@ -2,9 +2,9 @@ package akka.cluster.sbr.strategies.keepoldest
 
 import akka.cluster.Member
 import akka.cluster.sbr.strategies.keepoldest.ArbitraryInstances._
-import akka.cluster.sbr.{MySpec, ReachableNode, UnreachableNode, WorldView}
+import akka.cluster.sbr.{SBSpec, ReachableNode, UnreachableNode, WorldView}
 
-class KeepOldestViewSpec extends MySpec {
+class KeepOldestViewSpec extends SBSpec {
   "KeepOldestView" - {
     "1 - should instantiate the correct instance" in {
       forAll { (worldView: WorldView, keepOldest: KeepOldest) =>

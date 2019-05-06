@@ -1,12 +1,12 @@
 package akka.cluster.sbr.strategies.keepoldest
 
-import akka.cluster.sbr.MySpec
+import akka.cluster.sbr.SBSpec
 import akka.cluster.sbr.scenarios.{SymmetricSplitScenario, UpDisseminationScenario}
 import akka.cluster.sbr.strategies.keepoldest.ArbitraryInstances._
 import akka.cluster.sbr.utils.PostResolution
 import cats.implicits._
 
-class KeepOldestSpec extends MySpec {
+class KeepOldestSpec extends SBSpec {
   "KeepOldest" - {
     "1 - should handle symmetric split scenarios" in {
       forAll { (scenario: SymmetricSplitScenario, keepOldest: KeepOldest) =>

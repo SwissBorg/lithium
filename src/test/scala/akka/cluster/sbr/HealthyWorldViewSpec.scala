@@ -2,7 +2,7 @@ package akka.cluster.sbr
 
 import akka.cluster.sbr.ArbitraryInstances._
 
-class HealthyWorldViewSpec extends MySpec {
+class HealthyWorldViewSpec extends SBSpec {
   "HealthyWorldView" - {
     "1 - should not have unreachable nodes" in {
       forAll { worldView: HealthyWorldView =>

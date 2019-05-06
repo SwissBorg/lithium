@@ -13,7 +13,7 @@ import org.scalacheck.Gen._
 import org.scalacheck.Prop.classify
 import org.scalacheck.{Arbitrary, Prop}
 
-class StaticQuorumSpec extends MySpec {
+class StaticQuorumSpec extends SBSpec {
 
   "StaticQuorum" - {
     "1 - should handle symmetric split scenarios with a correctly defined quorum size" in {

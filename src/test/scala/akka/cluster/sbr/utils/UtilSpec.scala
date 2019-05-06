@@ -1,6 +1,6 @@
 package akka.cluster.sbr.utils
 
-import akka.cluster.sbr.MySpec
+import akka.cluster.sbr.SBSpec
 import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
 import eu.timepit.refined.api.Refined
@@ -10,7 +10,7 @@ import org.scalacheck.Arbitrary
 
 import scala.collection.immutable.SortedSet
 
-class UtilSpec extends MySpec {
+class UtilSpec extends SBSpec {
   "Util" - {
     "1 - splitIn" in {
       forAll { (parts: Int Refined Positive, head: Int, tail: SortedSet[Int]) =>

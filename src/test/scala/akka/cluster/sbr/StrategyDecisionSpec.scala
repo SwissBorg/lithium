@@ -5,7 +5,7 @@ import cats.kernel.Monoid
 
 import scala.collection.immutable.SortedSet
 
-class StrategyDecisionSpec extends MySpec {
+class StrategyDecisionSpec extends SBSpec {
   "StrategyDecision" - {
     "1 - extract the correct nodes from the world view" in {
       forAll { worldView: WorldView =>

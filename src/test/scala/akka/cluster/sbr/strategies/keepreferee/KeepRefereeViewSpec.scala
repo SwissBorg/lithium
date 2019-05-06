@@ -1,13 +1,13 @@
 package akka.cluster.sbr.strategies.keepreferee
 
 import akka.cluster.sbr.ArbitraryInstances._
-import akka.cluster.sbr.{MySpec, WorldView}
+import akka.cluster.sbr.{SBSpec, WorldView}
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
 import org.scalacheck.Arbitrary
 import org.scalacheck.Gen._
 
-class KeepRefereeViewSpec extends MySpec {
+class KeepRefereeViewSpec extends SBSpec {
   import KeepRefereeViewSpec._
 
   "KeepRefereeView" - {

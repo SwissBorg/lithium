@@ -4,7 +4,7 @@ import akka.actor.Address
 import akka.cluster.ClusterEvent._
 import akka.cluster.sbr.ArbitraryInstances._
 
-class WorldViewSpec extends MySpec {
+class WorldViewSpec extends SBSpec {
   "WorldView" - {
     "1 - should not have a node simultaneously reachable and unreachable" in {
       forAll { worldView: WorldView =>
