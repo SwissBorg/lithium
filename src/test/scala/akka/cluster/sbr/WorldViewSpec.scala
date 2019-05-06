@@ -99,19 +99,15 @@ class WorldViewSpec extends MySpec {
       }
     }
 
-//    "9 - unreachableNodesWithRole" in {
-//      forAll { (worldView: WorldView, role: String) =>
-//        if (role.isEmpty)
-//          worldView
-//            .consideredUnreachableNodesWithRole(role)
-//            .map(_.member) should ===(worldView.unreachableNodes.map(_.member).filter())
-//        else assert(worldView.consideredUnreachableNodesWithRole(role).forall(worldView.unreachableNodes.contains))
-//      }
-//    }
-
-    "10 - otherStatuses should not contain the self node" in {
+    "9 - otherStatuses should not contain the self node" in {
       forAll { worldView: WorldView =>
         worldView.otherMembersStatus.contains(worldView.selfUniqueAddress) shouldBe false
+      }
+    }
+
+    "10 - remove all removed members" in {
+      forAll { worldView: WorldView =>
+        worldView.pruneRemoved.removedMembers should ===(Set.empty)
       }
     }
   }
