@@ -5,7 +5,7 @@ import cats.kernel.Monoid
 
 import scala.collection.immutable.SortedSet
 
-class StrategyDecisionSpec extends MySpec {
+class StrategyDecisionSpec extends SBSpec {
   "StrategyDecision" - {
     "1 - extract the correct nodes from the world view" in {
       forAll { worldView: WorldView =>
@@ -39,23 +39,9 @@ class StrategyDecisionSpec extends MySpec {
 
     "3 - correctly combine decisions" in {
       forAll { decisions: List[StrategyDecision] =>
-        val maybeDownSelf = decisions.find {
-          case _: DownSelf => true
-          case _           => false
-        }
-
-        maybeDownSelf match {
-          case Some(DownSelf(node)) =>
-            decisions
-              .foldRight(Monoid[StrategyDecision].empty)(Monoid[StrategyDecision].combine)
-              .nodesToDown should ===(SortedSet(node))
-          case None =>
-            (decisions.flatMap(_.nodesToDown).toSet should contain).theSameElementsAs(
-              decisions.foldRight(Monoid[StrategyDecision].empty)(Monoid[StrategyDecision].combine).nodesToDown
-            )
-
-          case _ => fail
-        }
+        (decisions.flatMap(_.nodesToDown).toSet should contain).theSameElementsAs(
+          decisions.foldRight(Monoid[StrategyDecision].empty)(Monoid[StrategyDecision].combine).nodesToDown
+        )
       }
     }
   }

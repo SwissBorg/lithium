@@ -6,7 +6,7 @@ import akka.cluster.sbr.strategies.keepmajority.ArbitraryInstances._
 import akka.cluster.sbr.utils.PostResolution
 import cats.implicits._
 
-class KeepMajoritySpec extends MySpec {
+class KeepMajoritySpec extends SBSpec {
   "KeepMajority" - {
     "1 - should handle symmetric split scenarios" in {
       forAll { (scenario: SymmetricSplitScenario, keepMajority: KeepMajority) =>

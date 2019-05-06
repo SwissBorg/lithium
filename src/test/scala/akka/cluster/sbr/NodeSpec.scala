@@ -2,7 +2,7 @@ package akka.cluster.sbr
 
 import akka.cluster.sbr.ArbitraryInstances._
 
-class NodeSpec extends MySpec {
+class NodeSpec extends SBSpec {
   "Node" - {
     "1 - UnreachableNode should not affect the order" in {
       forAll { nodes: List[UnreachableNode] =>

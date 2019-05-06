@@ -1,6 +1,6 @@
 package akka.cluster.sbr.strategies.keepreferee
 
-import akka.cluster.sbr.MySpec
+import akka.cluster.sbr.SBSpec
 import akka.cluster.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario, UpDisseminationScenario}
 import akka.cluster.sbr.utils.PostResolution
 import cats.implicits._
@@ -8,7 +8,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.scalacheck.all._
 
-class KeepRefereeSpec extends MySpec {
+class KeepRefereeSpec extends SBSpec {
   "KeepReferee" - {
     "1 - should handle symmetric split scenarios" in {
       forAll { (scenario: SymmetricSplitScenario, downAllIfLessThanNodes: Int Refined Positive) =>

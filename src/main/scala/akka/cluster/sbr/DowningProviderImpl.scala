@@ -9,13 +9,18 @@ import akka.cluster.sbr.strategies.keepoldest.KeepOldest
 import akka.cluster.sbr.strategies.keepreferee.KeepReferee
 import akka.cluster.sbr.strategies.staticquorum.StaticQuorum
 import akka.cluster.sbr.strategy.StrategyReader.UnknownStrategy
-import akka.cluster.{Cluster, DowningProvider}
+import akka.cluster.DowningProvider
 import cats.implicits._
 import eu.timepit.refined.pureconfig._
 import pureconfig.generic.auto._
 
 import scala.concurrent.duration.FiniteDuration
 
+/**
+ * Implementation of a DowningProvider building a [[SBResolver]].
+ *
+ * @param system the current actor system.
+ */
 class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
   import DowningProviderImpl._
 

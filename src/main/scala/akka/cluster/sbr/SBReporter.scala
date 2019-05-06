@@ -48,9 +48,12 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
     case HandleSplitBrain                 => context.become(active(handleSplitBrain.runS(state).unsafeRunSync()))
   }
 
+  /**
+    *
+    */
   private def seenChanged(convergence: Boolean, seenBy: Set[Address]): State[SBReporterState, Unit] =
     for {
-      _ <- State.modify[SBReporterState](_.flush(seenBy))
+      _ <- State.modify[SBReporterState](_.reifyChangeQueue(seenBy))
       _ <- if (convergence) State.modify[SBReporterState](_.pruneRemoved) else State.pure[SBReporterState, Unit](())
     } yield ()
 
@@ -65,10 +68,10 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
     modify(_.enqueue(e))
 
   private def reachableMember(m: Member): StateT[SyncIO, SBReporterState, Unit] =
-    modify(_.reachableMember(m))
+    modify(_.reachable(m))
 
   private def unreachableMember(m: Member): StateT[SyncIO, SBReporterState, Unit] =
-    modify(_.unreachableMember(m))
+    modify(_.unreachable(m))
 
   private def indirectlyConnected(m: Member): StateT[SyncIO, SBReporterState, Unit] =
     modify(_.indirectlyConnected(m))
@@ -82,8 +85,6 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
   private val cancelHandleSplitBrain: SyncIO[Unit] = SyncIO(timers.cancel(HandleSplitBrain))
 
   private val resetHandleSplitBrain: SyncIO[Unit] = cancelHandleSplitBrain >> scheduleHandleSplitBrain
-
-  implicit private val ec: ExecutionContext = context.system.dispatcher
 
   override def preStart(): Unit = {
     cluster.subscribe(self, InitialStateAsSnapshot, classOf[akka.cluster.ClusterEvent.MemberEvent])

@@ -42,26 +42,26 @@ private[keepmajority] object KeepMajorityView {
     } else NoMajority.asLeft
   }
 
-  final object NoMajority extends Throwable
+  case object NoMajority extends Throwable
 }
 
 /**
  * This partition is a majority.
  */
-final private[keepmajority] case object ReachableMajority extends KeepMajorityView
+private[keepmajority] case object ReachableMajority extends KeepMajorityView
 
 /**
  * The other partition is a majority. In other words, this partition is NOT a majority.
  */
-final private[keepmajority] case object UnreachableMajority extends KeepMajorityView
+private[keepmajority] case object UnreachableMajority extends KeepMajorityView
 
 /**
  * The lowest address node is in this partition.
  */
-final private[keepmajority] case object ReachableLowestAddress extends KeepMajorityView
+private[keepmajority] case object ReachableLowestAddress extends KeepMajorityView
 
 /**
  * The lowest address node is in the other partition. In other words, this partition
  * does NOT contain that node.
  */
-final private[keepmajority] case object UnreachableLowestAddress extends KeepMajorityView
+private[keepmajority] case object UnreachableLowestAddress extends KeepMajorityView

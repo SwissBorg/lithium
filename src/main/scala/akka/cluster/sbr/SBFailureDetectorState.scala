@@ -13,7 +13,7 @@ final private[sbr] case class SBFailureDetectorState private (
 ) {
 
   /**
-   * Returns the `subject`'s status if it has changed since the last time
+   * Return the `subject`'s status if it has changed since the last time
    * this method was called.
    *
    * The status is `None` when it has not changed since the last status retrieval.
@@ -38,14 +38,14 @@ final private[sbr] case class SBFailureDetectorState private (
       }
 
   /**
-   * Sets the `subject` as reachable.
+   * Set the `subject` as reachable.
    */
   def reachable(subject: Subject): SBFailureDetectorState =
     copy(reachabilities = reachabilities + (subject -> updateReachability(subject, Reachable)),
          contentions = contentions - subject)
 
   /**
-   * Sets `node` as unreachable and removes the current node
+   * Set `node` as unreachable and removes the current node
    * from all the related contentions.
    */
   def unreachable(observer: Observer, subject: Subject): SBFailureDetectorState = {
@@ -78,6 +78,9 @@ final private[sbr] case class SBFailureDetectorState private (
     }
   }
 
+  /**
+   * Update the reachability of `subject` to `reachability`.
+   */
   private def updateReachability(subject: Subject, reachability: SBRReachability): VersionedReachability =
     reachabilities
       .get(subject)
@@ -85,7 +88,7 @@ final private[sbr] case class SBFailureDetectorState private (
       .getOrElse(VersionedReachability.init(reachability))
 
   /**
-   * Updates the contention of the observation of `subject` by `observer`
+   * Update the contention of the observation of `subject` by `observer`
    * by the cluster node `node`.
    */
   def contention(node: UniqueAddress, observer: Observer, subject: Subject, version: Long): SBFailureDetectorState = {
@@ -112,6 +115,9 @@ final private[sbr] case class SBFailureDetectorState private (
     }
   }
 
+  /**
+   * Remove the node.
+   */
   def remove(node: UniqueAddress): SBFailureDetectorState = {
     val updatedM = (contentions - node).mapValues { observers =>
       (observers - node).mapValues(_.agree(node))
@@ -142,6 +148,9 @@ final private[sbr] case class SBFailureDetectorState private (
     )
   }
 
+  /**
+   * Set the subject as indirectly connected.
+   */
   private def indirectlyConnected(subject: Subject): Map[UniqueAddress, VersionedReachability] = {
     val diff = reachabilities
       .get(subject)

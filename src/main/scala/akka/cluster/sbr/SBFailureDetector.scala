@@ -16,14 +16,13 @@ import cats.implicits._
  * `akka.cluster.Reachability`. Essentially, it adds the [[IndirectlyConnectedNode]]
  * status to the reachability events.
  *
- * A node is indirectly connected when not all nodes can communicate
- * with it. This might happen for instance when the link between
- * two nodes is faulty, they cannot directly communicate but can
- * via another node.
+ * A node is indirectly connected when only some of its observers see it as unreachable.
+ * This might happen for instance when the link between two nodes is faulty,
+ * they cannot directly communicate but can via another node.
  *
- * @param sendTo the actor to which the reachability events have to be sent.
+ * @param sbReporter the actor to which the reachability events have to be sent.
  */
-class SBFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging with Stash {
+class SBFailureDetector(val sbReporter: ActorRef) extends Actor with ActorLogging with Stash {
   import SBFailureDetector._
 
   private val cluster           = Cluster(context.system)
@@ -36,8 +35,7 @@ class SBFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging wi
   override def receive: Receive = initializing
 
   private def initializing: Receive = {
-    case s: CurrentClusterState =>
-//      init(s)
+    case _: CurrentClusterState =>
       unstashAll()
       context.become(active(SBFailureDetectorState.empty))
 
@@ -49,7 +47,7 @@ class SBFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging wi
       context.become(active(reachabilityChanged(r).runS(state).unsafeRunSync()))
 
     case MemberRemoved(m, _) =>
-      context.become(active(removeMember(m.uniqueAddress).runS(state).unsafeRunSync()))
+      context.become(active(remove(m.uniqueAddress).runS(state).unsafeRunSync()))
 
     case ReachableMember(m) =>
       context.become(active(reachable(m.uniqueAddress).runS(state).unsafeRunSync()))
@@ -58,36 +56,41 @@ class SBFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging wi
       context.become(active(contention(node, observer, subject, version).runS(state).unsafeRunSync()))
   }
 
-  private def isLocallyReachable(unreachableNode: UniqueAddress): SyncIO[Boolean] =
-    SyncIO(
-      failureDetector.isMonitoring(unreachableNode.address) && failureDetector.isAvailable(unreachableNode.address)
-    )
-
-  private def reachabilityChanged(r: Reachability): StateT[SyncIO, SBFailureDetectorState, Unit] = {
-    def publishContentions(observer: Observer, subject: Subject): StateT[SyncIO, SBFailureDetectorState, Unit] =
+  /**
+   * Broadcast contentions if the current node sees unreachable nodes as reachable.
+   * Otherwise, send the updated reachability to the reporter.
+   */
+  private def reachabilityChanged(reachability: Reachability): StateT[SyncIO, SBFailureDetectorState, Unit] = {
+    def broadcastContentions(observer: Observer, subject: Subject): StateT[SyncIO, SBFailureDetectorState, Unit] =
       StateT.liftF(
-        r.recordsFrom(observer)
-          .find(r => r.subject == subject && r.status == Reachability.Unreachable)
-          .traverse_(record => publishContention(record.observer, record.subject, record.version))
+        reachability
+          .recordsFrom(observer)
+          .find(r => r.subject == subject && r.status == Reachability.Unreachable) // find the record describing that `observer` sees `subject` as unreachabl
+          .traverse_(record => broadcastContention(record.observer, record.subject, record.version))
       )
 
-    r.observersGroupedByUnreachable.toList.traverse_ {
+    def isLocallyReachable(node: UniqueAddress): StateT[SyncIO, SBFailureDetectorState, Boolean] =
+      StateT.liftF[SyncIO, SBFailureDetectorState, Boolean](
+        SyncIO(failureDetector.isMonitoring(node.address) && failureDetector.isAvailable(node.address))
+      )
+
+    reachability.observersGroupedByUnreachable.toList.traverse_ {
       case (subject, observers) =>
         observers.toList.traverse_[StateT[SyncIO, SBFailureDetectorState, ?], Unit] { observer =>
           for {
             _ <- unreachable(observer, subject)
-            _ <- StateT
-              .liftF[SyncIO, SBFailureDetectorState, Boolean](isLocallyReachable(subject))
-              .ifM(publishContentions(observer, subject), sendStatus(subject))
+            _ <- isLocallyReachable(subject).ifM(broadcastContentions(observer, subject), sendReachability(subject))
           } yield ()
         }
     }
   }
 
-  private def memberFromAddress(node: UniqueAddress): OptionT[SyncIO, Member] =
-    OptionT(SyncIO(cluster.state.members.find(_.uniqueAddress == node)))
-
-  private def removeMember(node: UniqueAddress): StateT[SyncIO, SBFailureDetectorState, Unit] =
+  /**
+   * Register the node as removed.
+   *
+   * If the removed node is the current one the actor will stop itself.
+   */
+  private def remove(node: UniqueAddress): StateT[SyncIO, SBFailureDetectorState, Unit] =
     if (node == selfUniqueAddress) {
       // This node is being stopped. Kill the actor
       // to stop any further updates.
@@ -96,46 +99,66 @@ class SBFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging wi
       StateT.modify(_.remove(node))
     }
 
+  /**
+   * Register the node as reachable and inform the reporter of it.
+   */
   private def reachable(node: UniqueAddress): StateT[SyncIO, SBFailureDetectorState, Unit] =
-    StateT.modify[SyncIO, SBFailureDetectorState](_.reachable(node)) >> sendStatus(node)
+    StateT.modify[SyncIO, SBFailureDetectorState](_.reachable(node)) >> sendReachability(node)
 
+  /**
+   * Set the subject as unreachable from the observer.
+   */
   private def unreachable(observer: Observer, subject: Subject): StateT[SyncIO, SBFailureDetectorState, Unit] =
     StateT.modify(_.unreachable(observer, subject))
 
-  private def sendStatus(node: UniqueAddress): StateT[SyncIO, SBFailureDetectorState, Unit] = StateT.modifyF { state =>
-    val (status, state0) = state.updatedStatus(node)
+  /**
+   * Idempotently send the reachability of `node` to the reporter.
+   */
+  private def sendReachability(node: UniqueAddress): StateT[SyncIO, SBFailureDetectorState, Unit] = {
+    def memberFromAddress(node: UniqueAddress): OptionT[SyncIO, Member] =
+      OptionT(SyncIO(cluster.state.members.find(_.uniqueAddress == node)))
 
-    val sendStatus = status
-      .traverse_ { s =>
-        memberFromAddress(node).semiflatMap { m =>
-          SyncIO(sendTo ! (s match {
-            case Reachable           => ReachableMember(m)
-            case IndirectlyConnected => IndirectlyConnectedMember(m)
-            case Unreachable         => UnreachableMember(m)
-          }))
+    StateT.modifyF { state =>
+      val (status, state0) = state.updatedStatus(node)
+
+      val sendStatus = status
+        .traverse_ { s =>
+          memberFromAddress(node).semiflatMap { m =>
+            SyncIO(sbReporter ! (s match {
+              case Reachable           => ReachableMember(m)
+              case IndirectlyConnected => IndirectlyConnectedMember(m)
+              case Unreachable         => UnreachableMember(m)
+            }))
+          }
         }
-      }
-      .value
-      .void
+        .value
+        .void
 
-    sendStatus.map(_ => state0)
+      sendStatus.map(_ => state0)
+    }
   }
 
-  private def publishContention(observer: UniqueAddress, subject: UniqueAddress, version: Long): SyncIO[Unit] =
+  /**
+   * Broadcast the contention to all the [[SBFailureDetector]]s in the cluster.
+   *
+   * Note: the version has to increase between every call for each `observer`, `subject` pair.
+   */
+  private def broadcastContention(observer: UniqueAddress, subject: UniqueAddress, version: Long): SyncIO[Unit] =
     SyncIO(mediator ! Publish("sbr", UnreachabilityContention(selfUniqueAddress, observer, subject, version)))
 
+  /**
+   * Register the contention initiated by `node` of the observation by `observer` of `subject` as unreachable.
+   */
   private def contention(node: UniqueAddress,
                          observer: UniqueAddress,
                          subject: UniqueAddress,
                          version: Long): StateT[SyncIO, SBFailureDetectorState, Unit] =
-    StateT.modify[SyncIO, SBFailureDetectorState](_.contention(node, observer, subject, version)) >> sendStatus(
-      subject
-    )
+    StateT.modify[SyncIO, SBFailureDetectorState](_.contention(node, observer, subject, version)) >>
+      sendReachability(subject)
 
   override def preStart(): Unit = {
     cluster.subscribe(self, classOf[MemberEvent], classOf[ReachabilityEvent])
     context.system.eventStream.subscribe(self, classOf[ReachabilityChanged])
-    context.system.eventStream.subscribe(self, classOf[MemberRemoved])
   }
 
   override def postStop(): Unit = {
@@ -153,8 +176,5 @@ object SBFailureDetector {
   final case object Unreachable         extends SBRReachability
   final case object IndirectlyConnected extends SBRReachability
 
-  final case class UnreachabilityContention(node: UniqueAddress,
-                                            observer: UniqueAddress,
-                                            subject: UniqueAddress,
-                                            version: Long)
+  final case class UnreachabilityContention(node: UniqueAddress, observer: Observer, subject: Subject, version: Long)
 }

@@ -6,7 +6,7 @@ import akka.cluster.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario
 import akka.cluster.sbr.utils.PostResolution
 import cats.implicits._
 
-class DownAllSpec extends MySpec {
+class DownAllSpec extends SBSpec {
   "DownAll" - {
     "1 - should always down nodes" in {
       forAll { worldView: WorldView =>
