@@ -1,7 +1,7 @@
 resolvers += Resolver.bintrayRepo("kamon-io", "sbt-plugins")
 
-addSbtPlugin("io.kamon"                % "sbt-aspectj-runner" % "1.1.0")
-addSbtPlugin("io.spray"                % "sbt-revolver"       % "0.9.1")
+addSbtPlugin("io.kamon" % "sbt-aspectj-runner" % "1.1.0")
+addSbtPlugin("io.spray" % "sbt-revolver"       % "0.9.1")
 
 // Multi-JVM testing
 addSbtPlugin("com.typesafe.sbt" % "sbt-multi-jvm" % "0.4.0")
@@ -26,4 +26,3 @@ addSbtPlugin("com.timushev.sbt" % "sbt-updates" % "0.4.0")
 
 // Test coverage
 addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.5.1")
-
