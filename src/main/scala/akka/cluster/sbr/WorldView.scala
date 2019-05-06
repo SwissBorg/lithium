@@ -32,7 +32,7 @@ final case class WorldView private (
    * is useful to detect the case when the removal
    * might not have been seen by a partition.
    */
-  private[sbr] val removedMembersSeenBy: Map[UniqueAddress, Set[Address]] // todo when to cleanup?
+  private[sbr] val removedMembersSeenBy: Map[UniqueAddress, Set[Address]]
 ) {
   assert(!otherMembersStatus.contains(selfUniqueAddress), s"$otherMembersStatus <- $selfUniqueAddress")
 
@@ -199,6 +199,8 @@ final case class WorldView private (
           )
       }
     }
+
+  lazy val pruneRemoved: WorldView = copy(removedMembersSeenBy = Map.empty)
 
   private def updateReachability(member: Member, reachability: SBRReachability): WorldView =
     if (member.uniqueAddress == selfUniqueAddress) {
