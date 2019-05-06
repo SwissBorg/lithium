@@ -39,23 +39,9 @@ class StrategyDecisionSpec extends SBSpec {
 
     "3 - correctly combine decisions" in {
       forAll { decisions: List[StrategyDecision] =>
-        val maybeDownSelf = decisions.find {
-          case _: DownSelf => true
-          case _           => false
-        }
-
-        maybeDownSelf match {
-          case Some(DownSelf(node)) =>
-            decisions
-              .foldRight(Monoid[StrategyDecision].empty)(Monoid[StrategyDecision].combine)
-              .nodesToDown should ===(SortedSet(node))
-          case None =>
-            (decisions.flatMap(_.nodesToDown).toSet should contain).theSameElementsAs(
-              decisions.foldRight(Monoid[StrategyDecision].empty)(Monoid[StrategyDecision].combine).nodesToDown
-            )
-
-          case _ => fail
-        }
+        (decisions.flatMap(_.nodesToDown).toSet should contain).theSameElementsAs(
+          decisions.foldRight(Monoid[StrategyDecision].empty)(Monoid[StrategyDecision].combine).nodesToDown
+        )
       }
     }
   }
