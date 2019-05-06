@@ -45,9 +45,7 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
     case ReachableMember(m)               => context.become(active(reachableMember(m).runS(state).unsafeRunSync()))
     case UnreachableMember(m)             => context.become(active(unreachableMember(m).runS(state).unsafeRunSync()))
     case IndirectlyConnectedMember(m)     => context.become(active(indirectlyConnected(m).runS(state).unsafeRunSync()))
-    case HandleSplitBrain =>
-      log.debug("HERE")
-      context.become(active(handleSplitBrain.runS(state).unsafeRunSync()))
+    case HandleSplitBrain                 => context.become(active(handleSplitBrain.runS(state).unsafeRunSync()))
   }
 
   private def seenChanged(seenBy: Set[Address]): State[SBReporterState, Unit] = State.modify(_.flush(seenBy))
