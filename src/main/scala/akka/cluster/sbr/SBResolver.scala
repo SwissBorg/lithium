@@ -11,14 +11,22 @@ import cats.implicits._
 
 import scala.concurrent.duration._
 
-class Downer(cluster: Cluster, strategy: Strategy, stableAfter: FiniteDuration, downAllWhenUnstable: FiniteDuration)
+/**
+ * Actor resolving split-brain scenarios.
+ *
+ * @param strategy the strategy with which to resolved the split-brain.
+ * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
+ * @param downAllWhenUnstable
+ */
+class SBResolver(strategy: Strategy, stableAfter: FiniteDuration, downAllWhenUnstable: FiniteDuration)
     extends Actor
     with ActorLogging {
-  import Downer._
+  import SBResolver._
 
+  private val cluster     = Cluster(context.system)
   private val selfAddress = cluster.selfMember.address
   private val indirected  = new Indirected
-  private val _           = context.system.actorOf(StabilityReporter.props(self, stableAfter, downAllWhenUnstable, cluster))
+  private val _           = context.system.actorOf(SBReporter.props(self, stableAfter, downAllWhenUnstable))
 
   override def receive: Receive = {
     case h @ HandleSplitBrain(worldView) =>
@@ -46,12 +54,9 @@ class Downer(cluster: Cluster, strategy: Strategy, stableAfter: FiniteDuration, 
 
 }
 
-object Downer {
-  def props(cluster: Cluster,
-            strategy: Strategy,
-            stableAfter: FiniteDuration,
-            downAllWhenUnstable: FiniteDuration): Props =
-    Props(new Downer(cluster, strategy, stableAfter, downAllWhenUnstable))
+object SBResolver {
+  def props(strategy: Strategy, stableAfter: FiniteDuration, downAllWhenUnstable: FiniteDuration): Props =
+    Props(new SBResolver(strategy, stableAfter, downAllWhenUnstable))
 
   final case class HandleSplitBrain(worldView: WorldView)
 

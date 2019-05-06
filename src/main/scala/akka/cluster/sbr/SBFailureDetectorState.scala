@@ -1,13 +1,13 @@
 package akka.cluster.sbr
 
 import akka.cluster.UniqueAddress
-import akka.cluster.sbr.SBRFailureDetector.{UnreachabilityContention => _, _}
-import akka.cluster.sbr.SBRFailureDetectorState._
+import akka.cluster.sbr.SBFailureDetector.{UnreachabilityContention => _, _}
+import akka.cluster.sbr.SBFailureDetectorState._
 
 /**
  * State of the SBRFailureDetector.
  */
-final private[sbr] case class SBRFailureDetectorState private (
+final private[sbr] case class SBFailureDetectorState private (
   reachabilities: Map[Subject, VersionedReachability],
   contentions: Map[Subject, Map[Observer, UnreachabilityContention]]
 ) {
@@ -18,7 +18,7 @@ final private[sbr] case class SBRFailureDetectorState private (
    *
    * The status is `None` when it has not changed since the last status retrieval.
    */
-  def updatedStatus(subject: Subject): (Option[SBRReachability], SBRFailureDetectorState) =
+  def updatedStatus(subject: Subject): (Option[SBRReachability], SBFailureDetectorState) =
     reachabilities
       .get(subject)
       .map { r =>
@@ -40,7 +40,7 @@ final private[sbr] case class SBRFailureDetectorState private (
   /**
    * Sets the `subject` as reachable.
    */
-  def reachable(subject: Subject): SBRFailureDetectorState =
+  def reachable(subject: Subject): SBFailureDetectorState =
     copy(reachabilities = reachabilities + (subject -> updateReachability(subject, Reachable)),
          contentions = contentions - subject)
 
@@ -48,7 +48,7 @@ final private[sbr] case class SBRFailureDetectorState private (
    * Sets `node` as unreachable and removes the current node
    * from all the related contentions.
    */
-  def unreachable(observer: Observer, subject: Subject): SBRFailureDetectorState = {
+  def unreachable(observer: Observer, subject: Subject): SBFailureDetectorState = {
     // The observer node now agrees.
     val updatedContentions =
       contentions
@@ -88,7 +88,7 @@ final private[sbr] case class SBRFailureDetectorState private (
    * Updates the contention of the observation of `subject` by `observer`
    * by the cluster node `node`.
    */
-  def contention(node: UniqueAddress, observer: Observer, subject: Subject, version: Long): SBRFailureDetectorState = {
+  def contention(node: UniqueAddress, observer: Observer, subject: Subject, version: Long): SBFailureDetectorState = {
     val contentions0 = contentions.getOrElse(subject, Map.empty)
     val contention   = contentions0.getOrElse(observer, UnreachabilityContention.empty)
 
@@ -112,7 +112,7 @@ final private[sbr] case class SBRFailureDetectorState private (
     }
   }
 
-  def remove(node: UniqueAddress): SBRFailureDetectorState = {
+  def remove(node: UniqueAddress): SBFailureDetectorState = {
     val updatedM = (contentions - node).mapValues { observers =>
       (observers - node).mapValues(_.agree(node))
     }
@@ -152,11 +152,11 @@ final private[sbr] case class SBRFailureDetectorState private (
   }
 }
 
-private[sbr] object SBRFailureDetectorState {
+private[sbr] object SBFailureDetectorState {
   type Observer = UniqueAddress
   type Subject  = UniqueAddress
 
-  val empty: SBRFailureDetectorState = SBRFailureDetectorState(Map.empty, Map.empty)
+  val empty: SBFailureDetectorState = SBFailureDetectorState(Map.empty, Map.empty)
 
   /**
    * Represents the reachability of a node.

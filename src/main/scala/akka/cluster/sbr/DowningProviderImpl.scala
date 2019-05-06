@@ -33,22 +33,22 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
     val strategy = config.activeStrategy match {
       case `keepMajority` =>
         KeepMajority.load
-          .map(Downer.props(Cluster(system), _, config.stableAfter, config.downAllWhenUnstable))
+          .map(SBResolver.props(_, config.stableAfter, config.downAllWhenUnstable))
 
       case `keepOldest` =>
         KeepOldest.load
-          .map(Downer.props(Cluster(system), _, config.stableAfter, config.downAllWhenUnstable))
+          .map(SBResolver.props(_, config.stableAfter, config.downAllWhenUnstable))
 
       case `keepReferee` =>
         KeepReferee.load
-          .map(Downer.props(Cluster(system), _, config.stableAfter, config.downAllWhenUnstable))
+          .map(SBResolver.props(_, config.stableAfter, config.downAllWhenUnstable))
 
       case `staticQuorum` =>
         StaticQuorum.load
-          .map(Downer.props(Cluster(system), _, config.stableAfter, config.downAllWhenUnstable))
+          .map(SBResolver.props(_, config.stableAfter, config.downAllWhenUnstable))
 
       case `downAll` =>
-        Downer.props(Cluster(system), DownAll(), config.stableAfter, config.downAllWhenUnstable).asRight
+        SBResolver.props(DownAll(), config.stableAfter, config.downAllWhenUnstable).asRight
 
       case unknownStrategy => UnknownStrategy(unknownStrategy).asLeft
     }

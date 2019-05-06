@@ -10,31 +10,36 @@ import cats.implicits._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
-class StabilityReporter(downer: ActorRef,
-                        stableAfter: FiniteDuration,
-                        downAllWhenUnstable: FiniteDuration,
-                        cluster: Cluster)
+/**
+ * Actor reporting on split-brain events.
+ *
+ * @param splitBrainResolver the actor that resolves the split-brain scenarios.
+ * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
+ * @param downAllWhenUnstable
+ */
+class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, downAllWhenUnstable: FiniteDuration)
     extends Actor
     with Stash
     with ActorLogging
     with Timers {
-  import StabilityReporter._
+  import SBReporter._
 
+  private val cluster            = Cluster(context.system)
   private val selfMember: Member = cluster.selfMember
 
-  private val _ = context.system.actorOf(SBRFailureDetector.props(self), "sbr-fd")
+  private val _ = context.system.actorOf(SBFailureDetector.props(self), "sbr-fd")
 
   override def receive: Receive = initializing
 
   private def initializing: Receive = {
     case s: CurrentClusterState =>
       unstashAll()
-      context.become(active(StabilityReporterState.fromSnapshot(s, selfMember)))
+      context.become(active(SBReporterState.fromSnapshot(s, selfMember)))
 
     case _ => stash()
   }
 
-  private def active(state: StabilityReporterState): Receive = {
+  private def active(state: SBReporterState): Receive = {
     case e: MemberEvent                   => context.become(active(memberEvent(e).runS(state).unsafeRunSync()))
     case SeenChanged(convergence, seenBy) => context.become(active(seenChanged(seenBy).runS(state).value))
     case ReachableMember(m)               => context.become(active(reachableMember(m).runS(state).unsafeRunSync()))
@@ -45,29 +50,29 @@ class StabilityReporter(downer: ActorRef,
       context.become(active(handleSplitBrain.runS(state).unsafeRunSync()))
   }
 
-  private def seenChanged(seenBy: Set[Address]): State[StabilityReporterState, Unit] = State.modify(_.flush(seenBy))
+  private def seenChanged(seenBy: Set[Address]): State[SBReporterState, Unit] = State.modify(_.flush(seenBy))
 
   private def modify(
-    f: StabilityReporterState => StabilityReporterState
-  ): StateT[SyncIO, StabilityReporterState, Unit] =
+    f: SBReporterState => SBReporterState
+  ): StateT[SyncIO, SBReporterState, Unit] =
     StateT.modifyF { state =>
       resetHandleSplitBrain.map(_ => f(state))
     }
 
-  private def memberEvent(e: MemberEvent): StateT[SyncIO, StabilityReporterState, Unit] =
+  private def memberEvent(e: MemberEvent): StateT[SyncIO, SBReporterState, Unit] =
     modify(_.enqueue(e))
 
-  private def reachableMember(m: Member): StateT[SyncIO, StabilityReporterState, Unit] =
+  private def reachableMember(m: Member): StateT[SyncIO, SBReporterState, Unit] =
     modify(_.reachableMember(m))
 
-  private def unreachableMember(m: Member): StateT[SyncIO, StabilityReporterState, Unit] =
+  private def unreachableMember(m: Member): StateT[SyncIO, SBReporterState, Unit] =
     modify(_.unreachableMember(m))
 
-  private def indirectlyConnected(m: Member): StateT[SyncIO, StabilityReporterState, Unit] =
+  private def indirectlyConnected(m: Member): StateT[SyncIO, SBReporterState, Unit] =
     modify(_.indirectlyConnected(m))
 
-  private val handleSplitBrain: StateT[SyncIO, StabilityReporterState, Unit] =
-    StateT.inspectF(state => SyncIO(downer ! Downer.HandleSplitBrain(state.worldView)))
+  private val handleSplitBrain: StateT[SyncIO, SBReporterState, Unit] =
+    StateT.inspectF(state => SyncIO(splitBrainResolver ! SBResolver.HandleSplitBrain(state.worldView)))
 
   private val scheduleHandleSplitBrain: SyncIO[Unit] =
     SyncIO(timers.startSingleTimer(HandleSplitBrain, HandleSplitBrain, stableAfter))
@@ -90,12 +95,9 @@ class StabilityReporter(downer: ActorRef,
   }
 }
 
-object StabilityReporter {
-  def props(downer: ActorRef,
-            stableAfter: FiniteDuration,
-            downAllWhenUnstable: FiniteDuration,
-            cluster: Cluster): Props =
-    Props(new StabilityReporter(downer, stableAfter, downAllWhenUnstable, cluster))
+object SBReporter {
+  def props(downer: ActorRef, stableAfter: FiniteDuration, downAllWhenUnstable: FiniteDuration): Props =
+    Props(new SBReporter(downer, stableAfter, downAllWhenUnstable))
 
   /**
    * For internal use.

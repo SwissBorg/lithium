@@ -4,7 +4,7 @@ import akka.actor.Address
 import akka.cluster.ClusterEvent._
 import akka.cluster.Member
 import akka.cluster.MemberStatus._
-import akka.cluster.sbr.SBRFailureDetector.Reachable
+import akka.cluster.sbr.SBFailureDetector.Reachable
 import akka.cluster.sbr.WorldView.Status
 import akka.cluster.sbr.implicits._
 import akka.cluster.sbr.utils._

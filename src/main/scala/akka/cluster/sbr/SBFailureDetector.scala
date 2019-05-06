@@ -5,8 +5,8 @@ import akka.cluster.ClusterEvent._
 import akka.cluster._
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Subscribe, Unsubscribe}
-import akka.cluster.sbr.SBRFailureDetectorState.{Observer, Subject}
-import akka.cluster.sbr.StabilityReporter.IndirectlyConnectedMember
+import akka.cluster.sbr.SBFailureDetectorState.{Observer, Subject}
+import akka.cluster.sbr.SBReporter.IndirectlyConnectedMember
 import cats.data.{OptionT, StateT}
 import cats.effect.SyncIO
 import cats.implicits._
@@ -23,8 +23,8 @@ import cats.implicits._
  *
  * @param sendTo the actor to which the reachability events have to be sent.
  */
-class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging with Stash {
-  import SBRFailureDetector._
+class SBFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging with Stash {
+  import SBFailureDetector._
 
   private val cluster           = Cluster(context.system)
   private val selfUniqueAddress = cluster.selfUniqueAddress
@@ -39,12 +39,12 @@ class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging w
     case s: CurrentClusterState =>
 //      init(s)
       unstashAll()
-      context.become(active(SBRFailureDetectorState.empty))
+      context.become(active(SBFailureDetectorState.empty))
 
     case _ => stash()
   }
 
-  private def active(state: SBRFailureDetectorState): Receive = {
+  private def active(state: SBFailureDetectorState): Receive = {
     case ReachabilityChanged(r) =>
       context.become(active(reachabilityChanged(r).runS(state).unsafeRunSync()))
 
@@ -63,8 +63,8 @@ class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging w
       failureDetector.isMonitoring(unreachableNode.address) && failureDetector.isAvailable(unreachableNode.address)
     )
 
-  private def reachabilityChanged(r: Reachability): StateT[SyncIO, SBRFailureDetectorState, Unit] = {
-    def publishContentions(observer: Observer, subject: Subject): StateT[SyncIO, SBRFailureDetectorState, Unit] =
+  private def reachabilityChanged(r: Reachability): StateT[SyncIO, SBFailureDetectorState, Unit] = {
+    def publishContentions(observer: Observer, subject: Subject): StateT[SyncIO, SBFailureDetectorState, Unit] =
       StateT.liftF(
         r.recordsFrom(observer)
           .find(r => r.subject == subject && r.status == Reachability.Unreachable)
@@ -73,11 +73,11 @@ class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging w
 
     r.observersGroupedByUnreachable.toList.traverse_ {
       case (subject, observers) =>
-        observers.toList.traverse_[StateT[SyncIO, SBRFailureDetectorState, ?], Unit] { observer =>
+        observers.toList.traverse_[StateT[SyncIO, SBFailureDetectorState, ?], Unit] { observer =>
           for {
             _ <- unreachable(observer, subject)
             _ <- StateT
-              .liftF[SyncIO, SBRFailureDetectorState, Boolean](isLocallyReachable(subject))
+              .liftF[SyncIO, SBFailureDetectorState, Boolean](isLocallyReachable(subject))
               .ifM(publishContentions(observer, subject), sendStatus(subject))
           } yield ()
         }
@@ -87,7 +87,7 @@ class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging w
   private def memberFromAddress(node: UniqueAddress): OptionT[SyncIO, Member] =
     OptionT(SyncIO(cluster.state.members.find(_.uniqueAddress == node)))
 
-  private def removeMember(node: UniqueAddress): StateT[SyncIO, SBRFailureDetectorState, Unit] =
+  private def removeMember(node: UniqueAddress): StateT[SyncIO, SBFailureDetectorState, Unit] =
     if (node == selfUniqueAddress) {
       // This node is being stopped. Kill the actor
       // to stop any further updates.
@@ -96,13 +96,13 @@ class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging w
       StateT.modify(_.remove(node))
     }
 
-  private def reachable(node: UniqueAddress): StateT[SyncIO, SBRFailureDetectorState, Unit] =
-    StateT.modify[SyncIO, SBRFailureDetectorState](_.reachable(node)) >> sendStatus(node)
+  private def reachable(node: UniqueAddress): StateT[SyncIO, SBFailureDetectorState, Unit] =
+    StateT.modify[SyncIO, SBFailureDetectorState](_.reachable(node)) >> sendStatus(node)
 
-  private def unreachable(observer: Observer, subject: Subject): StateT[SyncIO, SBRFailureDetectorState, Unit] =
+  private def unreachable(observer: Observer, subject: Subject): StateT[SyncIO, SBFailureDetectorState, Unit] =
     StateT.modify(_.unreachable(observer, subject))
 
-  private def sendStatus(node: UniqueAddress): StateT[SyncIO, SBRFailureDetectorState, Unit] = StateT.modifyF { state =>
+  private def sendStatus(node: UniqueAddress): StateT[SyncIO, SBFailureDetectorState, Unit] = StateT.modifyF { state =>
     val (status, state0) = state.updatedStatus(node)
 
     val sendStatus = status
@@ -127,8 +127,8 @@ class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging w
   private def contention(node: UniqueAddress,
                          observer: UniqueAddress,
                          subject: UniqueAddress,
-                         version: Long): StateT[SyncIO, SBRFailureDetectorState, Unit] =
-    StateT.modify[SyncIO, SBRFailureDetectorState](_.contention(node, observer, subject, version)) >> sendStatus(
+                         version: Long): StateT[SyncIO, SBFailureDetectorState, Unit] =
+    StateT.modify[SyncIO, SBFailureDetectorState](_.contention(node, observer, subject, version)) >> sendStatus(
       subject
     )
 
@@ -145,8 +145,8 @@ class SBRFailureDetector(val sendTo: ActorRef) extends Actor with ActorLogging w
   }
 }
 
-object SBRFailureDetector {
-  def props(sendTo: ActorRef): Props = Props(new SBRFailureDetector(sendTo))
+object SBFailureDetector {
+  def props(sendTo: ActorRef): Props = Props(new SBFailureDetector(sendTo))
 
   sealed abstract class SBRReachability extends Product with Serializable
   final case object Reachable           extends SBRReachability
