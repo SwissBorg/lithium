@@ -41,14 +41,18 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
 
   private def active(state: SBReporterState): Receive = {
     case e: MemberEvent                   => context.become(active(memberEvent(e).runS(state).unsafeRunSync()))
-    case SeenChanged(convergence, seenBy) => context.become(active(seenChanged(seenBy).runS(state).value))
+    case SeenChanged(convergence, seenBy) => context.become(active(seenChanged(convergence, seenBy).runS(state).value))
     case ReachableMember(m)               => context.become(active(reachableMember(m).runS(state).unsafeRunSync()))
     case UnreachableMember(m)             => context.become(active(unreachableMember(m).runS(state).unsafeRunSync()))
     case IndirectlyConnectedMember(m)     => context.become(active(indirectlyConnected(m).runS(state).unsafeRunSync()))
     case HandleSplitBrain                 => context.become(active(handleSplitBrain.runS(state).unsafeRunSync()))
   }
 
-  private def seenChanged(seenBy: Set[Address]): State[SBReporterState, Unit] = State.modify(_.flush(seenBy))
+  private def seenChanged(convergence: Boolean, seenBy: Set[Address]): State[SBReporterState, Unit] =
+    for {
+      _ <- State.modify[SBReporterState](_.flush(seenBy))
+      _ <- if (convergence) State.modify[SBReporterState](_.pruneRemoved) else State.pure[SBReporterState, Unit](())
+    } yield ()
 
   private def modify(
     f: SBReporterState => SBReporterState

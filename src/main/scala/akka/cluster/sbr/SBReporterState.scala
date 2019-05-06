@@ -33,6 +33,8 @@ final case class SBReporterState(worldView: WorldView, changeQueue: ChangeQueue)
       changeQueue = Empty
     )
 
+  lazy val pruneRemoved: SBReporterState = copy(worldView = worldView.pruneRemoved)
+
   def enqueue(e: MemberEvent): SBReporterState =
     copy(changeQueue = changeQueue match {
       case Empty                  => AwaitingEvents(Queue(e))
