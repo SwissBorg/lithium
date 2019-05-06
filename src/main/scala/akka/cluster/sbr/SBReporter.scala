@@ -86,8 +86,6 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
 
   private val resetHandleSplitBrain: SyncIO[Unit] = cancelHandleSplitBrain >> scheduleHandleSplitBrain
 
-  implicit private val ec: ExecutionContext = context.system.dispatcher
-
   override def preStart(): Unit = {
     cluster.subscribe(self, InitialStateAsSnapshot, classOf[akka.cluster.ClusterEvent.MemberEvent])
     context.system.eventStream.subscribe(self, classOf[SeenChanged])

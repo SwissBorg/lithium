@@ -1,8 +1,7 @@
 package akka.cluster.sbr
 
 import akka.cluster.Member
-import cats.implicits._
-import cats.{Eq, Order}
+import cats.Order
 
 /**
  * Wrapper around a member adding the reachability information

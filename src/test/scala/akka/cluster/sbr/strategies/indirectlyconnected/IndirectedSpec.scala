@@ -7,7 +7,7 @@ class IndirectedSpec extends SBSpec {
   "Indirected" - {
     "1 - should down self if unreachable" in {
       forAll { worldView: WorldView =>
-        Indirected().takeDecision(worldView).map {
+        IndirectlyConnected().takeDecision(worldView).map {
           case DownIndirectlyConnected(nodes) => worldView.indirectlyConnectedNodes should ===(nodes)
           case _                              => fail
         }
