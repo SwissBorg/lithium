@@ -7,10 +7,20 @@ import akka.cluster.sbr.SBReporterState.ChangeQueue
 
 import scala.collection.immutable.Queue
 
+/**
+ * State of the [[SBReporter]].
+ *
+ * @param worldView the view of the cluster from the current cluster node.
+ * @param changeQueue queue accumulating membership state changed.
+ */
 final case class SBReporterState(worldView: WorldView, changeQueue: ChangeQueue) {
   import SBReporterState._
 
-  def flush(seenBy: Set[Address]): SBReporterState =
+  /**
+   * Update the world view with the changes described by the change-queue after
+   * finalizing it with `seenBy`.
+   */
+  def reifyChangeQueue(seenBy: Set[Address]): SBReporterState =
     copy(
       worldView = changeQueue match {
         case Empty => worldView.allSeenBy(seenBy)
@@ -42,21 +52,50 @@ final case class SBReporterState(worldView: WorldView, changeQueue: ChangeQueue)
       case _                      => changeQueue
     })
 
-  def reachableMember(m: Member): SBReporterState     = copy(worldView = worldView.reachableMember(m))
-  def unreachableMember(m: Member): SBReporterState   = copy(worldView = worldView.unreachableMember(m))
+  /**
+   * Set the member as reachable.
+   */
+  def reachable(m: Member): SBReporterState = copy(worldView = worldView.reachableMember(m))
+
+  /**
+   * Set the member as unreachable.
+   */
+  def unreachable(m: Member): SBReporterState = copy(worldView = worldView.unreachableMember(m))
+
+  /**
+   * Set the member as indirectly connected.
+   */
   def indirectlyConnected(m: Member): SBReporterState = copy(worldView = worldView.indirectlyConnectedMember(m))
 }
 
 object SBReporterState {
-  def apply(selfMember: Member): SBReporterState =
-    SBReporterState(WorldView.init(selfMember), Empty)
-
   def fromSnapshot(s: CurrentClusterState, selfMember: Member): SBReporterState =
     SBReporterState(WorldView.fromSnapshot(selfMember, s), Empty)
 
+  /**
+   * Queue accumulating the membership changes.
+   *
+   * Assumes that all the member events are received before the seen-by event. In other words,
+   * changes are separated by seen-by events.
+   */
   sealed abstract class ChangeQueue
-  final case object Empty                                                     extends ChangeQueue
-  final case class AwaitingEvents(events: Queue[MemberEvent])                 extends ChangeQueue
-  final case class Eventless(seenBy: Set[Address])                            extends ChangeQueue
+
+  case object Empty extends ChangeQueue
+
+  /**
+   * A partial change queue. Still waiting for a seen-by event completing the queue.
+   */
+  final case class AwaitingEvents(events: Queue[MemberEvent]) extends ChangeQueue
+
+  /**
+   * No member events have been received for this window.
+   * The queue is complete at this point.
+   */
+  final case class Eventless(seenBy: Set[Address]) extends ChangeQueue
+
+  /**
+   * Member events and a seen-by event.
+   * The queue is complete at this point.
+   */
   final case class Complete(events: Queue[MemberEvent], seenBy: Set[Address]) extends ChangeQueue
 }

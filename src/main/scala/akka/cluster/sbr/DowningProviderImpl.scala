@@ -16,6 +16,11 @@ import pureconfig.generic.auto._
 
 import scala.concurrent.duration.FiniteDuration
 
+/**
+ * Implementation of a DowningProvider building a [[SBResolver]].
+ *
+ * @param system the current actor system.
+ */
 class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
   import DowningProviderImpl._
 

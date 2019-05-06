@@ -148,18 +148,21 @@ final case class WorldView private (
   /**
    * Change the `node`'s state to `Reachable`.
    */
-  def reachableMember(member: Member): WorldView = updateReachability(member, Reachable)
+  def reachableMember(member: Member): WorldView = changeReachability(member, Reachable)
 
   /**
    * Change the `node`'s status to `Unreachable`.
    */
-  def unreachableMember(member: Member): WorldView = updateReachability(member, Unreachable)
+  def unreachableMember(member: Member): WorldView = changeReachability(member, Unreachable)
 
   /**
    * Change the `node`'s status to `IndirectlyConnected`.
    */
-  def indirectlyConnectedMember(member: Member): WorldView = updateReachability(member, IndirectlyConnected)
+  def indirectlyConnectedMember(member: Member): WorldView = changeReachability(member, IndirectlyConnected)
 
+  /**
+   * Set every member's seen-by to `seenBy`.
+   */
   def allSeenBy(seenBy: Set[Address]): WorldView =
     copy(
       selfStatus = selfStatus.withSeenBy(seenBy),
@@ -167,6 +170,9 @@ final case class WorldView private (
       removedMembersSeenBy = removedMembersSeenBy.mapValues(_ => seenBy)
     )
 
+  /**
+   * The nodes that have seen the `member` in its current state in the world view.
+   */
   def seenBy(member: Member): Set[Address] =
     if (member.uniqueAddress == selfUniqueAddress) selfStatus.seenBy
     else
@@ -174,7 +180,14 @@ final case class WorldView private (
         .get(member.uniqueAddress)
         .fold(removedMembersSeenBy.getOrElse(member.uniqueAddress, Set.empty))(_.seenBy)
 
-  def changeSelf(member: Member): WorldView =
+  lazy val pruneRemoved: WorldView = copy(removedMembersSeenBy = Map.empty)
+
+  /**
+   * Replace the `selfMember` with `member`.
+   *
+   * Used in tests.
+   */
+  private[sbr] def changeSelf(member: Member): WorldView =
     if (member.uniqueAddress == selfUniqueAddress) this
     else {
       val newSelfStatus = otherMembersStatus
@@ -200,9 +213,10 @@ final case class WorldView private (
       }
     }
 
-  lazy val pruneRemoved: WorldView = copy(removedMembersSeenBy = Map.empty)
-
-  private def updateReachability(member: Member, reachability: SBRReachability): WorldView =
+  /**
+   * Change the reachability of `member` with `reachability`.
+   */
+  private def changeReachability(member: Member, reachability: SBRReachability): WorldView =
     if (member.uniqueAddress == selfUniqueAddress) {
       copy(selfUniqueAddress, selfStatus = selfStatus.withReachability(reachability))
     } else {
@@ -220,6 +234,9 @@ final case class WorldView private (
         }
     }
 
+  /**
+   * True when `node` needs to be considered in split-brain resolution strategies. Otherwise, false.
+   */
   private def shouldBeConsidered(node: Node): Boolean = node match {
     case UnreachableNode(member) => member.status != Joining && member.status != WeaklyUp
     case ReachableNode(member)   => member.status != Joining && member.status != WeaklyUp
@@ -230,6 +247,9 @@ final case class WorldView private (
     case _: IndirectlyConnectedNode => false
   }
 
+  /**
+   * Convert the `member` and its `reachability` to a [[Node]].
+   */
   private def toNode(member: Member, reachability: SBRReachability): Node =
     reachability match {
       case Reachable           => ReachableNode(member)
@@ -239,15 +259,23 @@ final case class WorldView private (
 }
 
 object WorldView {
+
+  /**
+   * Create an empty world view.
+   */
   def init(selfMember: Member): WorldView =
     new WorldView(selfMember.uniqueAddress,
                   Status(selfMember, Reachable, Set(selfMember.address)),
                   Map.empty,
                   Map.empty)
 
+  /**
+   * Create a world view based on the `state`.
+   */
   def fromSnapshot(selfMember: Member, state: CurrentClusterState): WorldView = {
     val w = WorldView.init(selfMember)
 
+    // add reachable members to the world view
     val w1 = (state.members -- state.unreachable).foldLeft(w) {
       case (w, member) =>
         member.status match {
@@ -256,6 +284,7 @@ object WorldView {
         }
     }
 
+    // add unreachable members to the world view
     state.unreachable
       .foldLeft(w1) {
         case (w, member) =>
@@ -267,7 +296,21 @@ object WorldView {
       .allSeenBy(state.seenBy)
   }
 
-  def fromNodes(selfNode: Node, seenBy: Set[Address], otherNodesSeenBy: Map[Node, Set[Address]]): WorldView = {
+  /**
+   * Build a world view based on the given nodes.
+   *
+   * Used in tests.
+   */
+  private[sbr] def fromNodes(selfNode: Node,
+                             seenBy: Set[Address],
+                             otherNodesSeenBy: Map[Node, Set[Address]]): WorldView = {
+    def convert(node: Node, seenBy: Set[Address]): (UniqueAddress, Status) =
+      node.member.uniqueAddress -> (node match {
+        case _: UnreachableNode         => Status(node.member, Unreachable, seenBy)
+        case _: ReachableNode           => Status(node.member, Reachable, seenBy)
+        case _: IndirectlyConnectedNode => Status(node.member, IndirectlyConnected, seenBy)
+      })
+
     assert(!otherNodesSeenBy.contains(selfNode))
 
     val (selfUniqueAddress, selfStatus) = convert(selfNode, seenBy)
@@ -283,13 +326,6 @@ object WorldView {
       removed.map(convertF).mapValues(_.seenBy)
     )
   }
-
-  private def convert(node: Node, seenBy: Set[Address]): (UniqueAddress, Status) =
-    node.member.uniqueAddress -> (node match {
-      case _: UnreachableNode         => Status(node.member, Unreachable, seenBy)
-      case _: ReachableNode           => Status(node.member, Reachable, seenBy)
-      case _: IndirectlyConnectedNode => Status(node.member, IndirectlyConnected, seenBy)
-    })
 
   final case class Status(member: Member, reachability: SBRReachability, seenBy: Set[Address]) {
     def withSeenBy(seenBy: Set[Address]): Status                = copy(seenBy = seenBy)
