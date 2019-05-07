@@ -21,27 +21,30 @@ final case class SBReporterState(worldView: WorldView, changeQueue: ChangeQueue)
    * finalizing it with `seenBy`.
    */
   def reifyChangeQueue(seenBy: Set[Address]): SBReporterState =
-    copy(
-      worldView = changeQueue match {
-        case Empty => worldView.allSeenBy(seenBy)
-        case AwaitingEvents(events) =>
-          events.foldLeft(worldView) {
-            case (w, event) =>
-              event match {
-                case MemberJoined(member)     => w.updateMember(member, seenBy)
-                case MemberWeaklyUp(member)   => w.updateMember(member, seenBy)
-                case MemberUp(member)         => w.updateMember(member, seenBy)
-                case MemberLeft(member)       => w.updateMember(member, seenBy)
-                case MemberExited(member)     => w.updateMember(member, seenBy)
-                case MemberDowned(member)     => w.updateMember(member, seenBy)
-                case MemberRemoved(member, _) => w.memberRemoved(member, seenBy)
-              }
-          }
+    {
+      println(s"REIFY: $seenBy -> $changeQueue")
+      copy(
+        worldView = changeQueue match {
+          case Empty => worldView.allSeenBy(seenBy)
+          case AwaitingEvents(events) =>
+            events.foldLeft(worldView) {
+              case (w, event) =>
+                event match {
+                  case MemberJoined(member)     => w.updateMember(member, seenBy)
+                  case MemberWeaklyUp(member)   => w.updateMember(member, seenBy)
+                  case MemberUp(member)         => w.updateMember(member, seenBy)
+                  case MemberLeft(member)       => w.updateMember(member, seenBy)
+                  case MemberExited(member)     => w.updateMember(member, seenBy)
+                  case MemberDowned(member)     => w.updateMember(member, seenBy)
+                  case MemberRemoved(member, _) => w.memberRemoved(member, seenBy)
+                }
+            }
 
-        case _ => worldView
-      },
-      changeQueue = Empty
-    )
+          case _ => worldView
+        },
+        changeQueue = Empty
+      )
+    }
 
   lazy val pruneRemoved: SBReporterState = copy(worldView = worldView.pruneRemoved)
 

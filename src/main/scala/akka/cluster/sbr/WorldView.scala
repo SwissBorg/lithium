@@ -328,8 +328,8 @@ object WorldView {
   }
 
   final case class Status(member: Member, reachability: SBRReachability, seenBy: Set[Address]) {
-    def withSeenBy(seenBy: Set[Address]): Status                = copy(seenBy = seenBy)
-    def withReachability(reachability: SBRReachability): Status = copy(reachability = reachability)
-    def withMember(member: Member): Status                      = copy(member = member)
+    def withSeenBy(updatedSeenBy: Set[Address]): Status                = copy(seenBy = updatedSeenBy)
+    def withReachability(updatedReachability: SBRReachability): Status = copy(reachability = updatedReachability)
+    def withMember(updatedMember: Member): Status                      = copy(member = updatedMember)
   }
 }

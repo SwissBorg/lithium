@@ -36,11 +36,11 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
     val downAll      = DownAll.name
 
     val strategy = config.activeStrategy match {
-      case `keepMajority`  => KeepMajority.load.map(SBResolver.props(_, config.stableAfter, config.downAllWhenUnstable))
-      case `keepOldest`    => KeepOldest.load.map(SBResolver.props(_, config.stableAfter, config.downAllWhenUnstable))
-      case `keepReferee`   => KeepReferee.load.map(SBResolver.props(_, config.stableAfter, config.downAllWhenUnstable))
-      case `staticQuorum`  => StaticQuorum.load.map(SBResolver.props(_, config.stableAfter, config.downAllWhenUnstable))
-      case `downAll`       => SBResolver.props(DownAll(), config.stableAfter, config.downAllWhenUnstable).asRight
+      case `keepMajority`  => KeepMajority.load.map(SBResolver.props(_, config.stableAfter))
+      case `keepOldest`    => KeepOldest.load.map(SBResolver.props(_, config.stableAfter))
+      case `keepReferee`   => KeepReferee.load.map(SBResolver.props(_, config.stableAfter))
+      case `staticQuorum`  => StaticQuorum.load.map(SBResolver.props(_, config.stableAfter))
+      case `downAll`       => SBResolver.props(DownAll(), config.stableAfter).asRight
       case unknownStrategy => UnknownStrategy(unknownStrategy).asLeft
     }
 
@@ -49,9 +49,7 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
 }
 
 object DowningProviderImpl {
-  sealed abstract case class Config(activeStrategy: String,
-                                    stableAfter: FiniteDuration,
-                                    downAllWhenUnstable: FiniteDuration)
+  sealed abstract case class Config(activeStrategy: String, stableAfter: FiniteDuration)
 
   object Config {
     // TODO handle errors
@@ -59,11 +57,11 @@ object DowningProviderImpl {
       new Config(
         system.settings.config.getString("akka.cluster.split-brain-resolver.active-strategy"),
         FiniteDuration(system.settings.config.getDuration("akka.cluster.split-brain-resolver.stable-after").toMillis,
-                       TimeUnit.MILLISECONDS),
-        FiniteDuration(
-          system.settings.config.getDuration("akka.cluster.split-brain-resolver.down-all-when-unstable").toMillis,
-          TimeUnit.MILLISECONDS
-        ) // TODO
+                       TimeUnit.MILLISECONDS)
+//        FiniteDuration(
+//          system.settings.config.getDuration("akka.cluster.split-brain-resolver.down-all-when-unstable").toMillis,
+//          TimeUnit.MILLISECONDS
+//        ) // TODO
       ) {}
   }
 }
