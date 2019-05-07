@@ -8,21 +8,37 @@ library provides a few strategies that can automatically down members
 without user intervention.
 
 ## Strategies
+```hocon
+akka.cluster {
+    downing-provider-class = "akka.cluster.sbr.DowningProviderImpl"
+    split-brain-resolver {
+        # The name of the strategy to use for split-brain resolution.
+        # Available: static-quorum, keep-majority, keep-referee, keep-oldest.
+        active-strategy = off
+     
+        # Duration during which the cluster must be stable before taking
+        # action on the network-partition. The duration must be chosen as
+        # longer than the time it takes for singletons and shards to be 
+        # moved to surviving partitions.
+        stable-after = 30s
+    }
+}
+```
+
 
 ### Static quorum
 Keeps the side of a partition that has at least the specified number of reachable members.
 
 #### Configuration
-```
-akka.cluster {
-    split-brain-resolver {
-        downing-provider-class = "akka.cluster.sbr.DowningProviderImpl"
-        active-strategy = "static-quorum"
-        static-quorum {
-            quorum-size = # ???
-            role = # ???
-        }
-        stable-after = # ???
+```hocon
+akka.cluster.split-brain-resolver {
+    active-strategy = "static-quorum"
+    static-quorum {
+        # The minimum number of members a partition must have.
+        quorum-size = undefined
+        
+        # Take the decision based only on members with this role.
+        role = ""
     }
 }
 ```
@@ -31,15 +47,12 @@ akka.cluster {
 Keeps the side of partition that has a majority of reachable members.
 
 #### Configuration
-```
-akka.cluster {
-    split-brain-resolver {
-        downing-provider-class = "akka.cluster.sbr.DowningProviderImpl"
-        active-strategy = "keep-majority"
-        static-quorum {
-            role = # ???
-        }
-        stable-after = # ???
+```hocon
+akka.cluster.split-brain-resolver {
+    active-strategy = "keep-majority"
+    keep-majority {
+        # Take the decision based only on members with this role.
+        role = ""
     }
 }
 ```
@@ -48,16 +61,16 @@ akka.cluster {
 Keeps the partition that can reach the specified member.
 
 #### Configuration
-```
-akka.cluster {
-    split-brain-resolver {
-        downing-provider-class = "akka.cluster.sbr.DowningProviderImpl"
-        active-strategy = "keep-referee"
-        static-quorum {
-            address = # "akka.trttl.gremlin.tcp://ThreeNodeSpec@localhost:9991"
-            down-all-if-less-than-nodes = # ???
-        }
-        stable-after = # ???
+```hocon
+akka.cluster.split-brain-resolver {
+    active-strategy = "keep-referee"
+    keep-referee {
+        # Address of the member in the format "akka.tcp://system@host:port"
+        address = ""
+        
+        # The minimum number of nodes the partition containing the 
+        # referee must contain. Otherwise, the cluster is downed.
+        down-all-if-less-than-nodes = 1
     }
 }
 ```
@@ -67,16 +80,15 @@ Keeps the partition that can reach the oldest member in the cluster.
 
 #### Configuration
 
-```
-akka.cluster {
-    split-brain-resolver {
-        downing-provider-class = "akka.cluster.sbr.DowningProviderImpl"
-        active-strategy = "keep-oldest"
-        static-quorum {
-            down-all-if-alone = # no ???
-            role = ""
-        }
-        stable-after = # ???
+```hocon
+akka.cluster.split-brain-resolver {
+    active-strategy = "keep-oldest"
+    keep-oldest {
+        # When enabled, downs the oldest member when alone.
+        down-if-alone = on
+        
+        # Take the decision based only on members with this role.
+        role = ""
     }
 }
 ```
