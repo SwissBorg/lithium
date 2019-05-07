@@ -7,8 +7,8 @@ import akka.cluster.sbr.utils.PostResolution
 import cats.implicits._
 
 class DownAllSpec extends SBSpec {
-  "DownAll" - {
-    "1 - should always down nodes" in {
+  "DownAll" must {
+    "always down nodes" in {
       forAll { worldView: WorldView =>
         DownAll().takeDecision(worldView).map {
           case DownThese(DownSelf(_), DownReachable(_)) => succeed
@@ -17,7 +17,7 @@ class DownAllSpec extends SBSpec {
       }
     }
 
-    "2 - should handle symmetric split scenarios" in {
+    "handle symmetric split scenarios" in {
       forAll { scenario: SymmetricSplitScenario =>
         val remainingPartitions = scenario.worldViews.foldMap { worldView =>
           DownAll().takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
@@ -27,7 +27,7 @@ class DownAllSpec extends SBSpec {
       }
     }
 
-    "3 - should handle a split during up-dissemination scenarios" in {
+    "handle a split during up-dissemination scenarios" in {
       forAll { scenario: UpDisseminationScenario =>
         val remainingPartitions = scenario.worldViews.foldMap { worldView =>
           DownAll().takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
@@ -37,7 +37,7 @@ class DownAllSpec extends SBSpec {
       }
     }
 
-    "4 - should handle a split during the oldest-removed scenarios" in {
+    "handle a split during the oldest-removed scenarios" in {
       forAll { scenario: OldestRemovedScenario =>
         val remainingPartitions = scenario.worldViews.foldMap { worldView =>
           DownAll().takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))

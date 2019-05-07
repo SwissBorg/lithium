@@ -1,12 +1,11 @@
 package akka.cluster.sbr.strategies.staticquorum
 
 import akka.cluster.sbr.WorldView
-import eu.timepit.refined.auto._
 
 sealed abstract private[staticquorum] class ReachableNodes extends Product with Serializable
 
 private[staticquorum] object ReachableNodes {
-  def apply(worldView: WorldView, quorumSize: QuorumSize, role: String): ReachableNodes =
+  def apply(worldView: WorldView, quorumSize: Int, role: String): ReachableNodes =
     if (worldView.consideredReachableNodesWithRole(role).size >= quorumSize) {
       ReachableQuorum
     } else {
@@ -14,5 +13,5 @@ private[staticquorum] object ReachableNodes {
     }
 }
 
-final private[staticquorum] case object ReachableQuorum    extends ReachableNodes
-final private[staticquorum] case object ReachableSubQuorum extends ReachableNodes
+private[staticquorum] case object ReachableQuorum    extends ReachableNodes
+private[staticquorum] case object ReachableSubQuorum extends ReachableNodes

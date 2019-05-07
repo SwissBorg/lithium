@@ -3,13 +3,13 @@ package akka.cluster.sbr
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorSystem, Props}
+import akka.cluster.DowningProvider
 import akka.cluster.sbr.strategies.downall.DownAll
 import akka.cluster.sbr.strategies.keepmajority.KeepMajority
 import akka.cluster.sbr.strategies.keepoldest.KeepOldest
 import akka.cluster.sbr.strategies.keepreferee.KeepReferee
 import akka.cluster.sbr.strategies.staticquorum.StaticQuorum
 import akka.cluster.sbr.strategy.StrategyReader.UnknownStrategy
-import akka.cluster.DowningProvider
 import cats.implicits._
 import eu.timepit.refined.pureconfig._
 import pureconfig.generic.auto._

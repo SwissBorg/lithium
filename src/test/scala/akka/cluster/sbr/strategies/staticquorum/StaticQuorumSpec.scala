@@ -15,8 +15,8 @@ import org.scalacheck.{Arbitrary, Prop}
 
 class StaticQuorumSpec extends SBSpec {
 
-  "StaticQuorum" - {
-    "1 - should handle symmetric split scenarios with a correctly defined quorum size" in {
+  "StaticQuorum" must {
+    "handle symmetric split scenarios with a correctly defined quorum size" in {
       forAll { scenario: SymmetricSplitScenario =>
         implicit val _: Arbitrary[StaticQuorum] = StaticQuorumSpec.arbStaticQuorum(scenario.clusterSize)
 
@@ -30,7 +30,7 @@ class StaticQuorumSpec extends SBSpec {
       }
     }
 
-    "2 - should handle a split during the oldest-removed scenarios" in {
+    "handle a split during the oldest-removed scenarios" in {
       forAll { scenario: OldestRemovedScenario =>
         implicit val _: Arbitrary[StaticQuorum] = StaticQuorumSpec.arbStaticQuorum(scenario.clusterSize)
 
