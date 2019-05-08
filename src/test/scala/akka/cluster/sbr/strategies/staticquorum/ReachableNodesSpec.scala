@@ -9,7 +9,7 @@ class ReachableNodesSpec extends SBSpec {
   "ReachableNodes" must {
     "instantiate the correct instance" in {
       forAll { (worldView: WorldView, quorumSize: Int Refined Positive, role: String) =>
-        ReachableNodes(worldView, quorumSize.value, role) match {
+        ReachableNodes(worldView, quorumSize, role) match {
           case ReachableQuorum =>
             worldView.consideredReachableNodesWithRole(role).size should be >= quorumSize.value
 

@@ -68,7 +68,7 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration)
 
   private def memberEvent(e: MemberEvent): StateT[SyncIO, SBReporterState, Unit] = e match {
     case _: MemberJoined | _: MemberWeaklyUp => StateT.modify(_.enqueue(e))
-    case _                                   => resetClusterIsStableAndModify(_.enqueue(e)).flatTap(_ => StateT.liftF(SyncIO(log.debug("EVENT: {}", e))))
+    case _                                   => resetClusterIsStableAndModify(_.enqueue(e))
   }
 
   private def reachableMember(m: Member): StateT[SyncIO, SBReporterState, Unit] =

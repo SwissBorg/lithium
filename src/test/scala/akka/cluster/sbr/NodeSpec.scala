@@ -1,6 +1,8 @@
 package akka.cluster.sbr
 
 import akka.cluster.sbr.ArbitraryInstances._
+import akka.cluster.sbr.implicits._
+import cats.implicits._
 
 class NodeSpec extends SBSpec {
   "Node" must {

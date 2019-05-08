@@ -9,7 +9,7 @@ class UnreachableNodesSpec extends SBSpec {
   "UnreachableNodes" must {
     "instantiate the correct instance" in {
       forAll { (worldView: WorldView, quorumSize: Int Refined Positive, role: String) =>
-        UnreachableNodes(worldView, quorumSize.value, role) match {
+        UnreachableNodes(worldView, quorumSize, role) match {
           case EmptyUnreachable =>
             worldView.consideredUnreachableNodesWithRole(role) shouldBe empty
 

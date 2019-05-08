@@ -3,8 +3,11 @@ package akka.cluster.sbr.strategies.keepreferee
 import akka.actor.Address
 import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.MemberStatus.Up
+import akka.cluster.sbr.strategies.keepreferee.KeepReferee.{Address => RefereeAddress}
 import akka.cluster.sbr.utils.TestMember
 import akka.cluster.sbr.{DownReachable, DownUnreachable, WorldView}
+import eu.timepit.refined._
+import eu.timepit.refined.auto._
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.collection.immutable.SortedSet
@@ -14,7 +17,7 @@ class KeepRefereeSuite extends WordSpec with Matchers {
   private val bb = TestMember(Address("akka.tcp", "sys", "b", 2552), Up)
   private val cc = TestMember(Address("akka.tcp", "sys", "c", 2552), Up)
 
-  private val referee = aa.address.toString
+  private val referee = refineV[RefereeAddress](aa.address.toString).left.map(new IllegalArgumentException(_)).toTry.get
 
   "KeepReferee" must {
     "down the unreachable nodes when being the referee node and reaching enough nodes" in {
@@ -61,6 +64,13 @@ class KeepRefereeSuite extends WordSpec with Matchers {
 
       KeepReferee(referee, 1).takeDecision(w) should ===(Right(DownReachable(w)))
       KeepReferee(referee, 3).takeDecision(w) should ===(Right(DownReachable(w)))
+    }
+
+    "compile for valid addresses" in {
+      """refineMV[RefereeAddress]("protocol://system@address:1234")""" should compile
+      """refineMV[RefereeAddress]("a.b.c://system@address:1234")""" should compile
+      """refineMV[RefereeAddress]("a.b.c://system@127.0.0.1:1234")""" should compile
+      """refineMV[RefereeAddress]("a.b.c://system@d.e.f:1234")""" should compile
     }
   }
 }

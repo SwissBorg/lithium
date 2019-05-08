@@ -2,6 +2,7 @@ package akka.cluster.sbr.scenarios
 
 import akka.cluster.MemberStatus.{Joining, WeaklyUp}
 import akka.cluster.sbr.ArbitraryInstances._
+import akka.cluster.sbr.implicits._
 import akka.cluster.sbr.testImplicits._
 import akka.cluster.sbr.{Node, WorldView}
 import cats.data.{NonEmptyList, NonEmptySet}
@@ -26,7 +27,7 @@ object UpDisseminationScenario {
                          allNodes: NonEmptySet[Node],
                          partition: NonEmptySet[Node]): Arbitrary[WorldView] =
       pickStrictSubset(partition)
-        .map(_.filter(e => e.member.status == Joining || e.member.status == WeaklyUp).foldLeft(worldView) {
+        .map(_.filter(e => e.member.status === Joining || e.member.status === WeaklyUp).foldLeft(worldView) {
           case (worldView, upEvent) =>
             worldView.updateMember(upEvent.member.copyUp(Integer.MAX_VALUE), Set.empty)
         })

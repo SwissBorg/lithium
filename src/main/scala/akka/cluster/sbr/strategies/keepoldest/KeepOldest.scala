@@ -25,10 +25,10 @@ final case class KeepOldest(downIfAlone: Boolean, role: String) extends Strategy
     allNodesSortedByAge.headOption.fold[Either[Throwable, StrategyDecision]](NoOldestNode.asLeft) {
       case _: ReachableNode =>
         if (downIfAlone) {
-          if (consideredNodes.size == 1) {
+          if (consideredNodes.size === 1) {
             // The oldest is the only node in the cluster..
             Idle.asRight
-          } else if (worldView.consideredReachableNodesWithRole(role).size == 1) {
+          } else if (worldView.consideredReachableNodesWithRole(role).size === 1) {
             // The oldest node is cut off from the rest of the cluster.
             DownReachable(worldView).asRight
           } else {
@@ -41,13 +41,13 @@ final case class KeepOldest(downIfAlone: Boolean, role: String) extends Strategy
 
       case _: UnreachableNode =>
         if (downIfAlone) {
-          if (consideredNodes.size == 1) {
+          if (consideredNodes.size === 1) {
             // The oldest is the only node in the cluster.
             // This decision should never be triggered but
             // it is left here just in case. Else the cluster
             // could down itself unnecessarily.
             DownReachable(worldView).asRight
-          } else if (worldView.consideredUnreachableNodesWithRole(role).size == 1) {
+          } else if (worldView.consideredUnreachableNodesWithRole(role).size === 1) {
             // The oldest node is cut off from the rest of the cluster.
             DownUnreachable(worldView).asRight
           } else {

@@ -2,7 +2,9 @@ package akka.cluster.sbr
 
 import akka.actor.Address
 import akka.cluster.ClusterEvent._
+import akka.cluster.UniqueAddress
 import akka.cluster.sbr.ArbitraryInstances._
+import cats.implicits._
 
 class WorldViewSpec extends SBSpec {
   "WorldView" must {
@@ -107,7 +109,7 @@ class WorldViewSpec extends SBSpec {
 
     "remove all removed members" in {
       forAll { worldView: WorldView =>
-        worldView.pruneRemoved.removedMembers should ===(Set.empty)
+        worldView.pruneRemoved.removedMembers should ===(Set.empty[UniqueAddress])
       }
     }
   }

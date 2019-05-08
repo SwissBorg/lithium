@@ -7,6 +7,8 @@ import akka.cluster.sbr.SBFailureDetector.{IndirectlyConnected, Reachable, SBRRe
 import akka.cluster.{Member, MemberStatus, UniqueAddress, Reachability => _}
 import cats.Order
 import cats.data.{NonEmptyMap, NonEmptySet}
+import eu.timepit.refined.numeric.NonNegative
+import eu.timepit.refined.refineV
 import org.scalacheck.Arbitrary
 import org.scalacheck.Arbitrary._
 import org.scalacheck.Gen._
@@ -160,11 +162,11 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
 
   implicit val arbAddress: Arbitrary[Address] =
     Arbitrary(for {
-      protocol <- alphaNumStr
-      system   <- alphaNumStr
-      host     <- alphaNumStr
-      port     <- arbitrary[Int]
-    } yield Address(protocol, system, Some(host), Some(port)))
+      protocol <- identifier
+      system   <- identifier
+      host     <- identifier
+      port     <- chooseNum(0, Integer.MAX_VALUE).map(refineV[NonNegative](_).right.get)
+    } yield Address(protocol, system, Some(host), Some(port.value)))
 
   implicit val arbMemberStatus: Arbitrary[MemberStatus] =
     Arbitrary(
