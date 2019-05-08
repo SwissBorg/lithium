@@ -49,6 +49,7 @@ libraryDependencies ++= Seq(
   "eu.timepit"                 %% "refined"                   % refinedVersion,
   "eu.timepit"                 %% "refined-cats"              % refinedVersion,
   "eu.timepit"                 %% "refined-pureconfig"        % refinedVersion,
+  "eu.timepit"                 %% "refined-shapeless"         % refinedVersion,
   "com.typesafe.akka"          %% "akka-actor"                % akkaVersion,
   "com.typesafe.akka"          %% "akka-cluster"              % akkaVersion,
   "com.typesafe.akka"          %% "akka-cluster-tools"        % akkaVersion,

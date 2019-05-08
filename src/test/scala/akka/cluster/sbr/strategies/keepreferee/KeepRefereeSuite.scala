@@ -3,9 +3,11 @@ package akka.cluster.sbr.strategies.keepreferee
 import akka.actor.Address
 import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.MemberStatus.Up
+import akka.cluster.sbr.strategies.keepreferee.KeepReferee.{Address => Address0}
 import akka.cluster.sbr.utils.TestMember
 import akka.cluster.sbr.{DownReachable, DownUnreachable, WorldView}
 import eu.timepit.refined.auto._
+import eu.timepit.refined.refineV
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.collection.immutable.SortedSet
@@ -15,7 +17,7 @@ class KeepRefereeSuite extends WordSpec with Matchers {
   private val bb = TestMember(Address("akka.tcp", "sys", "b", 2552), Up)
   private val cc = TestMember(Address("akka.tcp", "sys", "c", 2552), Up)
 
-  private val referee = aa.address.toString
+  private val referee = refineV[Address0](aa.address.toString).left.map(new IllegalArgumentException(_)).toTry.get
 
   "KeepReferee" must {
     "down the unreachable nodes when being the referee node and reaching enough nodes" in {
