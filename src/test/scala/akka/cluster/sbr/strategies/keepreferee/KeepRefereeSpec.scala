@@ -4,11 +4,15 @@ import akka.cluster.sbr.SBSpec
 import akka.cluster.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario, UpDisseminationScenario}
 import akka.cluster.sbr.utils.PostResolution
 import cats.implicits._
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.auto._
+import eu.timepit.refined.numeric._
+import eu.timepit.refined.scalacheck.all._
 
 class KeepRefereeSpec extends SBSpec {
   "KeepReferee" must {
     "handle symmetric split scenarios" in {
-      forAll { (scenario: SymmetricSplitScenario, downAllIfLessThanNodes: Int) =>
+      forAll { (scenario: SymmetricSplitScenario, downAllIfLessThanNodes: Int Refined Positive) =>
         // same referee for everyone
         val referee = scenario.worldViews.head.nodes.head.member.address.toString
 
@@ -23,7 +27,7 @@ class KeepRefereeSpec extends SBSpec {
     }
 
     "handle split during up-dissemination" in {
-      forAll { (scenario: UpDisseminationScenario, downAllIfLessThanNodes: Int) =>
+      forAll { (scenario: UpDisseminationScenario, downAllIfLessThanNodes: Int Refined Positive) =>
         // same referee for everyone
         val referee = scenario.worldViews.head.consideredNodes.take(1).head.member.address.toString
 
@@ -38,7 +42,7 @@ class KeepRefereeSpec extends SBSpec {
     }
 
     "handle a split during the oldest-removed scenarios" in {
-      forAll { (scenario: OldestRemovedScenario, downAllIfLessThanNodes: Int) =>
+      forAll { (scenario: OldestRemovedScenario, downAllIfLessThanNodes: Int Refined Positive) =>
         // same referee for everyone
         scenario.worldViews.head.consideredReachableNodes
           .take(1)

@@ -5,6 +5,7 @@ import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.MemberStatus.Up
 import akka.cluster.sbr.{DownReachable, DownUnreachable, Idle, WorldView}
 import akka.cluster.sbr.utils.TestMember
+import eu.timepit.refined.auto._
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.collection.immutable.SortedSet

@@ -3,8 +3,11 @@ package akka.cluster.sbr.strategies.keepreferee
 import akka.cluster.sbr._
 import akka.cluster.sbr.strategy.{Strategy, StrategyReader}
 import cats.implicits._
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.auto._
+import eu.timepit.refined.numeric._
 
-final case class KeepReferee(address: String, downAllIfLessThanNodes: Int) extends Strategy {
+final case class KeepReferee(address: String, downAllIfLessThanNodes: Int Refined Positive) extends Strategy {
   override def takeDecision(worldView: WorldView): Either[Throwable, StrategyDecision] =
     worldView.consideredReachableNodes
       .find(_.member.address.toString === address)
