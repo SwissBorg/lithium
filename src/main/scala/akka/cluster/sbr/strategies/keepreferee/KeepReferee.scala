@@ -26,5 +26,5 @@ final case class KeepReferee(address: String Refined Address, downAllIfLessThanN
 
 object KeepReferee extends StrategyReader[KeepReferee] {
   override val name: String = "keep-referee"
-  type Address = MatchesRegex[W.`"([0-9A-Za-z]+.)?[0-9A-Za-z]+://[0-9A-Za-z]+@[0-9A-Za-z]+:[0-9]+"`.T]
+  type Address = MatchesRegex[W.`"([0-9A-Za-z]+.)*[0-9A-Za-z]+://[0-9A-Za-z]+@([0-9A-Za-z]+.)*[0-9A-Za-z]+:[0-9]+"`.T]
 }
