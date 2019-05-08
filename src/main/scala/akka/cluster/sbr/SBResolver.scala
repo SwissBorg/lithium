@@ -2,6 +2,7 @@ package akka.cluster.sbr
 
 import akka.actor.{Actor, ActorLogging, Address, Props}
 import akka.cluster.Cluster
+import akka.cluster.sbr.implicits._
 import akka.cluster.sbr.strategies.Union
 import akka.cluster.sbr.strategies.indirectlyconnected.IndirectlyConnected
 import akka.cluster.sbr.strategy.Strategy
@@ -46,7 +47,7 @@ class SBResolver(_strategy: Strategy, stableAfter: FiniteDuration) extends Actor
       val leader: OptionT[SyncIO, Address] = OptionT(SyncIO(cluster.state.leader))
 
       leader
-        .map(_ == selfAddress)
+        .map(_ === selfAddress)
         .ifM(
           down(decision.nodesToDown) >> OptionT.liftF(SyncIO(log.debug("Executing decision: {}", decision.simplify))),
           OptionT.pure(())

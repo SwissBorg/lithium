@@ -1,10 +1,11 @@
 package akka.cluster.sbr
 
+import cats.tests.StrictCatsEquality
 import org.scalactic.anyvals._
 import org.scalatest.{Matchers, WordSpec}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
-trait SBSpec extends WordSpec with Matchers with ScalaCheckPropertyChecks {
+trait SBSpec extends WordSpec with Matchers with ScalaCheckPropertyChecks with StrictCatsEquality {
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(minSuccessful = PosInt(1000),
                                maxDiscardedFactor = PosZDouble(5),

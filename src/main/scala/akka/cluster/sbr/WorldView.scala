@@ -8,6 +8,7 @@ import akka.cluster.sbr.WorldView.Status
 import akka.cluster.sbr.implicits._
 import akka.cluster.{Member, UniqueAddress}
 import cats.data.NonEmptySet
+import cats.implicits._
 
 /**
  * Represents the view of the cluster from the point of view of the
@@ -115,7 +116,7 @@ final case class WorldView private (
     if (role.nonEmpty) consideredUnreachableNodes.filter(_.member.roles.contains(role)) else consideredUnreachableNodes
 
   def updateMember(member: Member, seenBy: Set[Address]): WorldView =
-    if (member.uniqueAddress == selfUniqueAddress) {
+    if (member.uniqueAddress === selfUniqueAddress) {
       copy(selfStatus = selfStatus.withMember(member).withSeenBy(seenBy))
     } else {
       otherMembersStatus
@@ -134,7 +135,7 @@ final case class WorldView private (
     }
 
   def memberRemoved(member: Member, seenBy: Set[Address]): WorldView =
-    if (member.uniqueAddress == selfUniqueAddress) {
+    if (member.uniqueAddress === selfUniqueAddress) {
       copy(member.uniqueAddress, selfStatus = selfStatus.withMember(member).withSeenBy(seenBy)) // ignore only update // todo is it safe?
     } else {
       otherMembersStatus
@@ -174,7 +175,7 @@ final case class WorldView private (
    * The nodes that have seen the `member` in its current state in the world view.
    */
   def seenBy(member: Member): Set[Address] =
-    if (member.uniqueAddress == selfUniqueAddress) selfStatus.seenBy
+    if (member.uniqueAddress === selfUniqueAddress) selfStatus.seenBy
     else
       otherMembersStatus
         .get(member.uniqueAddress)
@@ -188,7 +189,7 @@ final case class WorldView private (
    * Used in tests.
    */
   private[sbr] def changeSelf(member: Member): WorldView =
-    if (member.uniqueAddress == selfUniqueAddress) this
+    if (member.uniqueAddress === selfUniqueAddress) this
     else {
       val newSelfStatus = otherMembersStatus
         .getOrElse(member.uniqueAddress, Status(member, Reachable, Set.empty))
@@ -217,7 +218,7 @@ final case class WorldView private (
    * Change the reachability of `member` with `reachability`.
    */
   private def changeReachability(member: Member, reachability: SBRReachability): WorldView =
-    if (member.uniqueAddress == selfUniqueAddress) {
+    if (member.uniqueAddress === selfUniqueAddress) {
       copy(selfUniqueAddress, selfStatus = selfStatus.withReachability(reachability))
     } else {
       otherMembersStatus
@@ -315,7 +316,7 @@ object WorldView {
 
     val (selfUniqueAddress, selfStatus) = convert(selfNode, seenBy)
 
-    val (removed, others) = otherNodesSeenBy.partition(_._1.member.status == Removed)
+    val (removed, others) = otherNodesSeenBy.partition(_._1.member.status === Removed)
 
     val convertF = (convert _).tupled
 

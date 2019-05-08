@@ -14,7 +14,7 @@ final case class KeepReferee(address: String Refined Address, downAllIfLessThanN
     extends Strategy {
   override def takeDecision(worldView: WorldView): Either[Throwable, StrategyDecision] =
     worldView.consideredReachableNodes
-      .find(_.member.address.toString == address.value)
+      .find(_.member.address.toString === address.value)
       .fold[StrategyDecision](DownReachable(worldView)) { _ =>
         if (worldView.consideredReachableNodes.size < downAllIfLessThanNodes)
           DownReachable(worldView)

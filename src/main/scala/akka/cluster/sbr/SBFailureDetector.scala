@@ -5,6 +5,7 @@ import akka.cluster.ClusterEvent._
 import akka.cluster._
 import akka.cluster.pubsub.DistributedPubSub
 import akka.cluster.pubsub.DistributedPubSubMediator.{Publish, Subscribe, Unsubscribe}
+import akka.cluster.sbr.implicits._
 import akka.cluster.sbr.SBFailureDetectorState.{Observer, Subject}
 import akka.cluster.sbr.SBReporter.IndirectlyConnectedMember
 import cats.data.{OptionT, StateT}
@@ -65,7 +66,7 @@ class SBFailureDetector(val sbReporter: ActorRef) extends Actor with ActorLoggin
       StateT.liftF(
         reachability
           .recordsFrom(observer)
-          .find(r => r.subject == subject && r.status == Reachability.Unreachable) // find the record describing that `observer` sees `subject` as unreachabl
+          .find(r => r.subject === subject && r.status === Reachability.Unreachable) // find the record describing that `observer` sees `subject` as unreachabl
           .traverse_(record => broadcastContention(record.observer, record.subject, record.version))
       )
 
@@ -91,7 +92,7 @@ class SBFailureDetector(val sbReporter: ActorRef) extends Actor with ActorLoggin
    * If the removed node is the current one the actor will stop itself.
    */
   private def remove(node: UniqueAddress): StateT[SyncIO, SBFailureDetectorState, Unit] =
-    if (node == selfUniqueAddress) {
+    if (node === selfUniqueAddress) {
       // This node is being stopped. Kill the actor
       // to stop any further updates.
       StateT.liftF(SyncIO(context.stop(self)))
@@ -116,7 +117,7 @@ class SBFailureDetector(val sbReporter: ActorRef) extends Actor with ActorLoggin
    */
   private def sendReachability(node: UniqueAddress): StateT[SyncIO, SBFailureDetectorState, Unit] = {
     def memberFromAddress(node: UniqueAddress): OptionT[SyncIO, Member] =
-      OptionT(SyncIO(cluster.state.members.find(_.uniqueAddress == node)))
+      OptionT(SyncIO(cluster.state.members.find(_.uniqueAddress === node)))
 
     StateT.modifyF { state =>
       val (status, state0) = state.updatedStatus(node)

@@ -1,7 +1,9 @@
 package akka.cluster.sbr
 
 import akka.cluster.sbr.ArbitraryInstances._
-import cats.kernel.Monoid
+import akka.cluster.sbr.implicits._
+import cats.implicits._
+import cats.Monoid
 
 import scala.collection.immutable.SortedSet
 

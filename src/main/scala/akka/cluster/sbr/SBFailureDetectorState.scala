@@ -3,6 +3,7 @@ package akka.cluster.sbr
 import akka.cluster.UniqueAddress
 import akka.cluster.sbr.SBFailureDetector.{UnreachabilityContention => _, _}
 import akka.cluster.sbr.SBFailureDetectorState._
+import cats.implicits._
 
 /**
  * State of the SBRFailureDetector.
@@ -56,7 +57,7 @@ final private[sbr] case class SBFailureDetectorState private (
         .map { cs =>
           contentions + (subject -> cs.flatMap {
             case (o, c) =>
-              if (c.disagreeing.size == 1 && c.disagreeing(observer)) {
+              if (c.disagreeing.size === 1 && c.disagreeing(observer)) {
                 None // No one disagrees after removing the `observer`.
               } else {
                 Some(o -> c.agree(observer))
@@ -95,7 +96,7 @@ final private[sbr] case class SBFailureDetectorState private (
     val contentions0 = contentions.getOrElse(subject, Map.empty)
     val contention   = contentions0.getOrElse(observer, UnreachabilityContention.empty)
 
-    if (contention.version == version) {
+    if (contention.version === version) {
       copy(
         reachabilities = indirectlyConnected(subject),
         contentions = contentions + (subject -> (contentions0 + (observer -> contention.disagree(node))))

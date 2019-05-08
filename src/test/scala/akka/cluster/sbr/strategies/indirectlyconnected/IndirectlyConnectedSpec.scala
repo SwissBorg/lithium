@@ -2,6 +2,7 @@ package akka.cluster.sbr.strategies.indirectlyconnected
 
 import akka.cluster.sbr.ArbitraryInstances._
 import akka.cluster.sbr._
+import cats.implicits._
 
 class IndirectlyConnectedSpec extends SBSpec {
   "IndirectlyConnected" must {
