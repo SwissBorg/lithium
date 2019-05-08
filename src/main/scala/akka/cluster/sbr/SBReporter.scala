@@ -7,7 +7,6 @@ import cats.data.{State, StateT}
 import cats.effect.SyncIO
 import cats.implicits._
 
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -15,9 +14,8 @@ import scala.concurrent.duration.FiniteDuration
  *
  * @param splitBrainResolver the actor that resolves the split-brain scenarios.
  * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
- * @param downAllWhenUnstable
  */
-class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, downAllWhenUnstable: FiniteDuration)
+class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration)
     extends Actor
     with Stash
     with ActorLogging
@@ -45,46 +43,63 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
     case ReachableMember(m)               => context.become(active(reachableMember(m).runS(state).unsafeRunSync()))
     case UnreachableMember(m)             => context.become(active(unreachableMember(m).runS(state).unsafeRunSync()))
     case IndirectlyConnectedMember(m)     => context.become(active(indirectlyConnected(m).runS(state).unsafeRunSync()))
-    case HandleSplitBrain                 => context.become(active(handleSplitBrain.runS(state).unsafeRunSync()))
+    case ClusterIsStable                  => context.become(active(clusterIsStable.runS(state).unsafeRunSync()))
   }
 
   /**
-    *
-    */
+   * Update the changes described by the change queue and prune
+   * the removed members if the membership converged.
+   */
   private def seenChanged(convergence: Boolean, seenBy: Set[Address]): State[SBReporterState, Unit] =
     for {
       _ <- State.modify[SBReporterState](_.reifyChangeQueue(seenBy))
       _ <- if (convergence) State.modify[SBReporterState](_.pruneRemoved) else State.pure[SBReporterState, Unit](())
     } yield ()
 
-  private def modify(
+  /**
+   * Modify the state using `f` and reset the cluster-is-stable timer.
+   */
+  private def resetClusterIsStableAndModify(
     f: SBReporterState => SBReporterState
   ): StateT[SyncIO, SBReporterState, Unit] =
     StateT.modifyF { state =>
-      resetHandleSplitBrain.map(_ => f(state))
+      resetClusterIsStable.map(_ => f(state))
     }
 
-  private def memberEvent(e: MemberEvent): StateT[SyncIO, SBReporterState, Unit] =
-    modify(_.enqueue(e))
+  private def memberEvent(e: MemberEvent): StateT[SyncIO, SBReporterState, Unit] = e match {
+    case _: MemberJoined | _: MemberWeaklyUp => StateT.modify(_.enqueue(e))
+    case _                                   => resetClusterIsStableAndModify(_.enqueue(e)).flatTap(_ => StateT.liftF(SyncIO(log.debug("EVENT: {}", e))))
+  }
 
   private def reachableMember(m: Member): StateT[SyncIO, SBReporterState, Unit] =
-    modify(_.reachable(m))
+    resetClusterIsStableAndModify(_.reachable(m))
 
   private def unreachableMember(m: Member): StateT[SyncIO, SBReporterState, Unit] =
-    modify(_.unreachable(m))
+    resetClusterIsStableAndModify(_.unreachable(m))
 
   private def indirectlyConnected(m: Member): StateT[SyncIO, SBReporterState, Unit] =
-    modify(_.indirectlyConnected(m))
+    resetClusterIsStableAndModify(_.indirectlyConnected(m))
 
-  private val handleSplitBrain: StateT[SyncIO, SBReporterState, Unit] =
-    StateT.inspectF(state => SyncIO(splitBrainResolver ! SBResolver.HandleSplitBrain(state.worldView)))
+  /**
+   * Send the resolver the order to run a split-brain resolution.
+   *
+   * If there's not split-brain, does nothing.
+   */
+  private val clusterIsStable: StateT[SyncIO, SBReporterState, Unit] =
+    StateT.inspectF { state =>
+      if (state.worldView.unreachableNodes.nonEmpty || state.worldView.indirectlyConnectedNodes.nonEmpty) {
+        SyncIO(splitBrainResolver ! SBResolver.HandleSplitBrain(state.worldView))
+      } else {
+        SyncIO.unit
+      }
+    }
 
-  private val scheduleHandleSplitBrain: SyncIO[Unit] =
-    SyncIO(timers.startSingleTimer(HandleSplitBrain, HandleSplitBrain, stableAfter))
+  private val scheduleClusterIsStable: SyncIO[Unit] =
+    SyncIO(timers.startSingleTimer(ClusterIsStable, ClusterIsStable, stableAfter))
 
-  private val cancelHandleSplitBrain: SyncIO[Unit] = SyncIO(timers.cancel(HandleSplitBrain))
+  private val cancelClusterIsStable: SyncIO[Unit] = SyncIO(timers.cancel(ClusterIsStable))
 
-  private val resetHandleSplitBrain: SyncIO[Unit] = cancelHandleSplitBrain >> scheduleHandleSplitBrain
+  private val resetClusterIsStable: SyncIO[Unit] = cancelClusterIsStable >> scheduleClusterIsStable
 
   override def preStart(): Unit = {
     cluster.subscribe(self, InitialStateAsSnapshot, classOf[akka.cluster.ClusterEvent.MemberEvent])
@@ -94,17 +109,16 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
   override def postStop(): Unit = {
     cluster.unsubscribe(self)
     context.system.eventStream.unsubscribe(self)
-    timers.cancel(HandleSplitBrain)
+    timers.cancel(ClusterIsStable)
   }
 }
 
 object SBReporter {
-  def props(downer: ActorRef, stableAfter: FiniteDuration, downAllWhenUnstable: FiniteDuration): Props =
-    Props(new SBReporter(downer, stableAfter, downAllWhenUnstable))
+  def props(downer: ActorRef, stableAfter: FiniteDuration): Props = Props(new SBReporter(downer, stableAfter))
 
   /**
    * For internal use.
    */
-  final case object HandleSplitBrain
+  final case object ClusterIsStable
   final case class IndirectlyConnectedMember(member: Member)
 }

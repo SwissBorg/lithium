@@ -7,8 +7,8 @@ import akka.cluster.sbr.utils.PostResolution
 import cats.implicits._
 
 class KeepMajoritySpec extends SBSpec {
-  "KeepMajority" - {
-    "1 - should handle symmetric split scenarios" in {
+  "KeepMajority" must {
+    "handle symmetric split scenarios" in {
       forAll { (scenario: SymmetricSplitScenario, keepMajority: KeepMajority) =>
         val remainingPartitions = scenario.worldViews.foldMap { worldView =>
           keepMajority.takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
@@ -18,7 +18,7 @@ class KeepMajoritySpec extends SBSpec {
       }
     }
 
-    "2 - should handle a split during the oldest-removed scenarios" in {
+    "handle a split during the oldest-removed scenarios" in {
       forAll { (scenario: OldestRemovedScenario, keepMajority: KeepMajority) =>
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
           keepMajority.takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))

@@ -30,14 +30,14 @@ object StrategyDecision {
      * The strategy decision with the leafs without nodes to to
      * down recursively replaced by idle.
      */
-    def clean: StrategyDecision =
+    def simplify: StrategyDecision =
       if (decision.nodesToDown.isEmpty) Idle
       else {
         decision match {
           case Idle | _: DownSelf | _: DownIndirectlyConnected | _: DownUnreachable | _: DownReachable => decision
           case DownThese(decision1, decision2) =>
-            if (decision1.nodesToDown.isEmpty) decision2.clean
-            else if (decision2.nodesToDown.isEmpty) decision1.clean
+            if (decision1.nodesToDown.isEmpty) decision2.simplify
+            else if (decision2.nodesToDown.isEmpty) decision1.simplify
             else decision
         }
       }

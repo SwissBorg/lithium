@@ -11,8 +11,8 @@ import org.scalacheck.Arbitrary
 import scala.collection.immutable.SortedSet
 
 class UtilSpec extends SBSpec {
-  "Util" - {
-    "1 - splitIn" in {
+  "Util" must {
+    "splitIn" in {
       forAll { (parts: Int Refined Positive, head: Int, tail: SortedSet[Int]) =>
         val nes = NonEmptySet(head, tail)
 

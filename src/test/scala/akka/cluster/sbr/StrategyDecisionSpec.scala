@@ -6,8 +6,8 @@ import cats.kernel.Monoid
 import scala.collection.immutable.SortedSet
 
 class StrategyDecisionSpec extends SBSpec {
-  "StrategyDecision" - {
-    "1 - extract the correct nodes from the world view" in {
+  "StrategyDecision" must {
+    "extract the correct nodes from the world view" in {
       forAll { worldView: WorldView =>
         DownReachable(worldView).nodesToDown.map(_.member) should ===(worldView.reachableNodes.map(_.member))
         DownSelf(worldView).nodesToDown should ===(SortedSet(worldView.selfNode))
@@ -15,7 +15,7 @@ class StrategyDecisionSpec extends SBSpec {
       }
     }
 
-    "2 - extract the correct nodes from the decision" in {
+    "extract the correct nodes from the decision" in {
       forAll { strategyDecision: StrategyDecision =>
         strategyDecision match {
           case DownReachable(nodeGroup) =>

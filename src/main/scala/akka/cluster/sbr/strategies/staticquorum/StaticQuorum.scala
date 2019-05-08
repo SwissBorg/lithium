@@ -4,7 +4,7 @@ import akka.cluster.sbr._
 import akka.cluster.sbr.strategy.{Strategy, StrategyReader}
 import cats.implicits._
 
-final case class StaticQuorum(role: String, quorumSize: QuorumSize) extends Strategy {
+final case class StaticQuorum(role: String, quorumSize: Int) extends Strategy {
   override def takeDecision(worldView: WorldView): Either[Throwable, StrategyDecision] =
     ((ReachableNodes(worldView, quorumSize, role), UnreachableNodes(worldView, quorumSize, role)) match {
 
@@ -22,7 +22,7 @@ final case class StaticQuorum(role: String, quorumSize: QuorumSize) extends Stra
       case (ReachableQuorum, UnreachableSubQuorum) => DownUnreachable(worldView)
 
       /**
-       * This side is a query and there are no unreachable nodes, nothing needs to be done.
+       * This side is a quorum and there are no unreachable nodes, nothing needs to be done.
        */
       case (ReachableQuorum, EmptyUnreachable) => Idle
 

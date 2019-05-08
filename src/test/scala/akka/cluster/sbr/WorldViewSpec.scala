@@ -5,8 +5,8 @@ import akka.cluster.ClusterEvent._
 import akka.cluster.sbr.ArbitraryInstances._
 
 class WorldViewSpec extends SBSpec {
-  "WorldView" - {
-    "1 - should not have a node simultaneously reachable and unreachable" in {
+  "WorldView" must {
+    "not have a node simultaneously reachable and unreachable" in {
       forAll { worldView: WorldView =>
         worldView.consideredReachableNodes
           .map(_.member)
@@ -14,7 +14,7 @@ class WorldViewSpec extends SBSpec {
       }
     }
 
-    "2 - memberEvent" in {
+    "memberEvent" in {
       forAll { (worldView: WorldView, event: MemberEvent, seenBy: Set[Address]) =>
         event match {
           case MemberRemoved(member, _) =>
@@ -38,7 +38,7 @@ class WorldViewSpec extends SBSpec {
       }
     }
 
-    "3 - reachabilityEvent" in {
+    "reachabilityEvent" in {
       forAll { (worldView: WorldView, event: ReachabilityEvent) =>
         event match {
           case UnreachableMember(member) =>
@@ -52,20 +52,20 @@ class WorldViewSpec extends SBSpec {
       }
     }
 
-    "4 - reachableConsideredNodes" in {
+    "reachableConsideredNodes" in {
       forAll { worldView: WorldView =>
         assert(worldView.consideredReachableNodes.forall(worldView.nodes.contains))
       }
     }
 
-    "5 - unreachableNodes" in {
+    "unreachableNodes" in {
       forAll { worldView: WorldView =>
         assert(worldView.unreachableNodes.forall(worldView.nodes.contains))
 
       }
     }
 
-    "6 - consideredNodes" in {
+    "consideredNodes" in {
       forAll { worldView: WorldView =>
         assert(
           worldView.consideredNodes.forall((worldView.consideredReachableNodes ++ worldView.unreachableNodes).contains)
@@ -73,7 +73,7 @@ class WorldViewSpec extends SBSpec {
       }
     }
 
-    "7 - consideredNodesWithRole" in {
+    "consideredNodesWithRole" in {
       forAll { (worldView: WorldView, role: String) =>
         if (role.isEmpty) worldView.consideredNodesWithRole(role) should ===(worldView.consideredNodes)
         else assert(worldView.consideredNodesWithRole(role).forall(worldView.consideredNodes.contains))
@@ -84,7 +84,7 @@ class WorldViewSpec extends SBSpec {
       }
     }
 
-    "8 - reachableNodesWithRole" in {
+    "reachableNodesWithRole" in {
       forAll { (worldView: WorldView, role: String) =>
         if (role.isEmpty)
           worldView.consideredReachableNodesWithRole(role).map(_.member) should ===(
@@ -99,13 +99,13 @@ class WorldViewSpec extends SBSpec {
       }
     }
 
-    "9 - otherStatuses should not contain the self node" in {
+    "otherStatuses should not contain the self node" in {
       forAll { worldView: WorldView =>
         worldView.otherMembersStatus.contains(worldView.selfUniqueAddress) shouldBe false
       }
     }
 
-    "10 - remove all removed members" in {
+    "remove all removed members" in {
       forAll { worldView: WorldView =>
         worldView.pruneRemoved.removedMembers should ===(Set.empty)
       }
