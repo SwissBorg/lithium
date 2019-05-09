@@ -29,7 +29,7 @@ class StaticQuorumSpec2 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Co
         // Partition of node1, node2, node3 <- survives
         // Partition of node 4              <- killed
         // Partition of node 5              <- killed
-        akka.cluster.sbr.util
+        akka.cluster.sbr.TestUtil
           .linksToKillForPartitions(List(node1, node2, node3) :: List(node4) :: List(node5) :: Nil)
           .foreach {
             case (from, to) => testConductor.blackhole(from, to, Direction.Both).await

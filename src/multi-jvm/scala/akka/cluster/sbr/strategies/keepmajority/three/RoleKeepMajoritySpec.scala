@@ -2,7 +2,7 @@ package akka.cluster.sbr.strategies.keepmajority.three
 
 import akka.cluster.sbr.FiveNodeSpec
 import akka.cluster.sbr.strategies.keepmajority.RoleKeepMajoritySpecConfig
-import akka.cluster.sbr.util.linksToKillForPartitions
+import akka.cluster.sbr.TestUtil.linksToKillForPartitions
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._

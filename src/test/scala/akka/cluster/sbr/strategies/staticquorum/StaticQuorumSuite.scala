@@ -3,6 +3,7 @@ package akka.cluster.sbr.strategies.staticquorum
 import akka.actor.Address
 import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.MemberStatus.Up
+import akka.cluster.sbr.strategies.staticquorum.StaticQuorum.TooManyNodes
 import akka.cluster.sbr.{DownReachable, DownUnreachable, Idle, WorldView}
 import akka.cluster.sbr.utils.TestMember
 import eu.timepit.refined.auto._
@@ -57,14 +58,14 @@ class StaticQuorumSuite extends WordSpec with Matchers {
     "down the reachable nodes when there is an unreachable quorum" in {
       val w = WorldView.fromSnapshot(
         aa,
-        CurrentClusterState(SortedSet(aa, bb, cc, dd), Set(cc, dd), seenBy = Set.empty)
+        CurrentClusterState(SortedSet(aa, bb, cc), Set(bb, cc), seenBy = Set.empty)
       )
 
       StaticQuorum("", 2).takeDecision(w) should ===(Right(DownReachable(w)))
 
       val w1 = WorldView.fromSnapshot(
         cc,
-        CurrentClusterState(SortedSet(aa, bb, cc, dd), Set(aa, bb), seenBy = Set.empty)
+        CurrentClusterState(SortedSet(aa, bb, cc), Set(bb, cc), seenBy = Set.empty)
       )
 
       StaticQuorum("", 2).takeDecision(w1) should ===(Right(DownReachable(w1)))
@@ -85,7 +86,7 @@ class StaticQuorumSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc, dd), Set(aa, bb), seenBy = Set.empty)
       )
 
-      StaticQuorum("role", 1).takeDecision(w) should ===(Right(Idle))
+      StaticQuorum("role", 2).takeDecision(w) should ===(Right(Idle))
     }
 
     "down the reachable nodes do not form quorum and there are no unreachable nodes" in {
@@ -104,6 +105,22 @@ class StaticQuorumSuite extends WordSpec with Matchers {
       )
 
       StaticQuorum("role", 2).takeDecision(w) should ===(Right(DownReachable(w)))
+    }
+
+    "fail when the quorum size is less than the majority of considered nodes" in {
+      val w = WorldView.fromSnapshot(
+        aa,
+        CurrentClusterState(SortedSet(aa, bb, cc), seenBy = Set.empty)
+      )
+
+      StaticQuorum("", 1).takeDecision(w) should ===(Left(TooManyNodes))
+
+      val w1 = WorldView.fromSnapshot(
+        aa,
+        CurrentClusterState(SortedSet(aa, bb, cc, dd), seenBy = Set.empty)
+      )
+
+      StaticQuorum("", 2).takeDecision(w1) should ===(Left(TooManyNodes))
     }
   }
 }

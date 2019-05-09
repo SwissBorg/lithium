@@ -1,16 +1,20 @@
 package akka.cluster.sbr
 
+import akka.actor.ActorPath
 import akka.cluster.UniqueAddress
 import akka.cluster.sbr.SBFailureDetector.{UnreachabilityContention => _, _}
 import akka.cluster.sbr.SBFailureDetectorState._
+import akka.cluster.sbr.Util.pathAtAddress
 import cats.implicits._
 
 /**
  * State of the SBRFailureDetector.
  */
 final private[sbr] case class SBFailureDetectorState private (
+  selfPath: ActorPath,
   reachabilities: Map[Subject, VersionedReachability],
-  contentions: Map[Subject, Map[Observer, UnreachabilityContention]]
+  contentions: Map[Subject, Map[Observer, UnreachabilityContention]],
+  waitingForAck: Map[ContentionKey, Version]
 ) {
 
   /**
@@ -92,7 +96,10 @@ final private[sbr] case class SBFailureDetectorState private (
    * Update the contention of the observation of `subject` by `observer`
    * by the cluster node `node`.
    */
-  def contention(node: UniqueAddress, observer: Observer, subject: Subject, version: Long): SBFailureDetectorState = {
+  def contention(node: UniqueAddress,
+                 observer: Observer,
+                 subject: Subject,
+                 version: Version): SBFailureDetectorState = {
     val contentions0 = contentions.getOrElse(subject, Map.empty)
     val contention   = contentions0.getOrElse(observer, UnreachabilityContention.empty)
 
@@ -140,14 +147,23 @@ final private[sbr] case class SBFailureDetectorState private (
         }
     }
 
+    val pathToRemove = pathAtAddress(node.address, selfPath)
+
     copy(
       reachabilities = reachabilities ++ updatedReachabilities - node,
       // Subjects whose reachabilities have been updated are removed
       // as for all of them there is no disputed observer or all the
       // observers agree.
-      contentions = updatedM -- updatedReachabilities.keySet
+      contentions = updatedM -- updatedReachabilities.keySet,
+      waitingForAck = waitingForAck.filterKeys(_.path != pathToRemove)
     )
   }
+
+  def expectAck(key: ContentionKey, version: Version): SBFailureDetectorState =
+    copy(waitingForAck = waitingForAck + (key -> version)) // todo check if update
+
+  def receivedAck(key: ContentionKey): SBFailureDetectorState =
+    copy(waitingForAck = waitingForAck - key)
 
   /**
    * Set the subject as indirectly connected.
@@ -165,8 +181,10 @@ final private[sbr] case class SBFailureDetectorState private (
 private[sbr] object SBFailureDetectorState {
   type Observer = UniqueAddress
   type Subject  = UniqueAddress
+  type Version  = Long
 
-  val empty: SBFailureDetectorState = SBFailureDetectorState(Map.empty, Map.empty)
+  def apply(selfPath: ActorPath): SBFailureDetectorState =
+    SBFailureDetectorState(selfPath, Map.empty, Map.empty, Map.empty)
 
   /**
    * Represents the reachability of a node.
@@ -187,7 +205,7 @@ private[sbr] object SBFailureDetectorState {
    * Represents a contention against a detection by a node. The `version`
    * needs to be strictly increasing for each `observer`, `subject` pair.
    */
-  final case class UnreachabilityContention(disagreeing: Set[UniqueAddress], version: Long) {
+  final case class UnreachabilityContention(disagreeing: Set[UniqueAddress], version: Version) {
     def disagree(node: UniqueAddress): UnreachabilityContention = copy(disagreeing = disagreeing + node)
     def agree(node: UniqueAddress): UnreachabilityContention    = copy(disagreeing = disagreeing - node)
   }

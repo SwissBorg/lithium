@@ -2,7 +2,7 @@ package akka.cluster.sbr.strategies.staticquorum.ten
 
 import akka.cluster.sbr.TenNodeSpec
 import akka.cluster.sbr.strategies.staticquorum.StaticQuorumSpec3Config
-import akka.cluster.sbr.util.linksToKillForPartitions
+import akka.cluster.sbr.TestUtil.linksToKillForPartitions
 import akka.remote.transport.ThrottlerTransportAdapter.Direction
 
 import scala.concurrent.duration._

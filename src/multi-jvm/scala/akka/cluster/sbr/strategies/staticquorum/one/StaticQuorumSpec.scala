@@ -24,7 +24,7 @@ class StaticQuorumSpec extends ThreeNodeSpec("StaticQuorum", StaticQuorumSpecCon
       runOn(node1) {
         // Partition with node1 and node 2 <- survive
         // Partition with node 3           <- killed
-        akka.cluster.sbr.util.linksToKillForPartitions(List(node1, node2) :: List(node3) :: Nil).foreach {
+        akka.cluster.sbr.TestUtil.linksToKillForPartitions(List(node1, node2) :: List(node3) :: Nil).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
         }
       }
