@@ -22,7 +22,7 @@ class KeepOldestSpec extends ThreeNodeSpec("KeepOldest", KeepOldestSpecThreeNode
   override def assertions(): Unit =
     "Bidirectional link failure" in within(60 seconds) {
       runOn(node1) {
-        akka.cluster.sbr.util.linksToKillForPartitions(List(node1) :: List(node2, node3) :: Nil).foreach {
+        akka.cluster.sbr.TestUtil.linksToKillForPartitions(List(node1) :: List(node2, node3) :: Nil).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
         }
       }

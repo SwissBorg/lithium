@@ -2,7 +2,7 @@ package akka.cluster.sbr
 
 import akka.remote.testconductor.RoleName
 
-object util {
+object TestUtil {
   def linksToKillForPartitions(partitions: List[List[RoleName]]): List[(RoleName, RoleName)] = {
     def go(partitions: List[List[RoleName]], links: List[(RoleName, RoleName)]): List[(RoleName, RoleName)] =
       partitions match {

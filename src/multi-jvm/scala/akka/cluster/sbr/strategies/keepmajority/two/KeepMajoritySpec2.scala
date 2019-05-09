@@ -19,7 +19,7 @@ class KeepMajoritySpec2 extends FiveNodeSpec("KeepMajority", KeepMajoritySpecFiv
         // Partition with node1, node2, node3 <- survive
         // Partition with node 4              <- killed
         // Partition with node 5              <- killed
-        akka.cluster.sbr.util
+        akka.cluster.sbr.TestUtil
           .linksToKillForPartitions(List(node1, node2, node3) :: List(node4) :: List(node5) :: Nil)
           .foreach {
             case (from, to) => testConductor.blackhole(from, to, Direction.Both).await

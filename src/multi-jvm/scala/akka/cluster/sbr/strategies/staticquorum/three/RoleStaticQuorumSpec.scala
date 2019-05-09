@@ -24,7 +24,7 @@ class RoleStaticQuorumSpec extends FiveNodeSpec("StaticQuorum", RoleStaticQuorum
   override def assertions(): Unit =
     "Two partitions, bidirectional link failure" in within(60 seconds) {
       runOn(node1) {
-        akka.cluster.sbr.util.linksToKillForPartitions(List(node1, node2) :: List(node3, node4, node5) :: Nil).foreach {
+        akka.cluster.sbr.TestUtil.linksToKillForPartitions(List(node1, node2) :: List(node3, node4, node5) :: Nil).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
         }
       }
