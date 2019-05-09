@@ -79,6 +79,7 @@ class SBFailureDetector(val sbReporter: ActorRef) extends Actor with ActorLoggin
                        contention: UnreachabilityContention): StateT[SyncIO, SBFailureDetectorState, Unit] =
       for {
         _ <- StateT.liftF(sendConnectionWithRetry(path, contention))
+        _ <- StateT.liftF(SyncIO(log.debug("ADDING {}", keyFor(path, contention))))
         _ <- StateT.modify[SyncIO, SBFailureDetectorState](_.expectAck(keyFor(path, contention), contention.version))
       } yield ()
 
@@ -189,7 +190,12 @@ class SBFailureDetector(val sbReporter: ActorRef) extends Actor with ActorLoggin
                          subject: UniqueAddress,
                          version: Long,
                          sender: ActorRef): StateT[SyncIO, SBFailureDetectorState, Unit] = {
-    val ack = SyncIO(sender ! UnreachabilityContentionAck(ContentionKey(self.path, observer, subject), version))
+    val ack = SyncIO(
+      sender ! UnreachabilityContentionAck(
+        ContentionKey(pathAtAddress(selfUniqueAddress.address, self.path), observer, subject),
+        version
+      )
+    )
 
     for {
       _ <- StateT.modify[SyncIO, SBFailureDetectorState](_.contention(node, observer, subject, version))
@@ -205,16 +211,14 @@ class SBFailureDetector(val sbReporter: ActorRef) extends Actor with ActorLoggin
    */
   private def contentionAck(key: ContentionKey, version: Version): StateT[SyncIO, SBFailureDetectorState, Unit] =
     StateT.modifyF { state =>
-      state.waitingForAck
-        .get(key)
-        .fold(SyncIO.pure(state)) { v =>
-          if (v == version) {
-            SyncIO(timers.cancel(key)).map(_ => state.receivedAck(key))
-          } else {
-            // Received ack for old contention or one from the future :/
-            SyncIO.pure(state)
-          }
+      state.waitingForAck.get(key).fold(SyncIO.pure(state)) { v =>
+        if (v == version) {
+          SyncIO(timers.cancel(key)).map(_ => state.receivedAck(key))
+        } else {
+          // Received ack for old contention or one from the future :/
+          SyncIO.pure(state)
         }
+      }
     }
 
   private def keyFor(path: ActorPath, contention: UnreachabilityContention): ContentionKey =
