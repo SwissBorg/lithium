@@ -44,6 +44,10 @@ class StaticQuorumSpec10 extends TenNodeSpec("StaticQuorum", StaticQuorumSpec3Co
         )
       }
 
+      runOn(node9, node10) {
+        waitForSelfDowning
+      }
+
       enterBarrier("split-brain-resolved")
     }
 }

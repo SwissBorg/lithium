@@ -35,6 +35,8 @@ final case class WorldView private (
    */
   private[sbr] val removedMembersSeenBy: Map[UniqueAddress, Set[Address]]
 ) {
+  import WorldView._
+
   assert(!otherMembersStatus.contains(selfUniqueAddress), s"$otherMembersStatus <- $selfUniqueAddress")
 
   lazy val selfNode: Node = toNode(selfStatus.member, selfStatus.reachability)
@@ -134,7 +136,7 @@ final case class WorldView private (
         )
     }
 
-  def memberRemoved(member: Member, seenBy: Set[Address]): WorldView =
+  def removeMember(member: Member, seenBy: Set[Address]): WorldView =
     if (member.uniqueAddress === selfUniqueAddress) {
       copy(member.uniqueAddress, selfStatus = selfStatus.withMember(member).withSeenBy(seenBy)) // ignore only update // todo is it safe?
     } else {
@@ -149,22 +151,22 @@ final case class WorldView private (
   /**
    * Change the `node`'s state to `Reachable`.
    */
-  def reachableMember(member: Member): WorldView = changeReachability(member, Reachable)
+  def withReachableMember(member: Member): WorldView = changeReachability(member, Reachable)
 
   /**
    * Change the `node`'s status to `Unreachable`.
    */
-  def unreachableMember(member: Member): WorldView = changeReachability(member, Unreachable)
+  def withUnreachableMember(member: Member): WorldView = changeReachability(member, Unreachable)
 
   /**
    * Change the `node`'s status to `IndirectlyConnected`.
    */
-  def indirectlyConnectedMember(member: Member): WorldView = changeReachability(member, IndirectlyConnected)
+  def withIndirectlyConnectedMember(member: Member): WorldView = changeReachability(member, IndirectlyConnected)
 
   /**
    * Set every member's seen-by to `seenBy`.
    */
-  def allSeenBy(seenBy: Set[Address]): WorldView =
+  def withAllSeenBy(seenBy: Set[Address]): WorldView =
     copy(
       selfStatus = selfStatus.withSeenBy(seenBy),
       otherMembersStatus = otherMembersStatus.mapValues(s => s.withSeenBy(seenBy)),
@@ -247,16 +249,6 @@ final case class WorldView private (
     // in parallel.
     case _: IndirectlyConnectedNode => false
   }
-
-  /**
-   * Convert the `member` and its `reachability` to a [[Node]].
-   */
-  private def toNode(member: Member, reachability: SBRReachability): Node =
-    reachability match {
-      case Reachable           => ReachableNode(member)
-      case Unreachable         => UnreachableNode(member)
-      case IndirectlyConnected => IndirectlyConnectedNode(member)
-    }
 }
 
 object WorldView {
@@ -280,8 +272,8 @@ object WorldView {
     val w1 = (state.members -- state.unreachable).foldLeft(w) {
       case (w, member) =>
         member.status match {
-          case Removed => w.reachableMember(member).memberRemoved(member, Set.empty)
-          case _       => w.reachableMember(member)
+          case Removed => w.withReachableMember(member).removeMember(member, Set.empty)
+          case _       => w.withReachableMember(member)
         }
     }
 
@@ -290,11 +282,11 @@ object WorldView {
       .foldLeft(w1) {
         case (w, member) =>
           member.status match {
-            case Removed => w.unreachableMember(member).memberRemoved(member, Set.empty)
-            case _       => w.unreachableMember(member)
+            case Removed => w.withUnreachableMember(member).removeMember(member, Set.empty)
+            case _       => w.withUnreachableMember(member)
           }
       }
-      .allSeenBy(state.seenBy)
+      .withAllSeenBy(state.seenBy)
   }
 
   /**
@@ -327,6 +319,16 @@ object WorldView {
       removed.map(convertF).mapValues(_.seenBy)
     )
   }
+
+  /**
+   * Convert the `member` and its `reachability` to a [[Node]].
+   */
+  private def toNode(member: Member, reachability: SBRReachability): Node =
+    reachability match {
+      case Reachable           => ReachableNode(member)
+      case Unreachable         => UnreachableNode(member)
+      case IndirectlyConnected => IndirectlyConnectedNode(member)
+    }
 
   final case class Status(member: Member, reachability: SBRReachability, seenBy: Set[Address]) {
     def withSeenBy(updatedSeenBy: Set[Address]): Status                = copy(seenBy = updatedSeenBy)

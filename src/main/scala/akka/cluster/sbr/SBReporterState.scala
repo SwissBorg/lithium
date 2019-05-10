@@ -20,10 +20,10 @@ final case class SBReporterState(worldView: WorldView, changeQueue: ChangeQueue)
    * Update the world view with the changes described by the change-queue after
    * finalizing it with `seenBy`.
    */
-  def reifyChangeQueue(seenBy: Set[Address]): SBReporterState =
+  def consumeQueue(seenBy: Set[Address]): SBReporterState =
     copy(
       worldView = changeQueue match {
-        case Empty => worldView.allSeenBy(seenBy)
+        case Empty => worldView.withAllSeenBy(seenBy)
         case AwaitingEvents(events) =>
           events.foldLeft(worldView) {
             case (w, event) =>
@@ -34,7 +34,7 @@ final case class SBReporterState(worldView: WorldView, changeQueue: ChangeQueue)
                 case MemberLeft(member)       => w.updateMember(member, seenBy)
                 case MemberExited(member)     => w.updateMember(member, seenBy)
                 case MemberDowned(member)     => w.updateMember(member, seenBy)
-                case MemberRemoved(member, _) => w.memberRemoved(member, seenBy)
+                case MemberRemoved(member, _) => w.removeMember(member, seenBy)
               }
           }
 
@@ -55,17 +55,20 @@ final case class SBReporterState(worldView: WorldView, changeQueue: ChangeQueue)
   /**
    * Set the member as reachable.
    */
-  def reachable(m: Member): SBReporterState = copy(worldView = worldView.reachableMember(m))
+  def withReachableMember(m: Member): SBReporterState =
+    copy(worldView = worldView.withReachableMember(m))
 
   /**
    * Set the member as unreachable.
    */
-  def unreachable(m: Member): SBReporterState = copy(worldView = worldView.unreachableMember(m))
+  def withUnreachableMember(m: Member): SBReporterState =
+    copy(worldView = worldView.withUnreachableMember(m))
 
   /**
    * Set the member as indirectly connected.
    */
-  def indirectlyConnected(m: Member): SBReporterState = copy(worldView = worldView.indirectlyConnectedMember(m))
+  def withIndirectlyConnectedMember(m: Member): SBReporterState =
+    copy(worldView = worldView.withIndirectlyConnectedMember(m))
 }
 
 object SBReporterState {
