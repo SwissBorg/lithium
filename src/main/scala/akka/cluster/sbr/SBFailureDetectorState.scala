@@ -2,7 +2,7 @@ package akka.cluster.sbr
 
 import akka.actor.ActorPath
 import akka.cluster.UniqueAddress
-import akka.cluster.sbr.SBFailureDetector.{UnreachabilityContention => _, _}
+import akka.cluster.sbr.SBFailureDetector._
 import akka.cluster.sbr.SBFailureDetectorState._
 import akka.cluster.sbr.Util.pathAtAddress
 import cats.implicits._
@@ -13,8 +13,8 @@ import cats.implicits._
 final private[sbr] case class SBFailureDetectorState private (
   selfPath: ActorPath,
   reachabilities: Map[Subject, VersionedReachability],
-  contentions: Map[Subject, Map[Observer, UnreachabilityContention]],
-  waitingForAck: Map[ContentionKey, Version]
+  contentions: Map[Subject, Map[Observer, ContentionAggregator]],
+  waitingForAck: Set[ContentionAck]
 ) {
 
   /**
@@ -37,7 +37,7 @@ final private[sbr] case class SBFailureDetectorState private (
       .getOrElse {
         // The node is seen for the 1st time.
         // It is reachable by default.
-        val r = reachable(subject)
+        val r = withReachable(subject)
         (Some(Reachable),
          r.copy(reachabilities = r.reachabilities + (subject -> r.reachabilities(subject).tagAsRetrieved)))
       }
@@ -45,7 +45,7 @@ final private[sbr] case class SBFailureDetectorState private (
   /**
    * Set the `subject` as reachable.
    */
-  def reachable(subject: Subject): SBFailureDetectorState =
+  def withReachable(subject: Subject): SBFailureDetectorState =
     copy(reachabilities = reachabilities + (subject -> updateReachability(subject, Reachable)),
          contentions = contentions - subject)
 
@@ -53,7 +53,7 @@ final private[sbr] case class SBFailureDetectorState private (
    * Set `node` as unreachable and removes the current node
    * from all the related contentions.
    */
-  def unreachable(observer: Observer, subject: Subject): SBFailureDetectorState = {
+  def withUnreachableFrom(observer: Observer, subject: Subject): SBFailureDetectorState = {
     // The observer node now agrees.
     val updatedContentions =
       contentions
@@ -96,25 +96,28 @@ final private[sbr] case class SBFailureDetectorState private (
    * Update the contention of the observation of `subject` by `observer`
    * by the cluster node `node`.
    */
-  def contention(node: UniqueAddress,
-                 observer: Observer,
-                 subject: Subject,
-                 version: Version): SBFailureDetectorState = {
-    val contentions0 = contentions.getOrElse(subject, Map.empty)
-    val contention   = contentions0.getOrElse(observer, UnreachabilityContention.empty)
+  def withContention(protester: UniqueAddress,
+                     observer: Observer,
+                     subject: Subject,
+                     version: Version): SBFailureDetectorState = {
+    val contentions0  = contentions.getOrElse(subject, Map.empty)
+    val oldContention = contentions0.getOrElse(observer, ContentionAggregator.empty)
 
-    if (contention.version === version) {
+    if (oldContention.version === version) {
       copy(
         reachabilities = indirectlyConnected(subject),
-        contentions = contentions + (subject -> (contentions0 + (observer -> contention.disagree(node))))
+        contentions = contentions + (subject -> (contentions0 + (observer -> oldContention
+          .disagree(protester))))
       )
-    } else if (contention.version < version) {
+    } else if (oldContention.version < version) {
       // First contention for this version.
       // Forget the old version and create a new one.
       copy(
         reachabilities = indirectlyConnected(subject),
-        contentions = contentions + (subject -> (contentions0 + (observer -> UnreachabilityContention(Set(node),
-                                                                                                      version))))
+        contentions = contentions + (subject -> (contentions0 + (observer -> ContentionAggregator(
+          Set(protester),
+          version
+        ))))
       )
     } else {
       // Ignore the contention. It is for an older
@@ -155,15 +158,13 @@ final private[sbr] case class SBFailureDetectorState private (
       // as for all of them there is no disputed observer or all the
       // observers agree.
       contentions = updatedM -- updatedReachabilities.keySet,
-      waitingForAck = waitingForAck.filterKeys(_.path != pathToRemove)
+      waitingForAck = waitingForAck.filter(_.from != pathToRemove)
     )
   }
 
-  def expectAck(key: ContentionKey, version: Version): SBFailureDetectorState =
-    copy(waitingForAck = waitingForAck + (key -> version)) // todo check if update
+  def expectAck(key: ContentionAck): SBFailureDetectorState = copy(waitingForAck = waitingForAck + key)
 
-  def receivedAck(key: ContentionKey): SBFailureDetectorState =
-    copy(waitingForAck = waitingForAck - key)
+  def receivedAck(key: ContentionAck): SBFailureDetectorState = copy(waitingForAck = waitingForAck - key)
 
   /**
    * Set the subject as indirectly connected.
@@ -184,7 +185,7 @@ private[sbr] object SBFailureDetectorState {
   type Version  = Long
 
   def apply(selfPath: ActorPath): SBFailureDetectorState =
-    SBFailureDetectorState(selfPath, Map.empty, Map.empty, Map.empty)
+    SBFailureDetectorState(selfPath, Map.empty, Map.empty, Set.empty)
 
   /**
    * Represents the reachability of a node.
@@ -205,12 +206,12 @@ private[sbr] object SBFailureDetectorState {
    * Represents a contention against a detection by a node. The `version`
    * needs to be strictly increasing for each `observer`, `subject` pair.
    */
-  final case class UnreachabilityContention(disagreeing: Set[UniqueAddress], version: Version) {
-    def disagree(node: UniqueAddress): UnreachabilityContention = copy(disagreeing = disagreeing + node)
-    def agree(node: UniqueAddress): UnreachabilityContention    = copy(disagreeing = disagreeing - node)
+  final case class ContentionAggregator(disagreeing: Set[UniqueAddress], version: Version) {
+    def disagree(node: UniqueAddress): ContentionAggregator = copy(disagreeing = disagreeing + node)
+    def agree(node: UniqueAddress): ContentionAggregator    = copy(disagreeing = disagreeing - node)
   }
 
-  object UnreachabilityContention {
-    val empty: UnreachabilityContention = UnreachabilityContention(Set.empty, 0)
+  object ContentionAggregator {
+    val empty: ContentionAggregator = ContentionAggregator(Set.empty, 0)
   }
 }

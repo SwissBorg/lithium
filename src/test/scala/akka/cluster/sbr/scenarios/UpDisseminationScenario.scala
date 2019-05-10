@@ -38,7 +38,7 @@ object UpDisseminationScenario {
           val worldView0 = worldView.changeSelf(partition.head.member)
 
           otherNodes.foldLeft[WorldView](worldView0) {
-            case (worldView, node) => worldView.unreachableMember(node.member)
+            case (worldView, node) => worldView.withUnreachableMember(node.member)
           }
         }
 

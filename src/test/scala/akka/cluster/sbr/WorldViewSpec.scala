@@ -20,7 +20,7 @@ class WorldViewSpec extends SBSpec {
       forAll { (worldView: WorldView, event: MemberEvent, seenBy: Set[Address]) =>
         event match {
           case MemberRemoved(member, _) =>
-            val w = worldView.memberRemoved(member, seenBy)
+            val w = worldView.removeMember(member, seenBy)
             if (w.selfUniqueAddress != member.uniqueAddress) {
               w.members(member) shouldBe false
               w.removedMembers(member.uniqueAddress) shouldBe true
@@ -44,11 +44,11 @@ class WorldViewSpec extends SBSpec {
       forAll { (worldView: WorldView, event: ReachabilityEvent) =>
         event match {
           case UnreachableMember(member) =>
-            val w = worldView.unreachableMember(member)
+            val w = worldView.withUnreachableMember(member)
             w.nodes.contains(UnreachableNode(member)) shouldBe true
 
           case ReachableMember(member) =>
-            val w = worldView.reachableMember(member)
+            val w = worldView.withReachableMember(member)
             w.nodes.contains(ReachableNode(member)) shouldBe true
         }
       }

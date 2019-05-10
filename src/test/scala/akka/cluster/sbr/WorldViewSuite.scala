@@ -99,7 +99,7 @@ class WorldViewSuite extends WordSpec with Matchers {
           aa,
           CurrentClusterState(SortedSet(aa, bb, cc), Set.empty, seenBy = Set(aa.address, bb.address, cc.address))
         )
-        .allSeenBy(Set(aa.address, bb.address, cc.address, dd.address))
+        .withAllSeenBy(Set(aa.address, bb.address, cc.address, dd.address))
 
       w.seenBy(aa) should ===(Set(aa.address, bb.address, cc.address, dd.address))
       w.seenBy(bb) should ===(Set(aa.address, bb.address, cc.address, dd.address))
@@ -160,11 +160,11 @@ class WorldViewSuite extends WordSpec with Matchers {
         )
 
       // todo should selfMember really become unreachable
-      val w1 = w.unreachableMember(aa)
+      val w1 = w.withUnreachableMember(aa)
       w1.reachableNodes.map(_.member) should ===(Set(bb))
       w1.unreachableNodes.map(_.member) should ===(Set(aa))
 
-      val w2 = w.unreachableMember(bb)
+      val w2 = w.withUnreachableMember(bb)
       w2.reachableNodes.map(_.member) should ===(Set(aa))
       w2.unreachableNodes.map(_.member) should ===(Set(bb))
     }
@@ -175,7 +175,7 @@ class WorldViewSuite extends WordSpec with Matchers {
           aa,
           CurrentClusterState(SortedSet(aa, bb), Set(bb), seenBy = Set(aa.address, bb.address)),
         )
-        .reachableMember(bb)
+        .withReachableMember(bb)
 
       w1.reachableNodes.map(_.member) should ===(Set(aa, bb))
       w1.unreachableNodes.map(_.member) should ===(Set.empty)
@@ -185,7 +185,7 @@ class WorldViewSuite extends WordSpec with Matchers {
           aa,
           CurrentClusterState(SortedSet(aa, bb), Set(aa), seenBy = Set(aa.address, bb.address)),
         )
-        .reachableMember(aa)
+        .withReachableMember(aa)
 
       w2.reachableNodes.map(_.member) should ===(Set(aa, bb))
       w2.unreachableNodes.map(_.member) should ===(Set.empty)
@@ -199,11 +199,11 @@ class WorldViewSuite extends WordSpec with Matchers {
         )
 
       // todo should selfMember really become unreachable
-      val w1 = w.indirectlyConnectedMember(aa)
+      val w1 = w.withIndirectlyConnectedMember(aa)
       w1.reachableNodes.map(_.member) should ===(Set(bb))
       w1.indirectlyConnectedNodes.map(_.member) should ===(Set(aa))
 
-      val w2 = w.indirectlyConnectedMember(bb)
+      val w2 = w.withIndirectlyConnectedMember(bb)
       w2.reachableNodes.map(_.member) should ===(Set(aa))
       w2.indirectlyConnectedNodes.map(_.member) should ===(Set(bb))
     }
@@ -215,10 +215,10 @@ class WorldViewSuite extends WordSpec with Matchers {
           CurrentClusterState(SortedSet(aa, bb), seenBy = Set(aa.address, bb.address)),
         )
 
-      val w1 = w.indirectlyConnectedMember(aa).reachableMember(aa)
+      val w1 = w.withIndirectlyConnectedMember(aa).withReachableMember(aa)
       w1.reachableNodes.map(_.member) should ===(Set(aa, bb))
 
-      val w2 = w.indirectlyConnectedMember(bb).reachableMember(bb)
+      val w2 = w.withIndirectlyConnectedMember(bb).withReachableMember(bb)
       w2.reachableNodes.map(_.member) should ===(Set(aa, bb))
     }
 
@@ -228,7 +228,7 @@ class WorldViewSuite extends WordSpec with Matchers {
           aa,
           CurrentClusterState(SortedSet(aa, bb), Set(bb), seenBy = Set(aa.address, bb.address)),
         )
-        .indirectlyConnectedMember(bb)
+        .withIndirectlyConnectedMember(bb)
 
       w1.reachableNodes.map(_.member) should ===(Set(aa))
       w1.indirectlyConnectedNodes.map(_.member) should ===(Set(bb))
@@ -238,7 +238,7 @@ class WorldViewSuite extends WordSpec with Matchers {
           aa,
           CurrentClusterState(SortedSet(aa, bb), Set(aa), seenBy = Set(aa.address, bb.address)),
         )
-        .indirectlyConnectedMember(aa)
+        .withIndirectlyConnectedMember(aa)
 
       w2.reachableNodes.map(_.member) should ===(Set(bb))
       w2.indirectlyConnectedNodes.map(_.member) should ===(Set(aa))
@@ -250,8 +250,8 @@ class WorldViewSuite extends WordSpec with Matchers {
           aa,
           CurrentClusterState(SortedSet(aa, bb), seenBy = Set(aa.address, bb.address)),
         )
-        .indirectlyConnectedMember(bb)
-        .unreachableMember(bb)
+        .withIndirectlyConnectedMember(bb)
+        .withUnreachableMember(bb)
 
       w1.reachableNodes.map(_.member) should ===(Set(aa))
       w1.unreachableNodes.map(_.member) should ===(Set(bb))
@@ -261,8 +261,8 @@ class WorldViewSuite extends WordSpec with Matchers {
           aa,
           CurrentClusterState(SortedSet(aa, bb), Set(aa), seenBy = Set(aa.address, bb.address)),
         )
-        .indirectlyConnectedMember(aa)
-        .unreachableMember(aa)
+        .withIndirectlyConnectedMember(aa)
+        .withUnreachableMember(aa)
 
       w2.reachableNodes.map(_.member) should ===(Set(bb))
       w2.unreachableNodes.map(_.member) should ===(Set(aa))
@@ -274,7 +274,7 @@ class WorldViewSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, removed), Set(removed), seenBy = Set(aa.address, bb.address))
       )
 
-      val w1 = w.memberRemoved(removed, Set.empty)
+      val w1 = w.removeMember(removed, Set.empty)
       w1.nodes.map(_.member) should ===(Set(aa, bb))
       w1.removedMembersSeenBy.keySet should ===(Set(removed.uniqueAddress))
     }
@@ -285,7 +285,7 @@ class WorldViewSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, removed, cc), Set(cc), seenBy = Set(aa.address, bb.address))
       )
 
-      val w1 = w.memberRemoved(removed, Set.empty)
+      val w1 = w.removeMember(removed, Set.empty)
       w1.nodes.map(_.member) should ===(Set(aa, cc))
       w1.removedMembersSeenBy.keySet should ===(Set(removed.uniqueAddress))
     }
@@ -296,9 +296,9 @@ class WorldViewSuite extends WordSpec with Matchers {
           aa,
           CurrentClusterState(SortedSet(aa, removed, cc), Set(cc), seenBy = Set(aa.address, bb.address))
         )
-        .indirectlyConnectedMember(removed)
+        .withIndirectlyConnectedMember(removed)
 
-      val w1 = w.memberRemoved(removed, Set.empty)
+      val w1 = w.removeMember(removed, Set.empty)
       w1.nodes.map(_.member) should ===(Set(aa, cc))
       w1.removedMembersSeenBy.keySet should ===(Set(removed.uniqueAddress))
     }
@@ -309,7 +309,7 @@ class WorldViewSuite extends WordSpec with Matchers {
           aa,
           CurrentClusterState(SortedSet(aa, bb), seenBy = Set(aa.address, bb.address))
         )
-        .memberRemoved(removed, Set.empty)
+        .removeMember(removed, Set.empty)
 
       w.members should ===(Set(aa, bb))
       w.removedMembers should ===(Set(removed.uniqueAddress))

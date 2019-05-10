@@ -28,7 +28,7 @@ object SymmetricSplitScenario {
                                            partition.tail.map(_ -> Set.empty[Address]).toMap)
 
       otherNodes.foldLeft[WorldView](worldView0) {
-        case (worldView, node) => worldView.unreachableMember(node.member)
+        case (worldView, node) => worldView.withUnreachableMember(node.member)
       }
     }
 
