@@ -4,3 +4,5 @@
 target/
 *.tgz
 worksheet.sc
+**/.bloop
+.metals/
