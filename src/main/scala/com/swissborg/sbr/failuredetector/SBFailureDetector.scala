@@ -294,10 +294,10 @@ object SBFailureDetector {
   private case object LocallyUnreachable extends LocalReachability
 
   /**
-    * Acknowledgment of a contention message,
-    *
-    * Warning: `from` must containing the address!
-    */
+   * Acknowledgment of a contention message,
+   *
+   * Warning: `from` must containing the address!
+   */
   final case class ContentionAck(from: ActorPath, observer: Observer, subject: Subject, version: Version)
 
   object ContentionAck {
