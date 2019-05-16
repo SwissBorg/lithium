@@ -52,6 +52,7 @@ libraryDependencies ++= Seq(
   "eu.timepit"                 %% "refined-shapeless"         % refinedVersion,
   "com.typesafe.akka"          %% "akka-actor"                % akkaVersion,
   "com.typesafe.akka"          %% "akka-cluster"              % akkaVersion,
+  "com.typesafe.akka"          %% "akka-cluster"              % akkaVersion,
   "com.typesafe.akka"          %% "akka-cluster-tools"        % akkaVersion,
   "com.typesafe.akka"          %% "akka-distributed-data"     % akkaVersion,
   "com.typesafe.akka"          %% "akka-stream"               % akkaVersion,
@@ -65,6 +66,7 @@ libraryDependencies ++= Seq(
   "com.github.julien-truffaut" %% "monocle-core"              % monocleVersion,
   "com.github.pureconfig"      %% "pureconfig"                % pureConfigVersion,
   "com.github.scopt"           %% "scopt"                     % scoptVersion,
+  "com.thesamet.scalapb"       %% "scalapb-runtime"           % scalapb.compiler.Version.scalapbVersion % "protobuf",
   "com.github.julien-truffaut" %% "monocle-law"               % monocleVersion % Test,
   "com.typesafe.akka"          %% "akka-testkit"              % akkaVersion % Test,
   "com.typesafe.akka"          %% "akka-multi-node-testkit"   % akkaVersion % Test,
@@ -82,8 +84,9 @@ lazy val root = (project in file("."))
 //wartremoverErrors in (Compile, compile) ++= Warts.allBut(Wart.Any, Wart.Nothing, Wart.ImplicitParameter, Wart.Recursion)
 testOptions in Test += Tests.Argument("-oF")
 
-// SemanticDB
-//addCompilerPlugin(scalafixSemanticdb)
+PB.targets in Compile := Seq(
+  scalapb.gen() -> (sourceManaged in Compile).value
+)
 
 coverageEnabled := true
 

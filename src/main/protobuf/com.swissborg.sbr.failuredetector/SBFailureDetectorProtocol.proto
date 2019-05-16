@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package com.swissborg.sbr.failuredetector.SBFailureDetectorProtocol;
+
+import "scalapb/scalapb.proto";
+import "google/protobuf/wrappers.proto";
+
+option (scalapb.options) = {
+    single_file: true
+    flat_package: true
+};
+
+message Contention {
+    UniqueAddress protester = 1;
+    UniqueAddress observer = 2;
+    UniqueAddress subject = 3;
+    google.protobuf.Int64Value version = 4;
+}
+
+message ContentionAck {
+    ActorPath from = 1;
+    UniqueAddress observer = 2;
+    UniqueAddress subject = 3;
+    google.protobuf.Int64Value version = 4;
+}
+
+message Address {
+    google.protobuf.StringValue protocol = 1;
+    google.protobuf.StringValue system = 2;
+    google.protobuf.StringValue hostname = 3;
+    google.protobuf.Int32Value port = 4;
+}
+
+message UniqueAddress {
+    Address address = 1;
+    google.protobuf.Int64Value uid = 2;
+}
+
+message ActorPath {
+    google.protobuf.StringValue path = 1;
+}
