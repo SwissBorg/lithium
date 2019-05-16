@@ -56,8 +56,8 @@ object DowningProviderImpl {
     // TODO handle errors
     def apply(system: ActorSystem): Config =
       new Config(
-        system.settings.config.getString("akka.cluster.split-brain-resolver.active-strategy"),
-        FiniteDuration(system.settings.config.getDuration("akka.cluster.split-brain-resolver.stable-after").toMillis,
+        system.settings.config.getString("com.swissborg.sbr.active-strategy"),
+        FiniteDuration(system.settings.config.getDuration("com.swissborg.sbr.stable-after").toMillis,
                        TimeUnit.MILLISECONDS)
 //        FiniteDuration(
 //          system.settings.config.getDuration("akka.cluster.split-brain-resolver.down-all-when-unstable").toMillis,

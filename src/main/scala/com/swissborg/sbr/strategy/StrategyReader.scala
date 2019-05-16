@@ -24,7 +24,7 @@ trait StrategyReader[A] {
    */
   def load(implicit R: Derivation[ConfigReader[A]]): Either[ConfigReaderError, A] =
     pureconfig
-      .loadConfig[A](s"akka.cluster.split-brain-resolver.$name")
+      .loadConfig[A](s"com.swissborg.sbr.$name")
       .leftMap(ConfigReaderError)
 }
 
