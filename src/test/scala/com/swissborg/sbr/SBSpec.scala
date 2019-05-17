@@ -2,7 +2,7 @@ package com.swissborg.sbr
 
 import cats.tests.StrictCatsEquality
 import org.scalactic.anyvals._
-import org.scalatest.{Matchers, WordSpec, WordSpecLike}
+import org.scalatest.{Matchers, WordSpecLike}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 trait SBSpec
