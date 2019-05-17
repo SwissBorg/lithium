@@ -1,6 +1,6 @@
 package com.swissborg.sbr
 
-import akka.actor.Address
+import akka.actor.{ActorPath, Address}
 import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus._
 import akka.cluster.swissborg.AkkaArbitraryInstances._
@@ -8,11 +8,9 @@ import akka.cluster.{Member, MemberStatus, UniqueAddress, Reachability => _}
 import cats.Order
 import cats.data.{NonEmptyMap, NonEmptySet}
 import com.swissborg.sbr.failuredetector.SBFailureDetector._
-import eu.timepit.refined.numeric.NonNegative
-import eu.timepit.refined.refineV
 import org.scalacheck.Arbitrary
 import org.scalacheck.Arbitrary._
-import org.scalacheck.Gen._
+import org.scalacheck.Gen
 import shapeless.tag
 import shapeless.tag.@@
 
@@ -79,7 +77,7 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
   )
 
   implicit val arbMember: Arbitrary[Member] = Arbitrary(
-    oneOf(
+    Gen.oneOf(
       arbJoiningMember.arbitrary,
       arbWeaklyUpMember.arbitrary,
       arbUpMember.arbitrary,
@@ -135,7 +133,7 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
   )
 
   implicit val arbNode: Arbitrary[Node] =
-    Arbitrary(oneOf(arbReachableNode.arbitrary, arbUnreachableNode.arbitrary, arbIndirectlyConnectedNode.arbitrary))
+    Arbitrary(Gen.oneOf(arbReachableNode.arbitrary, arbUnreachableNode.arbitrary, arbIndirectlyConnectedNode.arbitrary))
 
   implicit val arbReachableNode: Arbitrary[ReachableNode] =
     Arbitrary(arbMember.arbitrary.map(ReachableNode(_)))
@@ -154,15 +152,15 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
 
   implicit val arbAddress: Arbitrary[Address] =
     Arbitrary(for {
-      protocol <- identifier
-      system   <- identifier
-      host     <- identifier
-      port     <- chooseNum(0, Integer.MAX_VALUE).map(refineV[NonNegative](_).right.get)
-    } yield Address(protocol, system, Some(host), Some(port.value)))
+      protocol <- Gen.identifier
+      system   <- Gen.identifier
+      host     <- Gen.identifier
+      port     <- Gen.chooseNum(0, Integer.MAX_VALUE)
+    } yield Address(protocol, system, Some(host), Some(port)))
 
   implicit val arbMemberStatus: Arbitrary[MemberStatus] =
     Arbitrary(
-      oneOf(Joining, WeaklyUp, Up, Leaving, Exiting, Down, Removed)
+      Gen.oneOf(Joining, WeaklyUp, Up, Leaving, Exiting, Down, Removed)
     )
 
   implicit val arbMemberJoined: Arbitrary[MemberJoined] = Arbitrary(
@@ -194,7 +192,7 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
   )
 
   implicit val arbMemberEvent: Arbitrary[MemberEvent] = Arbitrary(
-    oneOf(
+    Gen.oneOf(
       arbMemberJoined.arbitrary,
       arbMemberUp.arbitrary,
       arbMemberLeft.arbitrary,
@@ -214,7 +212,7 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
   )
 
   implicit val arbReachabilityEvent: Arbitrary[ReachabilityEvent] = Arbitrary(
-    oneOf(arbUnreachableMember.arbitrary, arbReachableMember.arbitrary)
+    Gen.oneOf(arbUnreachableMember.arbitrary, arbReachableMember.arbitrary)
   )
 
   implicit val arbDownReachable: Arbitrary[DownReachable] = Arbitrary(arbWorldView.arbitrary.map(DownReachable(_)))
@@ -227,17 +225,36 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
 
   implicit val arbDownThese: Arbitrary[DownThese] = Arbitrary(
     for {
-      decision1 <- oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary, arbDownSelf.arbitrary) // todo also gen downtheses?
-      decision2 <- oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary, arbDownSelf.arbitrary)
+      decision1 <- Gen
+        .oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary, arbDownSelf.arbitrary) // todo also gen downtheses?
+      decision2 <- Gen.oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary, arbDownSelf.arbitrary)
     } yield DownThese(decision1, decision2)
   )
 
   implicit val arbStrategyDecision: Arbitrary[StrategyDecision] = Arbitrary(
-    oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary, arbDownSelf.arbitrary, arbDownThese.arbitrary)
+    Gen.oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary, arbDownSelf.arbitrary, arbDownThese.arbitrary)
   )
 
   implicit val arbSBRReachability: Arbitrary[SBRReachabilityStatus] = Arbitrary(
-    oneOf(Reachable, Unreachable, IndirectlyConnected)
+    Gen.oneOf(Reachable, Unreachable, IndirectlyConnected)
+  )
+
+  implicit val arbContention: Arbitrary[Contention] = Arbitrary(
+    for {
+      protester <- arbitrary[UniqueAddress]
+      observer  <- arbitrary[UniqueAddress]
+      subject   <- arbitrary[UniqueAddress]
+      version   <- arbitrary[Long]
+    } yield Contention(protester, observer, subject, version)
+  )
+
+  implicit val arbContentionAck: Arbitrary[ContentionAck] = Arbitrary(
+    for {
+      from     <- arbitrary[ActorPath]
+      observer <- arbitrary[UniqueAddress]
+      subject  <- arbitrary[UniqueAddress]
+      version  <- arbitrary[Long]
+    } yield ContentionAck(from, observer, subject, version)
   )
 }
 

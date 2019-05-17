@@ -9,16 +9,17 @@ import com.swissborg.sbr.failuredetector.{SBFailureDetectorProtocol => fd}
 class SBMessageSerializer extends SerializerWithStringManifest {
   import SBMessageSerializer._
 
-  override def identifier: Int = 628347598
+  override val identifier: Int = 628347598
 
   override def toBinary(o: AnyRef): Array[Byte] = o match {
     case contention: Contention       => contentionToProtoByteArray(contention)
     case contentionAck: ContentionAck => contentionAckToProtoByteArray(contentionAck)
+    case _                            => throw new IllegalArgumentException(s"$o")
   }
 
   override def fromBinary(bytes: Array[Byte], manifest: String): AnyRef = manifest match {
-    case ContentionManifest    => contentionFromProtoByteArray(bytes)
-    case ContentionAckManifest => contentionAckFromProtoByteArray(bytes)
+    case `ContentionManifest`    => contentionFromProtoByteArray(bytes)
+    case `ContentionAckManifest` => contentionAckFromProtoByteArray(bytes)
   }
 
   override def manifest(o: AnyRef): String = o match {

@@ -4,6 +4,7 @@ import akka.actor._
 import akka.cluster.ClusterEvent._
 import akka.cluster._
 import akka.cluster.swissborg.SBReachability
+import cats.Eq
 import cats.data.StateT._
 import cats.data.{OptionT, StateT}
 import cats.effect.SyncIO
@@ -12,14 +13,12 @@ import com.swissborg.sbr.Util.pathAtAddress
 import com.swissborg.sbr.failuredetector.SBFailureDetectorState.{Observer, Subject, Version}
 import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.reporter.SBReporter.IndirectlyConnectedMember
-import com.swissborg.sbr.{Converter, IndirectlyConnectedNode, SBReachabilityChanged}
+import com.swissborg.sbr.{Converter, SBReachabilityChanged}
 
 import scala.concurrent.duration._
 
 /**
- * Actor reporting the reachability status of cluster members based on
- * `akka.cluster.Reachability`. Essentially, it adds the [[IndirectlyConnectedNode]]
- * status to the reachability events.
+ * Actor reporting the reachability status of cluster members based on `akka.cluster.Reachability`.
  *
  * A node is indirectly connected when only some of its observers see it as unreachable.
  * This might happen for instance when the link between two nodes is faulty,
@@ -303,6 +302,9 @@ object SBFailureDetector {
   object ContentionAck {
     def fromContention(contention: Contention, from: ActorPath): ContentionAck =
       ContentionAck(from, contention.observer, contention.subject, contention.version)
+
+    implicit val contentionAckEq: Eq[ContentionAck] = (x: ContentionAck, y: ContentionAck) =>
+      x.from === y.from && x.observer === y.observer && x.subject === y.subject && x.version === y.version
   }
 
   final case class Contention(protester: UniqueAddress, observer: Observer, subject: Subject, version: Version)

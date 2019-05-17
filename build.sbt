@@ -7,7 +7,6 @@ name := "akka-sbr"
 version := "0.0.1"
 
 scalaVersion := "2.12.8"
-sbtVersion := "1.2.1"
 
 scalacOptions ++=
   Seq(
