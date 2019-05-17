@@ -4,7 +4,6 @@ import akka.actor.Address
 import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.MemberStatus.Up
 import akka.cluster.swissborg.TestMember
-import com.swissborg.sbr.strategies.staticquorum.StaticQuorum.TooManyNodes
 import com.swissborg.sbr.{DownReachable, DownUnreachable, Idle, WorldView}
 import eu.timepit.refined.auto._
 import org.scalatest.{Matchers, WordSpec}
@@ -107,20 +106,20 @@ class StaticQuorumSuite extends WordSpec with Matchers {
       StaticQuorum("role", 2).takeDecision(w) should ===(Right(DownReachable(w)))
     }
 
-    "fail when the quorum size is less than the majority of considered nodes" in {
+    "down the cluster when the quorum size is less than the majority of considered nodes" in {
       val w = WorldView.fromSnapshot(
         aa,
         CurrentClusterState(SortedSet(aa, bb, cc), seenBy = Set.empty)
       )
 
-      StaticQuorum("", 1).takeDecision(w) should ===(Left(TooManyNodes))
+      StaticQuorum("", 1).takeDecision(w) should ===(Right(DownReachable(w)))
 
       val w1 = WorldView.fromSnapshot(
         aa,
         CurrentClusterState(SortedSet(aa, bb, cc, dd), seenBy = Set.empty)
       )
 
-      StaticQuorum("", 2).takeDecision(w1) should ===(Left(TooManyNodes))
+      StaticQuorum("", 2).takeDecision(w1) should ===(Right(DownReachable(w1)))
     }
   }
 }
