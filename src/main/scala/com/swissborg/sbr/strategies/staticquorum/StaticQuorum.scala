@@ -2,7 +2,6 @@ package com.swissborg.sbr.strategies.staticquorum
 
 import cats.implicits._
 import com.swissborg.sbr._
-import com.swissborg.sbr.strategies.staticquorum.StaticQuorum.TooManyNodes
 import com.swissborg.sbr.strategy.{Strategy, StrategyReader}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
@@ -11,7 +10,10 @@ import eu.timepit.refined.numeric._
 final case class StaticQuorum(role: String, quorumSize: Int Refined Positive) extends Strategy {
   override def takeDecision(worldView: WorldView): Either[Throwable, StrategyDecision] =
     if (worldView.consideredNodesWithRole(role).size > quorumSize * 2 - 1) {
-      TooManyNodes.asLeft
+      // The quorumSize is too small for the cluster size,
+      // more than one side might be a quorum and create
+      // a split-brain. In this case we down the cluster.
+      DownReachable(worldView).asRight
     } else {
       ((ReachableNodes(worldView, quorumSize, role), UnreachableNodes(worldView, quorumSize, role)) match {
 
@@ -51,5 +53,4 @@ final case class StaticQuorum(role: String, quorumSize: Int Refined Positive) ex
 
 object StaticQuorum extends StrategyReader[StaticQuorum] {
   override val name: String = "static-quorum"
-  case object TooManyNodes extends Throwable("Aborting decision. There are too many nodes in the cluster.")
 }
