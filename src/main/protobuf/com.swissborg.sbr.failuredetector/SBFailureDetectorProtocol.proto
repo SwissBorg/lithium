@@ -10,32 +10,29 @@ option (scalapb.options) = {
     flat_package: true
 };
 
+message SBFailureDetectorMsg {
+    oneof Payload {
+        Contention contention = 1;
+        ContentionAck ack = 2;
+    }
+}
+
 message Contention {
-    UniqueAddress protester = 1;
-    UniqueAddress observer = 2;
-    UniqueAddress subject = 3;
+    AkkaInternal protester = 1;
+    AkkaInternal observer = 2;
+    AkkaInternal subject = 3;
     google.protobuf.Int64Value version = 4;
 }
 
 message ContentionAck {
-    ActorPath from = 1;
-    UniqueAddress observer = 2;
-    UniqueAddress subject = 3;
+    AkkaInternal from = 1;
+    AkkaInternal observer = 2;
+    AkkaInternal subject = 3;
     google.protobuf.Int64Value version = 4;
 }
 
-message Address {
-    google.protobuf.StringValue protocol = 1;
-    google.protobuf.StringValue system = 2;
-    google.protobuf.StringValue hostname = 3;
-    google.protobuf.Int32Value port = 4;
-}
-
-message UniqueAddress {
-    Address address = 1;
-    google.protobuf.Int64Value uid = 2;
-}
-
-message ActorPath {
-    google.protobuf.StringValue path = 1;
+message AkkaInternal {
+    int32 serializerId = 1;
+    google.protobuf.StringValue manifest = 2;
+    bytes bytes = 3;
 }

@@ -1,24 +1,27 @@
 package com.swissborg.sbr.protobuf
 
+import akka.actor.ActorSystem
+import akka.serialization.SerializationExtension
+import akka.testkit.TestKit
 import com.swissborg.sbr.SBSpec
 import com.swissborg.sbr.failuredetector.SBFailureDetector.{Contention, ContentionAck}
-import com.swissborg.sbr.implicits._
 
-class SBMessageSerializerSpec extends SBSpec {
-  private val serializer = new SBMessageSerializer
+class SBMessageSerializerSpec extends TestKit(ActorSystem("helo")) with SBSpec {
+  private val contentionSerializer = SerializationExtension(system).findSerializerFor(classOf[Contention])
+  private val ackSerializer        = SerializationExtension(system).findSerializerFor(classOf[ContentionAck])
 
   "SBMessageSerializer" must {
     "Contention round-trip" in {
       forAll { contention: Contention =>
-        val bytes = serializer.toBinary(contention)
-        serializer.fromBinary(bytes, serializer.manifest(contention)) shouldBe contention
+        val bytes = contentionSerializer.toBinary(contention)
+        contentionSerializer.fromBinary(bytes) shouldBe contention
       }
     }
 
     "ContentionAck round-trip" in {
       forAll { contentionAck: ContentionAck =>
-        val bytes = serializer.toBinary(contentionAck)
-        serializer.fromBinary(bytes, serializer.manifest(contentionAck)) match {
+        val bytes = ackSerializer.toBinary(contentionAck)
+        ackSerializer.fromBinary(bytes) match {
           case ack: ContentionAck => ack should ===(contentionAck)
           case other              => fail(s"$other")
         }
