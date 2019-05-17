@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package com.swissborg.sbr.failuredetector.SBFailureDetectorProtocol;
+
+import "scalapb/scalapb.proto";
+import "google/protobuf/wrappers.proto";
+
+option (scalapb.options) = {
+    single_file: true
+    flat_package: true
+};
+
+message SBFailureDetectorMsg {
+    oneof Payload {
+        Contention contention = 1;
+        ContentionAck ack = 2;
+    }
+}
+
+message Contention {
+    AkkaInternal protester = 1;
+    AkkaInternal observer = 2;
+    AkkaInternal subject = 3;
+    google.protobuf.Int64Value version = 4;
+}
+
+message ContentionAck {
+    AkkaInternal from = 1;
+    AkkaInternal observer = 2;
+    AkkaInternal subject = 3;
+    google.protobuf.Int64Value version = 4;
+}
+
+message AkkaInternal {
+    int32 serializerId = 1;
+    google.protobuf.StringValue manifest = 2;
+    bytes bytes = 3;
+}

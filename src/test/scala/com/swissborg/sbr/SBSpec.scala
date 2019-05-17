@@ -2,11 +2,11 @@ package com.swissborg.sbr
 
 import cats.tests.StrictCatsEquality
 import org.scalactic.anyvals._
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.{Matchers, WordSpec, WordSpecLike}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 trait SBSpec
-    extends WordSpec
+    extends WordSpecLike
     with Matchers
     with ScalaCheckPropertyChecks
     with StrictCatsEquality
