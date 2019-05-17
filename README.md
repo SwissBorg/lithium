@@ -16,23 +16,25 @@ The reason for this is that a node can move to those states during network
 partitions and as result potentially not seen by all the partitions.
 
 The `stable-after` duration should be chosen longer than the time it takes
-for shards and singletons to move from non-surviving to surviving partitions.
-So that persistent actors have the time to migrate.
+to gossip cluster membership changes. Moreover, it should be long enough 
+so that persistent actors are stopped before they are started on another 
+node.
 
 ```hocon
 akka.cluster {
-    downing-provider-class = "akka.cluster.sbr.DowningProviderImpl"
-    split-brain-resolver {
-        # The name of the strategy to use for split-brain resolution.
-        # Available: static-quorum, keep-majority, keep-referee, keep-oldest.
-        active-strategy = off
-     
-        # Duration during which the cluster must be stable before taking
-        # action on the network-partition. The duration must be chosen as
-        # longer than the time it takes for singletons and shards to be 
-        # moved to surviving partitions.
-        stable-after = 30s
-    }
+  downing-provider-class = "akka.cluster.sbr.DowningProviderImpl"
+}
+
+com.swissborg.sbr {
+  # The name of the strategy to use for split-brain resolution.
+  # Available: static-quorum, keep-majority, keep-referee, keep-oldest.
+  active-strategy = off
+
+  # Duration during which the cluster must be stable before taking
+  # action on the network-partition. The duration must be chosen as
+  # longer than the time it takes for singletons and shards to be 
+  # moved to surviving partitions.
+  stable-after = 30s
 }
 ```
 
@@ -60,15 +62,15 @@ and not enough nodes remain.
 
 #### Configuration
 ```hocon
-akka.cluster.split-brain-resolver {
-    active-strategy = "static-quorum"
-    static-quorum {
-        # The minimum number of members a partition must have.
-        quorum-size = undefined
-        
-        # Take the decision based only on members with this role.
-        role = ""
-    }
+com.swissborg.sbr {
+  active-strategy = "static-quorum"
+  static-quorum {
+    # The minimum number of members a partition must have.
+    quorum-size = undefined
+    
+    # Take the decision based only on members with this role.
+    role = ""
+  }
 }
 ```
 
@@ -85,12 +87,12 @@ they will down themselves and down the entire cluster.
 
 #### Configuration
 ```hocon
-akka.cluster.split-brain-resolver {
-    active-strategy = "keep-majority"
-    keep-majority {
-        # Take the decision based only on members with this role.
-        role = ""
-    }
+com.swissborg.sbr {
+  active-strategy = "keep-majority"
+  keep-majority {
+    # Take the decision based only on members with this role.
+    role = ""
+  }
 }
 ```
 
@@ -106,16 +108,16 @@ strictly less nodes than the configure `down-all-if-less-than-nodes`.
 
 #### Configuration
 ```hocon
-akka.cluster.split-brain-resolver {
-    active-strategy = "keep-referee"
-    keep-referee {
-        # Address of the member in the format "akka.tcp://system@host:port"
-        address = ""
-        
-        # The minimum number of nodes the partition containing the 
-        # referee must contain. Otherwise, the cluster is downed.
-        down-all-if-less-than-nodes = 1
-    }
+com.swissborg.sbr {
+  active-strategy = "keep-referee"
+  keep-referee {
+    # Address of the member in the format "akka.tcp://system@host:port"
+    address = ""
+    
+    # The minimum number of nodes the partition containing the 
+    # referee must contain. Otherwise, the cluster is downed.
+    down-all-if-less-than-nodes = 1
+  }
 }
 ```
 
@@ -135,15 +137,15 @@ it is cut-off from the rest. Otherwise, all the other nodes will down themselves
 #### Configuration
 
 ```hocon
-akka.cluster.split-brain-resolver {
-    active-strategy = "keep-oldest"
-    keep-oldest {
-        # When enabled, downs the oldest member when alone.
-        down-if-alone = on
-        
-        # Take the decision based only on members with this role.
-        role = ""
-    }
+com.swissborg.sbr {
+  active-strategy = "keep-oldest"
+  keep-oldest {
+    # When enabled, downs the oldest member when alone.
+    down-if-alone = on
+    
+    # Take the decision based only on members with this role.
+    role = ""
+  }
 }
 ```
 
