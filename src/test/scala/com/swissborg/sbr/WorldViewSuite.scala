@@ -19,6 +19,8 @@ class WorldViewSuite extends WordSpec with Matchers {
   val dd = TestMember(Address("akka.tcp", "sys", "d", 2552), Up)
   val ee = TestMember(Address("akka.tcp", "sys", "e", 2552), Up)
 
+  val aa0 = TestMember(Address("akka.tcp", "sys", "a", 2552), Removed)
+
   val joining  = TestMember(Address("akka.tcp", "sys", "joining", 2552), Joining)
   val weaklyUp = TestMember(Address("akka.tcp", "sys", "weaklyUp", 2552), WeaklyUp)
   val up       = TestMember(Address("akka.tcp", "sys", "up", 2552), Up)
@@ -333,6 +335,26 @@ class WorldViewSuite extends WordSpec with Matchers {
         .updateMember(aa.copy(Leaving), Set(aa.address))
 
       w.selfStatus should ===(Status(aa.copy(Leaving), Reachable, Set(aa.address)))
+    }
+
+    "get the latest state of selfMember from the snapshot" in {
+      val w = WorldView.fromSnapshot(
+        aa0,
+        CurrentClusterState(SortedSet(aa, bb, cc, dd, removed),
+                            Set(dd),
+                            seenBy = Set(aa.address, bb.address, cc.address))
+      )
+
+      w.selfStatus.member.status should ===(aa.status)
+    }
+
+    "use the provided selfMember if not in the snapshot" in {
+      val w = WorldView.fromSnapshot(
+        aa0,
+        CurrentClusterState(SortedSet(bb, cc, dd, removed), Set(dd), seenBy = Set.empty)
+      )
+
+      w.selfStatus.member.status should ===(aa0.status)
     }
   }
 }
