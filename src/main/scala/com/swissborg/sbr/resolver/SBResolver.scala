@@ -52,7 +52,7 @@ class SBResolver(_strategy: Strategy, stableAfter: FiniteDuration) extends Actor
         .map(_ === selfAddress)
         .ifM(
           down(decision.nodesToDown) >> OptionT.liftF(SyncIO(log.debug("Executing decision: {}", decision.simplify))),
-          OptionT.pure(())
+          OptionT.liftF(SyncIO(log.debug("Cannot take a decision. Not the leader.")))
         )
         .value
         .void
