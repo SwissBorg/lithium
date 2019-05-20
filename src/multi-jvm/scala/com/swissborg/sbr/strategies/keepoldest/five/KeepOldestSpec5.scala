@@ -20,7 +20,7 @@ class KeepOldestSpec5MultiJvmNode5 extends KeepOldestSpec5
  */
 class KeepOldestSpec5 extends FiveNodeSpec("KeepReferee", KeepOldestSpecFiveNodeConfig) {
   override def assertions(): Unit =
-    "Unidirectional link failure" in within(60 seconds) {
+    "handle indirectly-connected nodes" in within(60 seconds) {
       runOn(node1) {
         val _ = testConductor.blackhole(node4, node5, Direction.Receive).await
       }

@@ -18,7 +18,7 @@ class KeepOldestSpec4MultiJvmNode3 extends KeepOldestSpec4
  */
 class KeepOldestSpec4 extends ThreeNodeSpec("KeepOldest", KeepOldestSpecThreeNodeConfig) {
   override def assertions(): Unit =
-    "Unidirectional link failure" in within(120 seconds) {
+    "handle indirectly-connected nodes" in within(120 seconds) {
       runOn(node1) {
         val _ = testConductor.blackhole(node1, node2, Direction.Receive).await
       }
