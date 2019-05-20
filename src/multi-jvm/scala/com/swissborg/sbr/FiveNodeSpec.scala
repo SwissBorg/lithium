@@ -27,33 +27,56 @@ abstract class FiveNodeSpec(name: String, config: FiveNodeSpecConfig)
 
   override def initialParticipants: Int = roles.size
 
-  s"$name" - {
-    "Start the cluster" in within(60 seconds) {
+  s"$name" must {
+    "start node-1" in within(30 seconds) {
       runOn(node1) {
         Cluster(system).join(addressOf(node1))
         waitForUp(node1)
       }
 
-      enterBarrier("node1-up")
+      enterBarrier("node-1-up")
+    }
 
-      runOn(node2, node3, node4, node5) {
+    "start node-2" in within(30 seconds) {
+      runOn(node2) {
         Cluster(system).join(addressOf(node1))
+        waitForUp(node1, node2)
       }
 
-      enterBarrier("cluster-created")
+      enterBarrier("node-2-up")
+    }
 
-      runOn(node1, node2, node3, node4, node5) {
+    "start node-3" in within(30 seconds) {
+      runOn(node3) {
+        Cluster(system).join(addressOf(node1))
+        waitForUp(node1, node2, node3)
+      }
+
+      enterBarrier("node-3-up")
+    }
+
+    "start node-4" in within(30 seconds) {
+      runOn(node4) {
+        Cluster(system).join(addressOf(node1))
+        waitForUp(node1, node2, node3, node4)
+      }
+
+      enterBarrier("node-4-up")
+    }
+
+    "start node-5" in within(30 seconds) {
+      runOn(node5) {
+        Cluster(system).join(addressOf(node1))
         waitForUp(node1, node2, node3, node4, node5)
       }
 
-      enterBarrier("cluster-up")
+      enterBarrier("node-5-up")
     }
 
     assertions()
   }
 
   private val addresses: Map[RoleName, Address] = roles.map(r => r -> node(r).address).toMap
-  addresses.foreach(a => log.debug(s"$a"))
 
   private def addressOf(roleName: RoleName): Address = addresses(roleName)
 
@@ -103,7 +126,7 @@ abstract class FiveNodeSpec(name: String, config: FiveNodeSpecConfig)
 
       val address = addressOf(role)
       unreachable.isEmpty &&                                              // no unreachable members
-        (members.exists(m => m.address === address && m.status === Down) || // member is down
-          !members.exists(_.address === address)) // member is not in the cluster
+      (members.exists(m => m.address === address && m.status === Down) || // member is down
+      !members.exists(_.address === address)) // member is not in the cluster
     }
 }

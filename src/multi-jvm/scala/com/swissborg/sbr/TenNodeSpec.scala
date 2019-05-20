@@ -32,25 +32,95 @@ abstract class TenNodeSpec(name: String, config: TenNodeSpecConfig)
 
   override def initialParticipants: Int = roles.size
 
-  s"$name" - {
-    "Start the cluster" in within(60 seconds) {
+  s"$name" must {
+    "start node-1" in within(30 seconds) {
       runOn(node1) {
         Cluster(system).join(addressOf(node1))
+        waitForUp(node1)
       }
 
-      enterBarrier("node1-up")
+      enterBarrier("node-1-up")
+    }
 
-      runOn(node2, node3, node4, node5, node6, node7, node8, node9, node10) {
+    "start node-2" in within(30 seconds) {
+      runOn(node2) {
         Cluster(system).join(addressOf(node1))
+        waitForUp(node1, node2)
       }
 
-      enterBarrier("cluster-created")
+      enterBarrier("node-2-up")
+    }
 
-      runOn(node1, node2, node3, node4, node5, node6, node7, node8, node9, node10) {
+    "start node-3" in within(30 seconds) {
+      runOn(node3) {
+        Cluster(system).join(addressOf(node1))
+        waitForUp(node1, node2, node3)
+      }
+
+      enterBarrier("node-3-up")
+    }
+
+    "start node-4" in within(30 seconds) {
+      runOn(node4) {
+        Cluster(system).join(addressOf(node1))
+        waitForUp(node1, node2, node3, node4)
+      }
+
+      enterBarrier("node-4-up")
+    }
+
+    "start node-5" in within(30 seconds) {
+      runOn(node5) {
+        Cluster(system).join(addressOf(node1))
+        waitForUp(node1, node2, node3, node4, node5)
+      }
+
+      enterBarrier("node-5-up")
+    }
+
+    "start node-6" in within(30 seconds) {
+      runOn(node6) {
+        Cluster(system).join(addressOf(node1))
+        waitForUp(node1, node2, node3, node4, node5, node6)
+      }
+
+      enterBarrier("node-6-up")
+    }
+
+    "start node-7" in within(30 seconds) {
+      runOn(node7) {
+        Cluster(system).join(addressOf(node1))
+        waitForUp(node1, node2, node3, node4, node5, node6, node7)
+      }
+
+      enterBarrier("node-7-up")
+    }
+
+    "start node-8" in within(30 seconds) {
+      runOn(node8) {
+        Cluster(system).join(addressOf(node1))
+        waitForUp(node1, node2, node3, node4, node5, node6, node7, node8)
+      }
+
+      enterBarrier("node-8-up")
+    }
+
+    "start node-9" in within(30 seconds) {
+      runOn(node9) {
+        Cluster(system).join(addressOf(node1))
+        waitForUp(node1, node2, node3, node4, node5, node6, node7, node8, node9)
+      }
+
+      enterBarrier("node-9-up")
+    }
+
+    "start node-10" in within(30 seconds) {
+      runOn(node10) {
+        Cluster(system).join(addressOf(node1))
         waitForUp(node1, node2, node3, node4, node5, node6, node7, node8, node9, node10)
       }
 
-      enterBarrier("cluster-up")
+      enterBarrier("node-10-up")
     }
 
     assertions()
