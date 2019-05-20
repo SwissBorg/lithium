@@ -22,10 +22,10 @@ class KeepRefereeSpec7MultiJvmNode10 extends KeepRefereeSpec7
  */
 class KeepRefereeSpec7 extends TenNodeSpec("KeepReferee", KeepRefereeSpecTenNodeConfig) {
   override def assertions(): Unit =
-    "Unidirectional link failure" in within(120 seconds) {
+    "handle indirectly connected nodes" in within(120 seconds) {
       runOn(node1) {
         // Node9 cannot receive node10 messages
-        val _ = testConductor.blackhole(node9, node10, Direction.Receive).await
+        testConductor.blackhole(node9, node10, Direction.Receive).await
       }
 
       enterBarrier("links-disconnected")

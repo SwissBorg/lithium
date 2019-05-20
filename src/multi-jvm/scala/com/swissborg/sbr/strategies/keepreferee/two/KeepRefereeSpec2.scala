@@ -27,7 +27,7 @@ class KeepRefereeSpec2MultiJvmNode5 extends KeepRefereeSpec2
  */
 class KeepRefereeSpec2 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNodeConfig) {
   override def assertions(): Unit =
-    "Three partitions, bidirectional link failure" in within(60 seconds) {
+    "handle a clean network partition" in within(60 seconds) {
       runOn(node1) {
         linksToKillForPartitions(List(List(node1, node2), List(node3), List(node4), List(node5))).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
