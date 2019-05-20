@@ -95,6 +95,12 @@ final case class WorldView private (
   lazy val unreachableNodes: Set[UnreachableNode] = nodes.collect { case r: UnreachableNode => r }
 
   /**
+   * The indirectly connected nodes with the given role.
+   */
+  def indirectlyConnectedNodesWithRole(role: String): Set[IndirectlyConnectedNode] =
+    if (role.nonEmpty) indirectlyConnectedNodes.filter(_.member.roles.contains(role)) else indirectlyConnectedNodes
+
+  /**
    * All the indirectly connected nodes.
    */
   lazy val indirectlyConnectedNodes: Set[IndirectlyConnectedNode] = nodes.collect {

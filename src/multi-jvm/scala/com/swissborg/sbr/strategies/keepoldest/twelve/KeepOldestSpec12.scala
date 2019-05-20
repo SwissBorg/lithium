@@ -23,7 +23,7 @@ class KeepOldestSpec12MultiJvmNode5 extends KeepOldestSpec12
  */
 class KeepOldestSpec12 extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecDownAloneConfig) {
   override def assertions(): Unit =
-    "down the partition with the oldest node when alone with an unclean network partition" in within(60 seconds) {
+    "down the partition with the oldest node when alone" in within(60 seconds) {
       runOn(node1) {
         linksToKillForPartitions(List(node1, node2) :: List(node3, node4, node5) :: Nil)
           .foreach {
