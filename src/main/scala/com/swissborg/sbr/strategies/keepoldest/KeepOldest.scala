@@ -11,8 +11,6 @@ import com.swissborg.sbr.strategy.{Strategy, StrategyReader}
  * A `role` can be provided (@see [[com.swissborg.sbr.strategies.keepoldest.KeepOldest]]
  * to only take in account the nodes with that role in the decision. This can be useful if there
  * are nodes that are more important than others.
- *
- *
  */
 final case class KeepOldest(downIfAlone: Boolean, role: String) extends Strategy {
 
@@ -26,13 +24,18 @@ final case class KeepOldest(downIfAlone: Boolean, role: String) extends Strategy
       case _: ReachableNode =>
         if (downIfAlone) {
           if (consideredNodes.size === 1) {
-            // The oldest is the only node in the cluster..
+            // The oldest is the only node in the cluster.
             Idle.asRight
-          } else if (worldView.consideredReachableNodesWithRole(role).size === 1) {
-            // The oldest node is cut off from the rest of the cluster.
+          } else if (worldView.consideredReachableNodesWithRole(role).size === 1 &&
+                     worldView.indirectlyConnectedNodesWithRole(role).isEmpty) {
+            // The oldest node is seen as cut off from the rest of the cluster
+            // from the partitions. The other partitions cannot see the indirectly
+            // connected nodes in this partition and think they exist so they have
+            // to be counted.
             DownReachable(worldView).asRight
           } else {
-            // The oldest node is not alone
+            // The oldest node is not alone from the point of view of the other
+            // partitions.
             DownUnreachable(worldView).asRight
           }
         } else {
