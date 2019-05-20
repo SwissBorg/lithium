@@ -265,11 +265,19 @@ object WorldView {
   /**
    * Create a world view based on the `state`.
    */
-  def fromSnapshot(selfMember: Member, state: CurrentClusterState): WorldView = {
-    val w = WorldView.init(selfMember)
+  def fromSnapshot(selfMember: Member, snapshot: CurrentClusterState): WorldView = {
+    val latestSelfMember = snapshot.members.find(_.uniqueAddress === selfMember.uniqueAddress)
+    val otherMembers     = latestSelfMember.fold(snapshot.members)(snapshot.members - _)
+
+    // Initiate the world view with the current
+    // cluster member. The snapshot contains its
+    // latest state. If not, use the provided the
+    // one, which should be a placeholder where
+    // it resides in the removed state.
+    val w = latestSelfMember.fold(WorldView.init(selfMember))(WorldView.init)
 
     // add reachable members to the world view
-    val w1 = (state.members -- state.unreachable).foldLeft(w) {
+    val w1 = (otherMembers -- snapshot.unreachable).foldLeft(w) {
       case (w, member) =>
         member.status match {
           case Removed => w.withReachableMember(member).removeMember(member, Set.empty)
@@ -278,7 +286,7 @@ object WorldView {
     }
 
     // add unreachable members to the world view
-    state.unreachable
+    snapshot.unreachable // selfMember cannot be unreachable
       .foldLeft(w1) {
         case (w, member) =>
           member.status match {
@@ -286,7 +294,7 @@ object WorldView {
             case _       => w.withUnreachableMember(member)
           }
       }
-      .withAllSeenBy(state.seenBy)
+      .withAllSeenBy(snapshot.seenBy)
   }
 
   /**
