@@ -25,26 +25,35 @@ abstract class ThreeNodeSpec(name: String, config: ThreeNodeSpecConfig)
 
   override def initialParticipants: Int = roles.size
 
-  s"$name" - {
-    "Start the cluster" in within(30 seconds) {
+  // Starts the cluster in order so that the oldest
+  // node can always be statically determined in the
+  // tests.
+  s"$name" must {
+    "start node-1" in within(30 seconds) {
       runOn(node1) {
         Cluster(system).join(addressOf(node1))
         waitForUp(node1)
       }
 
-      enterBarrier("node1-up")
+      enterBarrier("node-1-up")
+    }
 
-      runOn(node2, node3) {
+    "start node-2" in within(30 seconds) {
+      runOn(node2) {
         Cluster(system).join(addressOf(node1))
+        waitForUp(node1, node2)
       }
 
-      enterBarrier("cluster-created")
+      enterBarrier("node-2-up")
+    }
 
-      runOn(node1, node2, node3) {
+    "start node-3" in within(30 seconds) {
+      runOn(node3) {
+        Cluster(system).join(addressOf(node1))
         waitForUp(node1, node2, node3)
       }
 
-      enterBarrier("cluster-up")
+      enterBarrier("node-3-up")
     }
 
     assertions()

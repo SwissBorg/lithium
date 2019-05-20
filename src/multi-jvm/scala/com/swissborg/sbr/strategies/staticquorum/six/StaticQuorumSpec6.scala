@@ -66,6 +66,6 @@ class StaticQuorumSpec6 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Co
         waitForSelfDowning
       }
 
-      enterBarrier("node4-5-suicide")
+      enterBarrier("split-brain-resolved")
     }
 }

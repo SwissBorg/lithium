@@ -20,7 +20,7 @@ class KeepOldestSpecMultiJvmNode3 extends KeepOldestSpec
   */
 class KeepOldestSpec extends ThreeNodeSpec("KeepOldest", KeepOldestSpecThreeNodeConfig) {
   override def assertions(): Unit =
-    "Bidirectional link failure" in within(60 seconds) {
+    "handle a network partition" in within(60 seconds) {
       runOn(node1) {
         com.swissborg.sbr.TestUtil.linksToKillForPartitions(List(node1) :: List(node2, node3) :: Nil).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await

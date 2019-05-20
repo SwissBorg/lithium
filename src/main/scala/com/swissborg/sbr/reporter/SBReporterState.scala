@@ -73,8 +73,8 @@ final case class SBReporterState(worldView: WorldView, changeQueue: ChangeQueue)
 }
 
 object SBReporterState {
-  def fromSnapshot(s: CurrentClusterState, selfMember: Member): SBReporterState =
-    reporter.SBReporterState(WorldView.fromSnapshot(selfMember, s), Empty)
+  def fromSnapshot(selfMember: Member, snapshot: CurrentClusterState): SBReporterState =
+    reporter.SBReporterState(WorldView.fromSnapshot(selfMember, snapshot), Empty)
 
   /**
    * Queue accumulating the membership changes.

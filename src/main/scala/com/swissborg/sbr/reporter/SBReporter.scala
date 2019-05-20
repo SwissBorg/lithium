@@ -34,9 +34,9 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration)
   override def receive: Receive = initializing
 
   private def initializing: Receive = {
-    case s: CurrentClusterState =>
+    case snapshot: CurrentClusterState =>
       unstashAll()
-      context.become(active(SBReporterState.fromSnapshot(s, selfMember)))
+      context.become(active(SBReporterState.fromSnapshot(selfMember, snapshot)))
 
     case _ => stash()
   }

@@ -22,7 +22,7 @@ class RoleKeepOldestSpecMultiJvmNode5 extends RoleKeepOldestSpec
  */
 class RoleKeepOldestSpec extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecConfig) {
   override def assertions(): Unit =
-    "Bidirectional link failure" in within(60 seconds) {
+    "handle a network partition" in within(60 seconds) {
       runOn(node1) {
         // Partition with node1 and node2          <- survive (contains oldest node given role)
         // Partition with node3, node4, and node 5 <- killed
@@ -58,6 +58,6 @@ class RoleKeepOldestSpec extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecCo
         waitForSelfDowning
       }
 
-      enterBarrier("node3-4-5-suicide")
+      enterBarrier("split-brain-resolved")
     }
 }
