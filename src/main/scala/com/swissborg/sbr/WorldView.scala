@@ -9,6 +9,7 @@ import cats.implicits._
 import com.swissborg.sbr.WorldView.Status
 import com.swissborg.sbr.failuredetector.SBFailureDetector._
 import com.swissborg.sbr.implicits._
+import io.circe.syntax._
 
 /**
  * Represents the view of the cluster from the point of view of the

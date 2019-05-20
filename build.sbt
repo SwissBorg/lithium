@@ -44,6 +44,7 @@ val protobufJavaVersion        = "3.6.1"
 val scalaPBLensesVersion       = "0.8.4"
 val typesafeConfigVersion      = "1.3.3"
 val logbackVersion             = "1.2.3"
+val circeVersion               = "0.10.0"
 
 // Akka
 libraryDependencies ++= Seq(
@@ -80,6 +81,12 @@ libraryDependencies ++= Seq(
 libraryDependencies ++= Seq(
   "eu.timepit" %% "refined"            % refinedVersion,
   "eu.timepit" %% "refined-pureconfig" % refinedVersion
+)
+
+// Circe
+libraryDependencies ++= Seq(
+  "io.circe" %% "circe-core"    % circeVersion,
+  "io.circe" %% "circe-generic" % circeVersion
 )
 
 // Shapeless

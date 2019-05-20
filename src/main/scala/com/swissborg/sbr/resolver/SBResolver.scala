@@ -10,9 +10,10 @@ import com.swissborg.sbr.reporter.SBReporter
 import com.swissborg.sbr.strategies.Union
 import com.swissborg.sbr.strategies.indirectlyconnected.IndirectlyConnected
 import com.swissborg.sbr.strategy.Strategy
-import com.swissborg.sbr.{Node, StrategyDecision, WorldView}
+import com.swissborg.sbr.{Node, SimpleWorldView, StrategyDecision, WorldView}
 
 import scala.concurrent.duration._
+import io.circe.syntax._
 
 /**
  * Actor resolving split-brain scenarios.
@@ -31,8 +32,8 @@ class SBResolver(_strategy: Strategy, stableAfter: FiniteDuration) extends Actor
   private val strategy    = Union(_strategy, IndirectlyConnected())
 
   override def receive: Receive = {
-    case h @ HandleSplitBrain(worldView) =>
-      log.debug("{}", h)
+    case HandleSplitBrain(worldView) =>
+      log.debug("Handle split-brain:\n{}", SimpleWorldView.fromWorldView(worldView).asJson.noSpaces)
 
       runStrategy(strategy, worldView)
         .leftMap(err => SyncIO(log.error(err, "An error occurred during decision making.")))

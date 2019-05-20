@@ -14,6 +14,8 @@ import com.swissborg.sbr.failuredetector.SBFailureDetectorState.{Observer, Subje
 import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.reporter.SBReporter.IndirectlyConnectedMember
 import com.swissborg.sbr.{Converter, SBReachabilityChanged}
+import io.circe.Encoder
+import io.circe.generic.semiauto._
 
 import scala.concurrent.duration._
 
@@ -269,6 +271,10 @@ object SBFailureDetector {
   def props(sendTo: ActorRef): Props = Props(new SBFailureDetector(sendTo))
 
   sealed abstract class SBRReachabilityStatus
+  object SBRReachabilityStatus {
+    implicit val sbrReachabilityStatusEncoder: Encoder[SBRReachabilityStatus] = deriveEncoder
+  }
+
   final case object Reachable           extends SBRReachabilityStatus
   final case object Unreachable         extends SBRReachabilityStatus
   final case object IndirectlyConnected extends SBRReachabilityStatus
