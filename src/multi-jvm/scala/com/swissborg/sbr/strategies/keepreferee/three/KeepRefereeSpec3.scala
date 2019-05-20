@@ -19,9 +19,9 @@ class KeepRefereeSpec3MultiJvmNode3 extends KeepRefereeSpec3
  */
 class KeepRefereeSpec3 extends ThreeNodeSpec("KeepReferee", KeepRefereeSpecThreeNodeConfig) {
   override def assertions(): Unit =
-    "Unidirectional link failure" in within(60 seconds) {
+    "handle indirectly connected members" in within(60 seconds) {
       runOn(node1) {
-        val _ = testConductor.blackhole(node1, node2, Direction.Receive).await
+        testConductor.blackhole(node1, node2, Direction.Receive).await
       }
 
       enterBarrier("node3-disconnected")

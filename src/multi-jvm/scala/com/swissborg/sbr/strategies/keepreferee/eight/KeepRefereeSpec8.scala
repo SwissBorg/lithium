@@ -23,11 +23,10 @@ class KeepRefereeSpec8MultiJvmNode10 extends KeepRefereeSpec8
  */
 class KeepRefereeSpec8 extends TenNodeSpec("KeepReferee", KeepRefereeSpecTenNodeConfig) {
   override def assertions(): Unit =
-    "Split-brain" in within(120 seconds) {
+    "handle indirectly connected nodes" in within(120 seconds) {
       runOn(node1) {
-        // Node9 cannot receive node10 messages
-        val a = testConductor.blackhole(node9, node10, Direction.Receive).await
-        val b = testConductor.blackhole(node3, node4, Direction.Receive).await
+        testConductor.blackhole(node9, node10, Direction.Receive).await
+        testConductor.blackhole(node3, node4, Direction.Receive).await
       }
 
       enterBarrier("links-disconnected")

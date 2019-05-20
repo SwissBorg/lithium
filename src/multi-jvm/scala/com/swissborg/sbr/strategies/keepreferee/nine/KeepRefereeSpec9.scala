@@ -6,24 +6,15 @@ import com.swissborg.sbr.strategies.keepreferee.KeepRefereeSpecTenNodeConfig
 
 import scala.concurrent.duration._
 
-class KeepRefereeSpec9MultiJvmNode1 extends KeepRefereeSpec9
-
-class KeepRefereeSpec9MultiJvmNode2 extends KeepRefereeSpec9
-
-class KeepRefereeSpec9MultiJvmNode3 extends KeepRefereeSpec9
-
-class KeepRefereeSpec9MultiJvmNode4 extends KeepRefereeSpec9
-
-class KeepRefereeSpec9MultiJvmNode5 extends KeepRefereeSpec9
-
-class KeepRefereeSpec9MultiJvmNode6 extends KeepRefereeSpec9
-
-class KeepRefereeSpec9MultiJvmNode7 extends KeepRefereeSpec9
-
-class KeepRefereeSpec9MultiJvmNode8 extends KeepRefereeSpec9
-
-class KeepRefereeSpec9MultiJvmNode9 extends KeepRefereeSpec9
-
+class KeepRefereeSpec9MultiJvmNode1  extends KeepRefereeSpec9
+class KeepRefereeSpec9MultiJvmNode2  extends KeepRefereeSpec9
+class KeepRefereeSpec9MultiJvmNode3  extends KeepRefereeSpec9
+class KeepRefereeSpec9MultiJvmNode4  extends KeepRefereeSpec9
+class KeepRefereeSpec9MultiJvmNode5  extends KeepRefereeSpec9
+class KeepRefereeSpec9MultiJvmNode6  extends KeepRefereeSpec9
+class KeepRefereeSpec9MultiJvmNode7  extends KeepRefereeSpec9
+class KeepRefereeSpec9MultiJvmNode8  extends KeepRefereeSpec9
+class KeepRefereeSpec9MultiJvmNode9  extends KeepRefereeSpec9
 class KeepRefereeSpec9MultiJvmNode10 extends KeepRefereeSpec9
 
 /**
@@ -32,10 +23,10 @@ class KeepRefereeSpec9MultiJvmNode10 extends KeepRefereeSpec9
  */
 class KeepRefereeSpec9 extends TenNodeSpec("StaticQuorum", KeepRefereeSpecTenNodeConfig) {
   override def assertions(): Unit =
-    "Unidirectional link failure" in within(120 seconds) {
+    "handle indirectly connected nodes" in within(120 seconds) {
       runOn(node1) {
-        val a = testConductor.blackhole(node8, node9, Direction.Receive).await
-        val b = testConductor.blackhole(node9, node10, Direction.Receive).await
+        testConductor.blackhole(node8, node9, Direction.Receive).await
+        testConductor.blackhole(node9, node10, Direction.Receive).await
       }
 
       enterBarrier("links-disconnected")

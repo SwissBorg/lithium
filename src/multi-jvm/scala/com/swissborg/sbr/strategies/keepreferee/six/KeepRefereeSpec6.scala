@@ -25,11 +25,11 @@ class KeepRefereeSpec6MultiJvmNode5 extends KeepRefereeSpec6
  */
 class KeepRefereeSpec6 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNodeConfig) {
   override def assertions(): Unit =
-    "Unidirectional link failure" in within(120 seconds) {
+    "handle indirectly connected nodes" in within(120 seconds) {
       runOn(node1) {
         // Node4 cannot receive node5 messages
-        val a = testConductor.blackhole(node1, node4, Direction.Receive).await
-        val b = testConductor.blackhole(node3, node5, Direction.Receive).await
+        testConductor.blackhole(node1, node4, Direction.Receive).await
+        testConductor.blackhole(node3, node5, Direction.Receive).await
       }
 
       enterBarrier("nodes-disconnected")
