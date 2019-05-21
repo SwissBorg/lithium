@@ -3,17 +3,22 @@ package com.swissborg.sbr.resolver
 import akka.actor.{Actor, ActorLogging, Address, Props}
 import akka.cluster.Cluster
 import cats.data.OptionT
+import cats.data.OptionT.liftF
 import cats.effect.SyncIO
 import cats.implicits._
+import com.swissborg.sbr.WorldView.SimpleWorldView
 import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.reporter.SBReporter
+import com.swissborg.sbr.resolver.SBResolver.HandleSplitBrain.SimpleHandleSplitBrain
 import com.swissborg.sbr.strategies.Union
 import com.swissborg.sbr.strategies.indirectlyconnected.IndirectlyConnected
 import com.swissborg.sbr.strategy.Strategy
-import com.swissborg.sbr.{Node, SimpleWorldView, StrategyDecision, WorldView}
+import com.swissborg.sbr.{Node, StrategyDecision, WorldView}
+import io.circe.Encoder
+import io.circe.syntax._
+import io.circe.generic.semiauto.deriveEncoder
 
 import scala.concurrent.duration._
-import io.circe.syntax._
 
 /**
  * Actor resolving split-brain scenarios.
@@ -32,17 +37,17 @@ class SBResolver(_strategy: Strategy, stableAfter: FiniteDuration) extends Actor
   private val strategy    = Union(_strategy, IndirectlyConnected())
 
   override def receive: Receive = {
-    case HandleSplitBrain(worldView) =>
-      log.debug("Handle split-brain:\n{}", SimpleWorldView.fromWorldView(worldView).asJson.noSpaces)
+    case e @ HandleSplitBrain(worldView) =>
+      log.info(e.simple.asJson.noSpaces)
 
       runStrategy(strategy, worldView)
-        .leftMap(err => SyncIO(log.error(err, "An error occurred during decision making.")))
-        .fold(_.unsafeRunSync(), _.unsafeRunSync())
+        .handleErrorWith(err => SyncIO(log.error(err, "An error occurred during decision making.")))
+        .unsafeRunSync()
   }
 
-  private def runStrategy(strategy: Strategy, worldView: WorldView): Either[Throwable, SyncIO[Unit]] = {
+  private def runStrategy(strategy: Strategy, worldView: WorldView): SyncIO[Unit] = {
     def down(nodes: Set[Node]): OptionT[SyncIO, Unit] =
-      OptionT.liftF(nodes.toList.traverse_(node => SyncIO(cluster.down(node.member.address))))
+      liftF(nodes.toList.traverse_(node => SyncIO(cluster.down(node.member.address))))
 
     // Execute the decision by downing all the nodes to be downed if
     // the current node is the leader. Otherwise, do nothing.
@@ -52,19 +57,29 @@ class SBResolver(_strategy: Strategy, stableAfter: FiniteDuration) extends Actor
       leader
         .map(_ === selfAddress)
         .ifM(
-          down(decision.nodesToDown) >> OptionT.liftF(SyncIO(log.debug("Executing decision: {}", decision.simplify))),
-          OptionT.liftF(SyncIO(log.debug("Cannot take a decision. Not the leader.")))
+          down(decision.nodesToDown) >> liftF(SyncIO(log.info(decision.simple.asJson.noSpaces))),
+          liftF(SyncIO(log.info("Cannot take a decision. Not the leader.")))
         )
         .value
         .void
     }
 
-    strategy.takeDecision(worldView).map(execute)
+    strategy.takeDecision(worldView).flatMap(execute)
   }
 }
 
 object SBResolver {
   def props(strategy: Strategy, stableAfter: FiniteDuration): Props = Props(new SBResolver(strategy, stableAfter))
 
-  final case class HandleSplitBrain(worldView: WorldView)
+  final case class HandleSplitBrain(worldView: WorldView) {
+    lazy val simple: SimpleHandleSplitBrain = SimpleHandleSplitBrain(worldView.simple)
+  }
+
+  object HandleSplitBrain {
+    final case class SimpleHandleSplitBrain(worldView: SimpleWorldView)
+
+    object SimpleHandleSplitBrain {
+      implicit val simpleHandleSplitBrainEncoder: Encoder[SimpleHandleSplitBrain] = deriveEncoder
+    }
+  }
 }

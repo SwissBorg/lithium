@@ -1,6 +1,7 @@
 package com.swissborg.sbr.strategies.keepoldest
 
 import akka.cluster.Member
+import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.sbr._
 import com.swissborg.sbr.strategy.{Strategy, StrategyReader}
@@ -13,33 +14,31 @@ import com.swissborg.sbr.strategy.{Strategy, StrategyReader}
  * are nodes that are more important than others.
  */
 final case class KeepOldest(downIfAlone: Boolean, role: String) extends Strategy {
-
-  import KeepOldest._
-
-  override def takeDecision(worldView: WorldView): Either[Throwable, StrategyDecision] = {
+  override def takeDecision(worldView: WorldView): SyncIO[StrategyDecision] = {
     val consideredNodes     = worldView.consideredNodesWithRole(role)
     val allNodesSortedByAge = consideredNodes.toList.sortBy(_.member)(Member.ageOrdering)
 
-    allNodesSortedByAge.headOption.fold[Either[Throwable, StrategyDecision]](NoOldestNode.asLeft) {
+    // If there are no nodes in the cluster with the given role the current partition is downed.
+    allNodesSortedByAge.headOption.fold[SyncIO[StrategyDecision]](DownReachable(worldView).pure[SyncIO]) {
       case _: ReachableNode =>
         if (downIfAlone) {
           if (consideredNodes.size === 1) {
             // The oldest is the only node in the cluster.
-            Idle.asRight
+            Idle.pure[SyncIO]
           } else if (worldView.consideredReachableNodesWithRole(role).size === 1 &&
                      worldView.indirectlyConnectedNodesWithRole(role).isEmpty) {
             // The oldest node is seen as cut off from the rest of the cluster
             // from the partitions. The other partitions cannot see the indirectly
             // connected nodes in this partition and think they exist so they have
             // to be counted.
-            DownReachable(worldView).asRight
+            DownReachable(worldView).pure[SyncIO]
           } else {
             // The oldest node is not alone from the point of view of the other
             // partitions.
-            DownUnreachable(worldView).asRight
+            DownUnreachable(worldView).pure[SyncIO]
           }
         } else {
-          DownUnreachable(worldView).asRight
+          DownUnreachable(worldView).pure[SyncIO]
         }
 
       case _: UnreachableNode =>
@@ -49,26 +48,25 @@ final case class KeepOldest(downIfAlone: Boolean, role: String) extends Strategy
             // This decision should never be triggered but
             // it is left here just in case. Else the cluster
             // could down itself unnecessarily.
-            DownReachable(worldView).asRight
+            DownReachable(worldView).pure[SyncIO]
           } else if (worldView.consideredUnreachableNodesWithRole(role).size === 1) {
             // The oldest node is cut off from the rest of the cluster.
-            DownUnreachable(worldView).asRight
+            DownUnreachable(worldView).pure[SyncIO]
           } else {
             // The oldest node is not alone
-            DownReachable(worldView).asRight
+            DownReachable(worldView).pure[SyncIO]
           }
         } else {
-          DownReachable(worldView).asRight
+          DownReachable(worldView).pure[SyncIO]
         }
 
       case _: IndirectlyConnectedNode =>
-        new IllegalStateException("Indirectly connected nodes should not be considered").asLeft
+        new IllegalStateException("Indirectly connected nodes should not be considered")
+          .raiseError[SyncIO, StrategyDecision]
     }
   }
 }
 
 object KeepOldest extends StrategyReader[KeepOldest] {
   override val name: String = "keep-oldest"
-
-  final case object NoOldestNode extends Throwable
 }

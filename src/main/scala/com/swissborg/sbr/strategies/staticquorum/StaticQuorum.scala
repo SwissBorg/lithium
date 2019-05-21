@@ -1,19 +1,23 @@
 package com.swissborg.sbr.strategies.staticquorum
 
+import cats.effect.SyncIO
 import cats.implicits._
-import com.swissborg.sbr._
+import com.swissborg.sbr.{DownReachable, _}
 import com.swissborg.sbr.strategy.{Strategy, StrategyReader}
+import com.typesafe.scalalogging.StrictLogging
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric._
 
-final case class StaticQuorum(role: String, quorumSize: Int Refined Positive) extends Strategy {
-  override def takeDecision(worldView: WorldView): Either[Throwable, StrategyDecision] =
+final case class StaticQuorum(role: String, quorumSize: Int Refined Positive) extends Strategy with StrictLogging {
+  override def takeDecision(worldView: WorldView): SyncIO[StrategyDecision] =
     if (worldView.consideredNodesWithRole(role).size > quorumSize * 2 - 1) {
       // The quorumSize is too small for the cluster size,
       // more than one side might be a quorum and create
       // a split-brain. In this case we down the cluster.
-      DownReachable(worldView).asRight
+      SyncIO(
+        logger.warn("The configured quorum-size ({}) is too small!", quorumSize)
+      ).as(DownReachable(worldView))
     } else {
       ((ReachableNodes(worldView, quorumSize, role), UnreachableNodes(worldView, quorumSize, role)) match {
 
@@ -47,7 +51,7 @@ final case class StaticQuorum(role: String, quorumSize: Int Refined Positive) ex
          * Happens when to many nodes crash at the same time. The cluster will shutdown.
          */
         case (ReachableSubQuorum, _) => DownReachable(worldView)
-      }).asRight
+      }).pure[SyncIO]
     }
 }
 

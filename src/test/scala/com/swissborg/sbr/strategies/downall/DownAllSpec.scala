@@ -18,9 +18,11 @@ class DownAllSpec extends SBSpec {
 
     "handle symmetric split scenarios" in {
       forAll { scenario: SymmetricSplitScenario =>
-        val remainingPartitions = scenario.worldViews.foldMap { worldView =>
-          DownAll().takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
-        }
+        val remainingPartitions = scenario.worldViews
+          .foldMap { worldView =>
+            DownAll().takeDecision(worldView).map(PostResolution.fromDecision(worldView))
+          }
+          .unsafeRunSync()
 
         remainingPartitions.noSplitBrain shouldBe true
       }
@@ -28,9 +30,11 @@ class DownAllSpec extends SBSpec {
 
     "handle a split during up-dissemination scenarios" in {
       forAll { scenario: UpDisseminationScenario =>
-        val remainingPartitions = scenario.worldViews.foldMap { worldView =>
-          DownAll().takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
-        }
+        val remainingPartitions = scenario.worldViews
+          .foldMap { worldView =>
+            DownAll().takeDecision(worldView).map(PostResolution.fromDecision(worldView))
+          }
+          .unsafeRunSync()
 
         remainingPartitions.noSplitBrain shouldBe true
       }
@@ -38,9 +42,11 @@ class DownAllSpec extends SBSpec {
 
     "handle a split during the oldest-removed scenarios" in {
       forAll { scenario: OldestRemovedScenario =>
-        val remainingPartitions = scenario.worldViews.foldMap { worldView =>
-          DownAll().takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
-        }
+        val remainingPartitions = scenario.worldViews
+          .foldMap { worldView =>
+            DownAll().takeDecision(worldView).map(PostResolution.fromDecision(worldView))
+          }
+          .unsafeRunSync()
 
         remainingPartitions.noSplitBrain shouldBe true
       }

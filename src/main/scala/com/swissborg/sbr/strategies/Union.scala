@@ -1,5 +1,6 @@
 package com.swissborg.sbr.strategies
 
+import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.sbr.strategy.Strategy
 import com.swissborg.sbr.{StrategyDecision, WorldView}
@@ -9,6 +10,6 @@ import com.swissborg.sbr.{StrategyDecision, WorldView}
  * of both decisions.
  */
 final case class Union(a: Strategy, b: Strategy) extends Strategy {
-  override def takeDecision(worldView: WorldView): Either[Throwable, StrategyDecision] =
+  override def takeDecision(worldView: WorldView): SyncIO[StrategyDecision] =
     (a.takeDecision(worldView), b.takeDecision(worldView)).mapN(_ |+| _)
 }

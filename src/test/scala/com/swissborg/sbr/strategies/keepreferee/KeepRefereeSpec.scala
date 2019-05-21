@@ -20,11 +20,13 @@ class KeepRefereeSpec extends SBSpec {
           .toTry
           .get
 
-        val remainingPartitions = scenario.worldViews.foldMap { worldView =>
-          KeepReferee(referee, downAllIfLessThanNodes)
-            .takeDecision(worldView)
-            .foldMap(PostResolution.fromDecision(worldView))
-        }
+        val remainingPartitions = scenario.worldViews
+          .foldMap { worldView =>
+            KeepReferee(referee, downAllIfLessThanNodes)
+              .takeDecision(worldView)
+              .map(PostResolution.fromDecision(worldView))
+          }
+          .unsafeRunSync()
 
         remainingPartitions.noSplitBrain shouldBe true
       }
@@ -38,11 +40,13 @@ class KeepRefereeSpec extends SBSpec {
           .toTry
           .get
 
-        val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          KeepReferee(referee, downAllIfLessThanNodes)
-            .takeDecision(worldView)
-            .foldMap(PostResolution.fromDecision(worldView))
-        }
+        val remainingSubClusters = scenario.worldViews
+          .foldMap { worldView =>
+            KeepReferee(referee, downAllIfLessThanNodes)
+              .takeDecision(worldView)
+              .map(PostResolution.fromDecision(worldView))
+          }
+          .unsafeRunSync()
 
         remainingSubClusters.noSplitBrain shouldBe true
       }
@@ -60,11 +64,13 @@ class KeepRefereeSpec extends SBSpec {
               .toTry
               .get
 
-            val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-              KeepReferee(referee, downAllIfLessThanNodes)
-                .takeDecision(worldView)
-                .foldMap(PostResolution.fromDecision(worldView))
-            }
+            val remainingSubClusters = scenario.worldViews
+              .foldMap { worldView =>
+                KeepReferee(referee, downAllIfLessThanNodes)
+                  .takeDecision(worldView)
+                  .map(PostResolution.fromDecision(worldView))
+              }
+              .unsafeRunSync()
 
             remainingSubClusters.noSplitBrain shouldBe true
           }

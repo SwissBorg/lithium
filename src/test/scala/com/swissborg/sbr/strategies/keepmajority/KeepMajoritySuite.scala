@@ -23,7 +23,7 @@ class KeepMajoritySuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(cc), seenBy = Set.empty)
       )
 
-      KeepMajority("").takeDecision(w) should ===(Right(DownUnreachable(w)))
+      KeepMajority("").takeDecision(w).unsafeRunSync() should ===(DownUnreachable(w))
     }
 
     "down the unreachable nodes when part of a majority (with role)" in {
@@ -32,7 +32,7 @@ class KeepMajoritySuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc, dd, ee), Set(aa, bb, dd), seenBy = Set.empty)
       )
 
-      KeepMajority("role").takeDecision(w) should ===(Right(DownUnreachable(w)))
+      KeepMajority("role").takeDecision(w).unsafeRunSync() should ===(DownUnreachable(w))
     }
 
     "down the reachable nodes when not part of a majority" in {
@@ -41,7 +41,7 @@ class KeepMajoritySuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(bb, cc), seenBy = Set.empty)
       )
 
-      KeepMajority("").takeDecision(w) should ===(Right(DownReachable(w)))
+      KeepMajority("").takeDecision(w).unsafeRunSync() should ===(DownReachable(w))
     }
 
     "down the reachable nodes when not part of a majority (with role)" in {
@@ -50,7 +50,7 @@ class KeepMajoritySuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc, dd, ee), Set(aa, bb, dd, ee), seenBy = Set.empty)
       )
 
-      KeepMajority("role").takeDecision(w) should ===(Right(DownReachable(w)))
+      KeepMajority("role").takeDecision(w).unsafeRunSync() should ===(DownReachable(w))
     }
 
     "down the partition with the lowest address when there are an even number of nodes" in {
@@ -59,14 +59,14 @@ class KeepMajoritySuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc, dd), Set(cc, dd), seenBy = Set.empty)
       )
 
-      KeepMajority("").takeDecision(w) should ===(Right(DownUnreachable(w)))
+      KeepMajority("").takeDecision(w).unsafeRunSync() should ===(DownUnreachable(w))
 
       val w1 = WorldView.fromSnapshot(
         cc,
         CurrentClusterState(SortedSet(aa, bb, cc, dd), Set(aa, bb), seenBy = Set.empty)
       )
 
-      KeepMajority("").takeDecision(w1) should ===(Right(DownReachable(w1)))
+      KeepMajority("").takeDecision(w1).unsafeRunSync() should ===(DownReachable(w1))
     }
 
     "down the partition with the lowest address when there are an even number of nodes (with role)" in {
@@ -75,14 +75,14 @@ class KeepMajoritySuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc, dd), Set(dd), seenBy = Set.empty)
       )
 
-      KeepMajority("").takeDecision(w) should ===(Right(DownUnreachable(w)))
+      KeepMajority("").takeDecision(w).unsafeRunSync() should ===(DownUnreachable(w))
 
       val w1 = WorldView.fromSnapshot(
         dd,
         CurrentClusterState(SortedSet(aa, bb, cc, dd), Set(aa, bb, cc), seenBy = Set.empty)
       )
 
-      KeepMajority("").takeDecision(w1) should ===(Right(DownReachable(w1)))
+      KeepMajority("").takeDecision(w1).unsafeRunSync() should ===(DownReachable(w1))
     }
 
     "do nothing when the reachable nodes form a majority and there are no unreachable nodes" in {
@@ -91,7 +91,7 @@ class KeepMajoritySuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), seenBy = Set.empty)
       )
 
-      KeepMajority("").takeDecision(w).map(_.simplify) should ===(Right(Idle))
+      KeepMajority("").takeDecision(w).map(_.simplify).unsafeRunSync() should ===(Idle)
     }
 
     "down unreachable nodes when the reachable nodes form a majority and there are no unreachable nodes (with role)" in {
@@ -100,7 +100,7 @@ class KeepMajoritySuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc, dd), Set(aa, bb), seenBy = Set.empty)
       )
 
-      KeepMajority("role").takeDecision(w).map(_.simplify) should ===(Right(DownUnreachable(w)))
+      KeepMajority("role").takeDecision(w).map(_.simplify).unsafeRunSync() should ===(DownUnreachable(w))
     }
   }
 }

@@ -26,7 +26,7 @@ class KeepRefereeSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty)
       )
 
-      KeepReferee(referee, 1).takeDecision(w) should ===(Right(DownUnreachable(w)))
+      KeepReferee(referee, 1).takeDecision(w).unsafeRunSync() should ===(DownUnreachable(w))
     }
 
     "down the reachable nodes when being the referee and not reaching enough nodes" in {
@@ -35,7 +35,7 @@ class KeepRefereeSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty)
       )
 
-      KeepReferee(referee, 3).takeDecision(w) should ===(Right(DownReachable(w)))
+      KeepReferee(referee, 3).takeDecision(w).unsafeRunSync() should ===(DownReachable(w))
     }
 
     "down the unreachable nodes when the referee is reachable and reaching enough nodes" in {
@@ -44,7 +44,7 @@ class KeepRefereeSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty)
       )
 
-      KeepReferee(referee, 1).takeDecision(w) should ===(Right(DownUnreachable(w)))
+      KeepReferee(referee, 1).takeDecision(w).unsafeRunSync() should ===(DownUnreachable(w))
     }
 
     "down the reachable nodes when the referee is reachable and not reaching enough nodes" in {
@@ -53,7 +53,7 @@ class KeepRefereeSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty)
       )
 
-      KeepReferee(referee, 3).takeDecision(w) should ===(Right(DownReachable(w)))
+      KeepReferee(referee, 3).takeDecision(w).unsafeRunSync() should ===(DownReachable(w))
     }
 
     "down the reachable nodes when the referee is unreachable" in {
@@ -62,8 +62,8 @@ class KeepRefereeSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(aa), seenBy = Set.empty)
       )
 
-      KeepReferee(referee, 1).takeDecision(w) should ===(Right(DownReachable(w)))
-      KeepReferee(referee, 3).takeDecision(w) should ===(Right(DownReachable(w)))
+      KeepReferee(referee, 1).takeDecision(w).unsafeRunSync() should ===(DownReachable(w))
+      KeepReferee(referee, 3).takeDecision(w).unsafeRunSync() should ===(DownReachable(w))
     }
 
     "compile for valid addresses" in {

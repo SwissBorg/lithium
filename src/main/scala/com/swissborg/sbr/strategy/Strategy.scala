@@ -1,5 +1,6 @@
 package com.swissborg.sbr.strategy
 
+import cats.effect.SyncIO
 import com.swissborg.sbr.{StrategyDecision, WorldView}
 
 /**
@@ -8,10 +9,9 @@ import com.swissborg.sbr.{StrategyDecision, WorldView}
 trait Strategy {
 
   /**
-   * Attempts to provide strategy decision given the world view
-   * otherwise an error.
+   * The strategy decision given the world view.
    *
    * @param worldView the world view of the cluster from the callers actor sytem.
    */
-  def takeDecision(worldView: WorldView): Either[Throwable, StrategyDecision]
+  def takeDecision(worldView: WorldView): SyncIO[StrategyDecision]
 }

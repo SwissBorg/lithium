@@ -1,6 +1,7 @@
 package com.swissborg.sbr.strategies.keepmajority
 
 import akka.cluster.Member
+import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.sbr._
 import com.swissborg.sbr.strategy.{Strategy, StrategyReader}
@@ -20,38 +21,38 @@ final case class KeepMajority(role: String) extends Strategy {
    * A `role` can be provided to only take in account the nodes with that role in the decisions.
    * This can be useful if there are nodes that are more important than others.
    */
-  override def takeDecision(worldView: WorldView): Either[Throwable, StrategyDecision] = {
+  override def takeDecision(worldView: WorldView): SyncIO[StrategyDecision] = {
     val totalNodes = worldView.consideredNodesWithRole(role).size
 
-    val majority =
-      if (totalNodes <= 0) {
-        // makes sure that the partition will always down itself
-        1
-      } else {
-        totalNodes / 2 + 1
-      }
+    val majority = Math.max(totalNodes / 2 + 1, 1)
 
     val reachableConsideredNodes   = worldView.consideredReachableNodesWithRole(role)
     val unreachableConsideredNodes = worldView.consideredUnreachableNodesWithRole(role)
 
     if (reachableConsideredNodes.size >= majority) {
-      DownUnreachable(worldView).asRight
+      DownUnreachable(worldView).pure[SyncIO]
     } else if (unreachableConsideredNodes.size >= majority)
-      DownReachable(worldView).asRight
-    else if (reachableConsideredNodes.size === unreachableConsideredNodes.size) {
+      DownReachable(worldView).pure[SyncIO]
+    else if (totalNodes > 0 && reachableConsideredNodes.size === unreachableConsideredNodes.size) {
       // check if the node with the lowest address is in this partition
       worldView
         .consideredNodesWithRole(role)
         .toList
         .sortBy(_.member.address)(Member.addressOrdering)
         .headOption
-        .fold[Either[Throwable, StrategyDecision]](NoMajority.asLeft) {
-          case _: ReachableNode   => DownUnreachable(worldView).asRight
-          case _: UnreachableNode => DownReachable(worldView).asRight
+        .fold[SyncIO[StrategyDecision]](NoMajority.raiseError[SyncIO, StrategyDecision]) {
+          case _: ReachableNode   => DownUnreachable(worldView).pure[SyncIO]
+          case _: UnreachableNode => DownReachable(worldView).pure[SyncIO]
           case _: IndirectlyConnectedNode =>
-            new IllegalStateException("No indirectly connected node should be considered").asLeft
+            new IllegalStateException("No indirectly connected node should be considered")
+              .raiseError[SyncIO, StrategyDecision]
         }
-    } else NoMajority.asLeft
+    } else {
+      // There are no nodes with the configured role in the cluster so
+      // there is no partition with a majority. In this case we make
+      // the safe decision to down the current partition.
+      DownReachable(worldView).pure[SyncIO]
+    }
   }
 }
 

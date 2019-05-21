@@ -1,5 +1,6 @@
 package com.swissborg.sbr.strategies.keepreferee
 
+import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.sbr._
 import com.swissborg.sbr.strategies.keepreferee.KeepReferee.Address
@@ -12,7 +13,7 @@ import eu.timepit.refined.string._
 
 final case class KeepReferee(address: String Refined Address, downAllIfLessThanNodes: Int Refined Positive)
     extends Strategy {
-  override def takeDecision(worldView: WorldView): Either[Throwable, StrategyDecision] =
+  override def takeDecision(worldView: WorldView): SyncIO[StrategyDecision] =
     worldView.consideredReachableNodes
       .find(_.member.address.toString === address.value)
       .fold[StrategyDecision](DownReachable(worldView)) { _ =>
@@ -21,7 +22,7 @@ final case class KeepReferee(address: String Refined Address, downAllIfLessThanN
         else
           DownUnreachable(worldView)
       }
-      .asRight
+      .pure[SyncIO]
 }
 
 object KeepReferee extends StrategyReader[KeepReferee] {

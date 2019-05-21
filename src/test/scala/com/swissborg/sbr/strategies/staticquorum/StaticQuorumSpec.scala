@@ -21,9 +21,11 @@ class StaticQuorumSpec extends SBSpec {
         implicit val _: Arbitrary[StaticQuorum] = StaticQuorumSpec.arbStaticQuorum(scenario.clusterSize)
 
         forAll { staticQuorum: StaticQuorum =>
-          val remainingPartitions: PostResolution = scenario.worldViews.foldMap { worldView =>
-            staticQuorum.takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
-          }
+          val remainingPartitions: PostResolution = scenario.worldViews
+            .foldMap { worldView =>
+              staticQuorum.takeDecision(worldView).map(PostResolution.fromDecision(worldView))
+            }
+            .unsafeRunSync()
 
           remainingPartitions.noSplitBrain shouldBe true
         }
@@ -35,9 +37,11 @@ class StaticQuorumSpec extends SBSpec {
         implicit val _: Arbitrary[StaticQuorum] = StaticQuorumSpec.arbStaticQuorum(scenario.clusterSize)
 
         forAll { staticQuorum: StaticQuorum =>
-          val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-            staticQuorum.takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
-          }
+          val remainingSubClusters = scenario.worldViews
+            .foldMap { worldView =>
+              staticQuorum.takeDecision(worldView).map(PostResolution.fromDecision(worldView))
+            }
+            .unsafeRunSync()
 
           remainingSubClusters.noSplitBrain shouldBe true
         }

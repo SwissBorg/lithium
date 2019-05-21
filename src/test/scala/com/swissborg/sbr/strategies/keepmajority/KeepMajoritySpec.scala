@@ -10,9 +10,11 @@ class KeepMajoritySpec extends SBSpec {
   "KeepMajority" must {
     "handle symmetric split scenarios" in {
       forAll { (scenario: SymmetricSplitScenario, keepMajority: KeepMajority) =>
-        val remainingPartitions = scenario.worldViews.foldMap { worldView =>
-          keepMajority.takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
-        }
+        val remainingPartitions = scenario.worldViews
+          .foldMap { worldView =>
+            keepMajority.takeDecision(worldView).map(PostResolution.fromDecision(worldView))
+          }
+          .unsafeRunSync()
 
         remainingPartitions.noSplitBrain shouldBe true
       }
@@ -20,9 +22,11 @@ class KeepMajoritySpec extends SBSpec {
 
     "handle a split during the oldest-removed scenarios" in {
       forAll { (scenario: OldestRemovedScenario, keepMajority: KeepMajority) =>
-        val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          keepMajority.takeDecision(worldView).foldMap(PostResolution.fromDecision(worldView))
-        }
+        val remainingSubClusters = scenario.worldViews
+          .foldMap { worldView =>
+            keepMajority.takeDecision(worldView).map(PostResolution.fromDecision(worldView))
+          }
+          .unsafeRunSync()
 
         remainingSubClusters.noSplitBrain shouldBe true
       }

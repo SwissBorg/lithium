@@ -61,8 +61,6 @@ abstract class ThreeNodeSpec(name: String, config: ThreeNodeSpecConfig)
 
   private val addresses: Map[RoleName, Address] = roles.map(r => r -> node(r).address).toMap
 
-  addresses.foreach(a => log.debug(s"$a"))
-
   private def addressOf(roleName: RoleName): Address = addresses(roleName)
 
   protected def waitToBecomeUnreachable(roleNames: RoleName*): Unit       = awaitCond(allUnreachable(roleNames: _*))
@@ -111,7 +109,7 @@ abstract class ThreeNodeSpec(name: String, config: ThreeNodeSpecConfig)
 
       val address = addressOf(role)
       unreachable.isEmpty &&                                              // no unreachable members
-        (members.exists(m => m.address === address && m.status === Down) || // member is down
-          !members.exists(_.address === address)) // member is not in the cluster
+      (members.exists(m => m.address === address && m.status === Down) || // member is down
+      !members.exists(_.address === address)) // member is not in the cluster
     }
 }

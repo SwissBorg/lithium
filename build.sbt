@@ -45,6 +45,7 @@ val scalaPBLensesVersion       = "0.8.4"
 val typesafeConfigVersion      = "1.3.3"
 val logbackVersion             = "1.2.3"
 val circeVersion               = "0.10.0"
+val scalaLoggingVersion        = "3.9.2"
 
 // Akka
 libraryDependencies ++= Seq(
@@ -52,14 +53,15 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-cluster"            % akkaVersion,
   "com.typesafe.akka" %% "akka-remote"             % akkaVersion,
   "com.typesafe"      % "config"                   % typesafeConfigVersion,
-  "com.typesafe.akka" %% "akka-slf4j"              % akkaVersion,
   "com.typesafe.akka" %% "akka-testkit"            % akkaVersion % Test,
   "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion % Test,
 )
 
-// Logback
+// Logging
 libraryDependencies ++= Seq(
-  "ch.qos.logback" % "logback-classic" % logbackVersion,
+  "ch.qos.logback"             % "logback-classic" % logbackVersion,
+  "com.typesafe.scala-logging" %% "scala-logging"  % scalaLoggingVersion,
+  "com.typesafe.akka"          %% "akka-slf4j"     % akkaVersion
 )
 
 // PureConfig
