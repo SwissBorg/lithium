@@ -1,5 +1,6 @@
 package com.swissborg.sbr.strategies.downall
 
+import cats.Id
 import cats.implicits._
 import com.swissborg.sbr._
 import com.swissborg.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario, UpDisseminationScenario}
@@ -9,7 +10,7 @@ class DownAllSpec extends SBSpec {
   "DownAll" must {
     "always down nodes" in {
       forAll { worldView: WorldView =>
-        DownAll().takeDecision(worldView).map {
+        DownAll[Id]().takeDecision(worldView).map {
           case DownThese(DownSelf(_), DownReachable(_)) => succeed
           case _                                        => fail
         }
@@ -20,9 +21,8 @@ class DownAllSpec extends SBSpec {
       forAll { scenario: SymmetricSplitScenario =>
         val remainingPartitions = scenario.worldViews
           .foldMap { worldView =>
-            DownAll().takeDecision(worldView).map(PostResolution.fromDecision(worldView))
+            DownAll[Id]().takeDecision(worldView).map(PostResolution.fromDecision(worldView))
           }
-          .unsafeRunSync()
 
         remainingPartitions.noSplitBrain shouldBe true
       }
@@ -32,9 +32,8 @@ class DownAllSpec extends SBSpec {
       forAll { scenario: UpDisseminationScenario =>
         val remainingPartitions = scenario.worldViews
           .foldMap { worldView =>
-            DownAll().takeDecision(worldView).map(PostResolution.fromDecision(worldView))
+            DownAll[Id]().takeDecision(worldView).map(PostResolution.fromDecision(worldView))
           }
-          .unsafeRunSync()
 
         remainingPartitions.noSplitBrain shouldBe true
       }
@@ -44,9 +43,8 @@ class DownAllSpec extends SBSpec {
       forAll { scenario: OldestRemovedScenario =>
         val remainingPartitions = scenario.worldViews
           .foldMap { worldView =>
-            DownAll().takeDecision(worldView).map(PostResolution.fromDecision(worldView))
+            DownAll[Id]().takeDecision(worldView).map(PostResolution.fromDecision(worldView))
           }
-          .unsafeRunSync()
 
         remainingPartitions.noSplitBrain shouldBe true
       }

@@ -15,8 +15,8 @@ import com.swissborg.sbr.strategies.indirectlyconnected.IndirectlyConnected
 import com.swissborg.sbr.strategy.Strategy
 import com.swissborg.sbr.{Node, StrategyDecision, WorldView}
 import io.circe.Encoder
-import io.circe.syntax._
 import io.circe.generic.semiauto.deriveEncoder
+import io.circe.syntax._
 
 import scala.concurrent.duration._
 
@@ -26,7 +26,7 @@ import scala.concurrent.duration._
  * @param _strategy the strategy with which to resolved the split-brain.
  * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
  */
-class SBResolver(_strategy: Strategy, stableAfter: FiniteDuration) extends Actor with ActorLogging {
+class SBResolver(_strategy: Strategy[SyncIO], stableAfter: FiniteDuration) extends Actor with ActorLogging {
 
   import SBResolver._
 
@@ -34,7 +34,7 @@ class SBResolver(_strategy: Strategy, stableAfter: FiniteDuration) extends Actor
 
   private val cluster     = Cluster(context.system)
   private val selfAddress = cluster.selfMember.address
-  private val strategy    = Union(_strategy, IndirectlyConnected())
+  private val strategy    = Union[SyncIO](_strategy, IndirectlyConnected())
 
   override def receive: Receive = {
     case e @ HandleSplitBrain(worldView) =>
@@ -45,10 +45,9 @@ class SBResolver(_strategy: Strategy, stableAfter: FiniteDuration) extends Actor
         .unsafeRunSync()
   }
 
-  private def runStrategy(strategy: Strategy, worldView: WorldView): SyncIO[Unit] = {
+  private def runStrategy(strategy: Strategy[SyncIO], worldView: WorldView): SyncIO[Unit] = {
     def down(nodes: Set[Node]): OptionT[SyncIO, Unit] =
       liftF(nodes.toList.traverse_(node => SyncIO(cluster.down(node.member.address))))
-
     // Execute the decision by downing all the nodes to be downed if
     // the current node is the leader. Otherwise, do nothing.
     def execute(decision: StrategyDecision): SyncIO[Unit] = {
@@ -69,7 +68,8 @@ class SBResolver(_strategy: Strategy, stableAfter: FiniteDuration) extends Actor
 }
 
 object SBResolver {
-  def props(strategy: Strategy, stableAfter: FiniteDuration): Props = Props(new SBResolver(strategy, stableAfter))
+  def props(strategy: Strategy[SyncIO], stableAfter: FiniteDuration): Props =
+    Props(new SBResolver(strategy, stableAfter))
 
   final case class HandleSplitBrain(worldView: WorldView) {
     lazy val simple: SimpleHandleSplitBrain = SimpleHandleSplitBrain(worldView.simple)

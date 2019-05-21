@@ -1,14 +1,17 @@
 package com.swissborg.sbr.strategies.indirectlyconnected
 
-import cats.effect.SyncIO
+import cats.Applicative
 import cats.implicits._
 import com.swissborg.sbr._
 import com.swissborg.sbr.strategy.Strategy
 
 /**
- * Strategy downing all indirectly connected nodes.
+ * Split-brain resolver strategy that will down all indirectly connected nodes.
+ *
+ * Indirectly connected nodes are nodes that can only communicate with a subset
+ * of all the nodes in the cluster.
  */
-final case class IndirectlyConnected() extends Strategy {
-  override def takeDecision(worldView: WorldView): SyncIO[StrategyDecision] =
-    DownIndirectlyConnected(worldView).pure[SyncIO]
+final case class IndirectlyConnected[F[_]: Applicative]() extends Strategy[F] {
+  override def takeDecision(worldView: WorldView): F[StrategyDecision] =
+    DownIndirectlyConnected(worldView).pure[F].widen
 }

@@ -1,21 +1,19 @@
 package com.swissborg.sbr.strategies.downall
 
-import cats.effect.SyncIO
+import cats.Applicative
 import cats.implicits._
 import com.swissborg.sbr._
-import com.swissborg.sbr.strategy.{Strategy, StrategyReader}
+import com.swissborg.sbr.strategy.Strategy
 
 /**
- * Strategy that will down all the nodes in the cluster when a node is detected as unreachable.
- *
- * This strategy is useful when the cluster is unstable. todo add more info
+ * Split-brain resolver strategy that will down all the nodes in the cluster when a node is detected as unreachable.
  */
-final case class DownAll() extends Strategy {
-  override def takeDecision(worldView: WorldView): SyncIO[StrategyDecision] =
+final case class DownAll[F[_]: Applicative]() extends Strategy[F] {
+  override def takeDecision(worldView: WorldView): F[StrategyDecision] =
     // When self is indirectly connected it is not reachable.
-    DownThese(DownSelf(worldView), DownReachable(worldView)).pure[SyncIO]
+    DownThese(DownSelf(worldView), DownReachable(worldView)).pure[F].widen
 }
 
-object DownAll extends StrategyReader[DownAll] {
-  override val name: String = "down-all"
+object DownAll {
+  val name: String = "down-all"
 }
