@@ -21,7 +21,7 @@ trait SBSpec
                                maxDiscardedFactor = PosZDouble(5),
                                minSize = PosZInt(0),
                                sizeRange = PosZInt(100),
-                               workers = PosInt(8))
+                               workers = PosInt(4))
 
   def simulate[F[_]: Functor, Strat[_[_]], S <: Scenario: Arbitrary](name: String)(run: F[Boolean] => Boolean)(
     implicit builder: ArbitraryStrategy[F, Strat],
