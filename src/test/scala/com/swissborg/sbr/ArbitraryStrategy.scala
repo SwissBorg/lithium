@@ -3,6 +3,7 @@ package com.swissborg.sbr
 import cats.{Applicative, ApplicativeError}
 import cats.effect.Sync
 import com.swissborg.sbr.scenarios.Scenario
+import com.swissborg.sbr.strategies.downall.DownAll
 import com.swissborg.sbr.strategies.keepmajority.KeepMajority
 import com.swissborg.sbr.strategies.keepoldest.KeepOldest
 import com.swissborg.sbr.strategies.keepreferee.KeepReferee
@@ -11,7 +12,7 @@ import com.swissborg.sbr.strategies.staticquorum.StaticQuorum
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
-import org.scalacheck.Arbitrary
+import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen.chooseNum
 
@@ -68,4 +69,9 @@ object ArbitraryStrategy {
     }
 
   }
+
+  implicit def downAllStrategyBuilder[F[_]: Applicative]: ArbitraryStrategy[F, DownAll] =
+    new ArbitraryStrategy[F, DownAll] {
+      override def fromScenario(scenario: Scenario): Arbitrary[DownAll[F]] = Arbitrary(Gen.const(new DownAll[F]()))
+    }
 }
