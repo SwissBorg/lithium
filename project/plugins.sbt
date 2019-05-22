@@ -7,6 +7,3 @@ addSbtPlugin("io.get-coursier"  % "sbt-coursier"  % "1.1.0-M11")
 addSbtPlugin("ch.epfl.scala"    % "sbt-scalafix"  % "0.9.4")
 addSbtPlugin("org.scoverage"    % "sbt-scoverage" % "1.5.1")
 addSbtPlugin("com.swissborg"    % "sbt-swissborg" % "0.4.0")
-
-resolvers += Resolver.sonatypeRepo("releases")
-addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.0")
