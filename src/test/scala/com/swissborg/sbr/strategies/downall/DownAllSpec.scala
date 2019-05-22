@@ -3,8 +3,7 @@ package com.swissborg.sbr.strategies.downall
 import cats.Id
 import cats.implicits._
 import com.swissborg.sbr._
-import com.swissborg.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario, UpDisseminationScenario}
-import com.swissborg.sbr.utils.PostResolution
+import com.swissborg.sbr.scenarios._
 
 class DownAllSpec extends SBSpec {
   private val downAll: DownAll[Id] = new DownAll[Id]
@@ -19,37 +18,10 @@ class DownAllSpec extends SBSpec {
       }
     }
 
-    "handle symmetric split scenarios" in {
-      forAll { scenario: SymmetricSplitScenario =>
-        val remainingPartitions = scenario.worldViews
-          .foldMap { worldView =>
-            downAll.takeDecision(worldView).map(PostResolution.fromDecision(worldView))
-          }
+    simulate[Id, DownAll, SymmetricSplitScenario]("handle symmetric split scenarios")(identity)
 
-        remainingPartitions.noSplitBrain shouldBe true
-      }
-    }
+    simulate[Id, DownAll, UpDisseminationScenario]("handle a split during up-dissemination scenarios")(identity)
 
-    "handle a split during up-dissemination scenarios" in {
-      forAll { scenario: UpDisseminationScenario =>
-        val remainingPartitions = scenario.worldViews
-          .foldMap { worldView =>
-            downAll.takeDecision(worldView).map(PostResolution.fromDecision(worldView))
-          }
-
-        remainingPartitions.noSplitBrain shouldBe true
-      }
-    }
-
-    "handle a split during the oldest-removed scenarios" in {
-      forAll { scenario: OldestRemovedScenario =>
-        val remainingPartitions = scenario.worldViews
-          .foldMap { worldView =>
-            downAll.takeDecision(worldView).map(PostResolution.fromDecision(worldView))
-          }
-
-        remainingPartitions.noSplitBrain shouldBe true
-      }
-    }
+    simulate[Id, DownAll, OldestRemovedScenario]("handle a split during the oldest-removed scenarios")(identity)
   }
 }
