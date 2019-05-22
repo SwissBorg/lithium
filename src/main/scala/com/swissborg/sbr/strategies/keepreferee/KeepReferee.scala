@@ -13,9 +13,9 @@ import eu.timepit.refined.numeric._
 import eu.timepit.refined.string._
 
 /**
- * Split-brain strategy that will keep the partition containing the referee ([[config.address]])
+ * Split-brain strategy that will keep the partition containing the referee (`config.address`)
  * and down all the other partitions.
- * If the remaining partition has less than [[config.downAllIfLessThanNodes]] the cluster will
+ * If the remaining partition has less than `config.downAllIfLessThanNodes` the cluster will
  * be downed.
  *
  * This strategy is useful when the cluster has a node that is critical to its operation.
