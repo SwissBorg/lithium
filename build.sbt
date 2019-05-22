@@ -46,6 +46,9 @@ val typesafeConfigVersion      = "1.3.3"
 val logbackVersion             = "1.2.3"
 val circeVersion               = "0.10.0"
 val scalaLoggingVersion        = "3.9.2"
+val kindProjectorVersion       = "0.10.1"
+
+resolvers += Resolver.sonatypeRepo("releases")
 
 // Akka
 libraryDependencies ++= Seq(
@@ -121,6 +124,8 @@ libraryDependencies ++= Seq(
   "eu.timepit"                 %% "refined-scalacheck"        % refinedScalacheckVersion   % Test
 )
 
+addCompilerPlugin("org.typelevel" %% "kind-projector" % kindProjectorVersion)
+
 lazy val root = (project in file("."))
   .enablePlugins(MultiJvmPlugin)
   .configs(MultiJvm)
@@ -133,7 +138,6 @@ sbVersionWithGit
 commonSwissBorgSettings
 sbMavenPublishSetting
 
-//wartremoverErrors in (Compile, compile) ++= Warts.allBut(Wart.Any, Wart.Nothing, Wart.ImplicitParameter, Wart.Recursion)
 testOptions in Test += Tests.Argument("-oF")
 
 PB.targets in Compile := Seq(
