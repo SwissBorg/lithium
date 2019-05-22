@@ -4,8 +4,6 @@ import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 organization := "com.swissborg"
 name := "akka-sbr"
 
-version := "0.0.1"
-
 scalaVersion := "2.12.8"
 
 scalacOptions ++=
