@@ -33,7 +33,7 @@ class KeepRefereeSpec12 extends FiveNodeSpec("StaticQuorum", KeepRefereeSpecFive
         testConductor.blackhole(node3, node4, Direction.Both).await
       }
 
-      enterBarrier("links-disconnected")
+      enterBarrier("links-failed")
 
       runOn(node1, node2, node3, node4, node5) {
         waitForSelfDowning

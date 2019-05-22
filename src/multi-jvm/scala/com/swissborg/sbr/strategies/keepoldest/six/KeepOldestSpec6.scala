@@ -27,25 +27,21 @@ class KeepOldestSpec6 extends FiveNodeSpec("KeepOldest", KeepOldestSpecFiveNodeC
         val b = testConductor.blackhole(node3, node5, Direction.Receive).await
       }
 
-      enterBarrier("nodes-disconnected")
+      enterBarrier("links-failed")
 
       runOn(node2) {
-        waitForUp(node2)
         waitToBecomeUnreachable(node4)
       }
 
       runOn(node4) {
-        waitForUp(node4)
         waitToBecomeUnreachable(node2)
       }
 
       runOn(node3) {
-        waitForUp(node3)
         waitToBecomeUnreachable(node5)
       }
 
       runOn(node5) {
-        waitForUp(node5)
         waitToBecomeUnreachable(node3)
       }
 

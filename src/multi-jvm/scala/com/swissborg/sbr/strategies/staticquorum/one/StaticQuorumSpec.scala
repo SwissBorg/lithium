@@ -29,7 +29,7 @@ class StaticQuorumSpec extends ThreeNodeSpec("StaticQuorum", StaticQuorumSpecCon
         }
       }
 
-      enterBarrier("links-disconnected")
+      enterBarrier("links-failed")
 
       runOn(node1, node2) {
         waitForSurvivors(node1, node2)

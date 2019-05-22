@@ -37,45 +37,33 @@ class KeepRefereeSpec2 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNo
       enterBarrier("links-failed")
 
       runOn(node1, node2) {
-        waitForUp(node1, node2)
         waitToBecomeUnreachable(node3, node4, node5)
       }
 
-      enterBarrier("node-3-4-5-unreachable")
-
       runOn(node3) {
-        waitForUp(node3)
         waitToBecomeUnreachable(node1, node2, node4, node5)
       }
 
-      enterBarrier("node-1-2-4-5-unreachable")
-
       runOn(node4) {
-        waitForUp(node4)
         waitToBecomeUnreachable(node1, node2, node3, node5)
       }
 
-      enterBarrier("node-1-2-3-5-unreachable")
-
       runOn(node5) {
-        waitForUp(node5)
         waitToBecomeUnreachable(node1, node2, node3, node4)
       }
 
-      enterBarrier("node1-2-3-4-unreachable")
+      enterBarrier("split-brain")
 
       runOn(node1, node2) {
         waitForSurvivors(node1, node2)
         waitForDownOrGone(node3, node4, node5)
       }
 
-      enterBarrier("node3-4-5-downed")
-
       runOn(node3, node4, node5) {
         waitForSelfDowning
       }
 
-      enterBarrier("node3-4-5-suicide")
+      enterBarrier("split-brain-resolved")
     }
 
 }

@@ -31,7 +31,7 @@ class KeepRefereeSpec11 extends FiveNodeSpec("StaticQuorum", KeepRefereeSpecFive
         }
       }
 
-      enterBarrier("links-disconnected")
+      enterBarrier("links-failed")
 
       runOn(node1, node2, node3, node4, node5) {
         waitForSelfDowning

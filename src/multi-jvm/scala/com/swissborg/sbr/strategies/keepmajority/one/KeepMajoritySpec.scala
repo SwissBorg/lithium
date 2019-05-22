@@ -22,26 +22,23 @@ class KeepMajoritySpec extends ThreeNodeSpec("KeepMajority", KeepMajoritySpecThr
         }
       }
 
-      enterBarrier("node3-disconnected")
+      enterBarrier("links-failed")
 
       runOn(node1, node2) {
-        waitForUp(node1, node2)
         waitToBecomeUnreachable(node3)
       }
 
-      enterBarrier("node3-unreachable")
+      enterBarrier("split-brain")
 
       runOn(node1, node2) {
         waitForSurvivors(node1, node2)
         waitForDownOrGone(node3)
       }
 
-      enterBarrier("node3-downed")
-
       runOn(node3) {
         waitForSelfDowning
       }
 
-      enterBarrier("node3-suicide")
+      enterBarrier("split-brain-resolved")
     }
 }

@@ -29,7 +29,7 @@ class KeepRefereeSpec8 extends TenNodeSpec("KeepReferee", KeepRefereeSpecTenNode
         testConductor.blackhole(node3, node4, Direction.Receive).await
       }
 
-      enterBarrier("links-disconnected")
+      enterBarrier("links-failed")
 
       runOn(node1, node2, node5, node6, node7, node8) {
         waitForSurvivors(node1, node2, node5, node6, node7, node8)
