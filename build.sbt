@@ -127,6 +127,12 @@ lazy val root = (project in file("."))
   .settings(multiJvmSettings: _*)
   .settings(parallelExecution in Test := false)
 
+scalafmtOnCompile := true
+
+sbVersionWithGit
+commonSwissBorgSettings
+sbMavenPublishSetting
+
 //wartremoverErrors in (Compile, compile) ++= Warts.allBut(Wart.Any, Wart.Nothing, Wart.ImplicitParameter, Wart.Recursion)
 testOptions in Test += Tests.Argument("-oF")
 
