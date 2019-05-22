@@ -23,33 +23,21 @@ class KeepOldestSpec4 extends ThreeNodeSpec("KeepOldest", KeepOldestSpecThreeNod
         val _ = testConductor.blackhole(node1, node2, Direction.Receive).await
       }
 
-      enterBarrier("node3-disconnected")
-
-      runOn(node1, node2) {
-        waitForUp(node1, node2)
-      }
-
-      enterBarrier("node3-unreachable")
-
-      enterBarrier("node1-3-up")
+      enterBarrier("links-failed")
 
       runOn(node1) {
         waitToBecomeUnreachable(node2)
       }
 
-      enterBarrier("node2-unreachable")
-
       runOn(node2) {
         waitToBecomeUnreachable(node1)
       }
-
-      enterBarrier("node1-unreachable")
 
       runOn(node3) {
         waitToBecomeUnreachable(node1, node2)
       }
 
-      enterBarrier("node2-3-unreachable")
+      enterBarrier("split-brain")
 
       runOn(node3) {
         waitForDownOrGone(node1, node2)

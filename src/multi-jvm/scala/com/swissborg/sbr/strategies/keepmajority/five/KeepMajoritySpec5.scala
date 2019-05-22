@@ -20,7 +20,7 @@ class KeepMajoritySpec5 extends FiveNodeSpec("StaticQuorum", KeepMajoritySpecFiv
         val _ = testConductor.blackhole(node4, node5, Direction.Receive).await
       }
 
-      enterBarrier("links-disconnected")
+      enterBarrier("links-failed")
 
       runOn(node1, node2, node3) {
         waitForSurvivors(node1, node2, node3)

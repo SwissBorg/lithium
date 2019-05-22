@@ -11,7 +11,7 @@ import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric._
 
 /**
- * Split-brain resolver strategy that will keep the partition that have a quorum ([[config.quorumSize]]) and down the other
+ * Split-brain resolver strategy that will keep the partition that have a quorum (`config.quorumSize`) and down the other
  * ones. In case the multiple the quorum size is too small for the size of the cluster a warning will be logged and the
  * cluster downed.
  *

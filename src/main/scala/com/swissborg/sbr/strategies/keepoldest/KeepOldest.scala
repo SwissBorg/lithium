@@ -9,8 +9,8 @@ import com.swissborg.sbr.strategy.{Strategy, StrategyReader}
 
 /**
  * Split-brain resolver strategy that will keep the partition containing the oldest node and down
- * the other ones. By enabling [[config.downIfAlone]], if the oldest node is alone (filtered by
- * [[config.role]]) it will down itself and keep the other partition.
+ * the other ones. By enabling `config.downIfAlone`, if the oldest node is alone (filtered by
+ * `config.role`) it will down itself and keep the other partition.
  *
  * This strategy is useful when you are trying do not want the singleton instances to be migrated
  * after a resolution. The oldest node in the cluster contains the current singleton instance.
