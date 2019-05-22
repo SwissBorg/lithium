@@ -27,30 +27,24 @@ class RoleKeepMajoritySpec extends FiveNodeSpec("KeepMajority", RoleKeepMajority
       enterBarrier("links-failed")
 
       runOn(node3, node4, node5) {
-        waitForUp(node3, node4, node5)
         waitToBecomeUnreachable(node1, node2)
       }
 
-      enterBarrier("node1-2-unreachable")
-
       runOn(node1, node2) {
-        waitForUp(node1, node2)
         waitToBecomeUnreachable(node3, node4, node5)
       }
 
-      enterBarrier("node3-4-5-unreachable")
+      enterBarrier("split-brain")
 
       runOn(node1, node2) {
         waitForSurvivors(node1, node2)
         waitForDownOrGone(node3, node4, node5)
       }
 
-      enterBarrier("node3-4-5-downed")
-
       runOn(node3, node4, node5) {
         waitForSelfDowning
       }
 
-      enterBarrier("node3-4-5-suicde")
+      enterBarrier("split-brain-resolved")
     }
 }

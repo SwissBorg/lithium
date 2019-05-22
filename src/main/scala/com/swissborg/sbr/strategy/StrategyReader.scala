@@ -14,7 +14,7 @@ trait StrategyReader[A] {
 
   /**
    * The name of the strategy that will have to configured at
-   * the path 'akka.cluster.split-brain-resolver.$name' to be
+   * the path `akka.cluster.split-brain-resolver.insert-strategy-name-here` to be
    * load `A`.
    */
   def name: String

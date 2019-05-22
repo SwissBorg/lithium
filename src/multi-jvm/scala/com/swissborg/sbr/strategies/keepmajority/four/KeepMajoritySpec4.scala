@@ -18,18 +18,9 @@ class KeepMajoritySpec4 extends ThreeNodeSpec("KeepMajority", KeepMajoritySpecTh
         val _ = testConductor.blackhole(node2, node3, Direction.Receive).await
       }
 
-      enterBarrier("node3-disconnected")
-
-      runOn(node1, node2) {
-        waitForUp(node1, node2)
-      }
-
-      enterBarrier("node3-unreachable")
-
-      enterBarrier("node1-3-up")
+      enterBarrier("links-failed")
 
       runOn(node2) {
-        waitForUp(node2)
         waitToBecomeUnreachable(node3)
       }
 
@@ -37,18 +28,16 @@ class KeepMajoritySpec4 extends ThreeNodeSpec("KeepMajority", KeepMajoritySpecTh
         waitToBecomeUnreachable(node2, node3)
       }
 
-      enterBarrier("node3-unreachable")
+      enterBarrier("split-brain")
 
       runOn(node2, node3) {
         waitForSelfDowning
       }
 
-      enterBarrier("node-2-3-suicide")
-
       runOn(node1) {
         waitForDownOrGone(node2, node3)
       }
 
-      enterBarrier("done")
+      enterBarrier("split-brain-resolved")
     }
 }

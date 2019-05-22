@@ -35,7 +35,7 @@ class StaticQuorumSpec10 extends TenNodeSpec("StaticQuorum", StaticQuorumSpec3Co
         val b = testConductor.blackhole(node7, node8, Direction.Receive).await
       }
 
-      enterBarrier("links-disconnected")
+      enterBarrier("links-failed")
 
       runOn(node1, node2, node3, node4, node5, node6) {
         waitForSurvivors(node1, node2, node3, node4, node5, node6)
