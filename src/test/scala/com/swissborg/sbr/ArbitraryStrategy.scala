@@ -51,7 +51,8 @@ object ArbitraryStrategy {
       }
     }
 
-  implicit def keepMajorityStrategyBuilder[F[_]: ApplicativeError[?[_], Throwable]]: ArbitraryStrategy[KeepMajority[F]] =
+  implicit def keepMajorityStrategyBuilder[F[_]: ApplicativeError[?[_], Throwable]]
+    : ArbitraryStrategy[KeepMajority[F]] =
     new ArbitraryStrategy[KeepMajority[F]] {
       override def fromScenario(scenario: Scenario): Arbitrary[KeepMajority[F]] =
         Arbitrary(arbitrary[String].map(role => new KeepMajority(KeepMajority.Config(role))))
