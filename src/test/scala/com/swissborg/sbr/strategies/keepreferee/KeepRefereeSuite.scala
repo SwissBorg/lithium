@@ -28,7 +28,7 @@ class KeepRefereeSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty)
       )
 
-      KeepReferee[Id](Config(referee, 1)).takeDecision(w) should ===(DownUnreachable(w))
+      new KeepReferee[Id](Config(referee, 1)).takeDecision(w) should ===(DownUnreachable(w))
     }
 
     "down the reachable nodes when being the referee and not reaching enough nodes" in {
@@ -37,7 +37,7 @@ class KeepRefereeSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty)
       )
 
-      KeepReferee[Id](Config(referee, 3)).takeDecision(w) should ===(DownReachable(w))
+      new KeepReferee[Id](Config(referee, 3)).takeDecision(w) should ===(DownReachable(w))
     }
 
     "down the unreachable nodes when the referee is reachable and reaching enough nodes" in {
@@ -46,7 +46,7 @@ class KeepRefereeSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty)
       )
 
-      KeepReferee[Id](Config(referee, 1)).takeDecision(w) should ===(DownUnreachable(w))
+      new KeepReferee[Id](Config(referee, 1)).takeDecision(w) should ===(DownUnreachable(w))
     }
 
     "down the reachable nodes when the referee is reachable and not reaching enough nodes" in {
@@ -55,7 +55,7 @@ class KeepRefereeSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty)
       )
 
-      KeepReferee[Id](Config(referee, 3)).takeDecision(w) should ===(DownReachable(w))
+      new KeepReferee[Id](Config(referee, 3)).takeDecision(w) should ===(DownReachable(w))
     }
 
     "down the reachable nodes when the referee is unreachable" in {
@@ -64,8 +64,8 @@ class KeepRefereeSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(aa), seenBy = Set.empty)
       )
 
-      KeepReferee[Id](Config(referee, 1)).takeDecision(w) should ===(DownReachable(w))
-      KeepReferee[Id](Config(referee, 3)).takeDecision(w) should ===(DownReachable(w))
+      new KeepReferee[Id](Config(referee, 1)).takeDecision(w) should ===(DownReachable(w))
+      new KeepReferee[Id](Config(referee, 3)).takeDecision(w) should ===(DownReachable(w))
     }
 
     "compile for valid addresses" in {

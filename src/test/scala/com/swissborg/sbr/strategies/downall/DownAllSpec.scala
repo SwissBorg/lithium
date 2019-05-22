@@ -7,10 +7,12 @@ import com.swissborg.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenari
 import com.swissborg.sbr.utils.PostResolution
 
 class DownAllSpec extends SBSpec {
+  private val downAll: DownAll[Id] = new DownAll[Id]
+
   "DownAll" must {
     "always down nodes" in {
       forAll { worldView: WorldView =>
-        DownAll[Id]().takeDecision(worldView).map {
+        downAll.takeDecision(worldView).map {
           case DownThese(DownSelf(_), DownReachable(_)) => succeed
           case _                                        => fail
         }
@@ -21,7 +23,7 @@ class DownAllSpec extends SBSpec {
       forAll { scenario: SymmetricSplitScenario =>
         val remainingPartitions = scenario.worldViews
           .foldMap { worldView =>
-            DownAll[Id]().takeDecision(worldView).map(PostResolution.fromDecision(worldView))
+            downAll.takeDecision(worldView).map(PostResolution.fromDecision(worldView))
           }
 
         remainingPartitions.noSplitBrain shouldBe true
@@ -32,7 +34,7 @@ class DownAllSpec extends SBSpec {
       forAll { scenario: UpDisseminationScenario =>
         val remainingPartitions = scenario.worldViews
           .foldMap { worldView =>
-            DownAll[Id]().takeDecision(worldView).map(PostResolution.fromDecision(worldView))
+            downAll.takeDecision(worldView).map(PostResolution.fromDecision(worldView))
           }
 
         remainingPartitions.noSplitBrain shouldBe true
@@ -43,7 +45,7 @@ class DownAllSpec extends SBSpec {
       forAll { scenario: OldestRemovedScenario =>
         val remainingPartitions = scenario.worldViews
           .foldMap { worldView =>
-            DownAll[Id]().takeDecision(worldView).map(PostResolution.fromDecision(worldView))
+            downAll.takeDecision(worldView).map(PostResolution.fromDecision(worldView))
           }
 
         remainingPartitions.noSplitBrain shouldBe true

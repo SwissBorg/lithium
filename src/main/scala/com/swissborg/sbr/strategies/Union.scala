@@ -9,7 +9,7 @@ import com.swissborg.sbr.{StrategyDecision, WorldView}
  * Strategy combining `a` and `b` by taking the union
  * of both decisions.
  */
-final case class Union[F[_]: Functor: Semigroupal](a: Strategy[F], b: Strategy[F]) extends Strategy[F] {
+class Union[F[_]: Functor: Semigroupal](a: Strategy[F], b: Strategy[F]) extends Strategy[F] {
   override def takeDecision(worldView: WorldView): F[StrategyDecision] =
     (a.takeDecision(worldView), b.takeDecision(worldView)).mapN(_ |+| _)
 }

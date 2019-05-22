@@ -20,7 +20,7 @@ import eu.timepit.refined.string._
  *
  * This strategy is useful when the cluster has a node that is critical to its operation.
  */
-final case class KeepReferee[F[_]: Applicative](config: Config) extends Strategy[F] {
+class KeepReferee[F[_]: Applicative](config: Config) extends Strategy[F] {
   import config._
 
   override def takeDecision(worldView: WorldView): F[StrategyDecision] =
