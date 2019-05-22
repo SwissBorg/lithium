@@ -35,37 +35,28 @@ class KeepOldestSpec2 extends FiveNodeSpec("KeepOldest", KeepOldestSpecFiveNodeC
       enterBarrier("link-failed")
 
       runOn(node1) {
-        waitForUp(node1)
         waitToBecomeUnreachable(node2, node3, node4, node5)
       }
 
-      enterBarrier("node2-3-4-5-unreachable")
-
       runOn(node2, node3) {
-        waitForUp(node2, node3)
         waitToBecomeUnreachable(node1, node4, node5)
       }
 
-      enterBarrier("node1-4-5-unreachable")
-
       runOn(node4, node5) {
-        waitForUp(node4, node5)
         waitToBecomeUnreachable(node1, node2, node3)
       }
 
-      enterBarrier("node1-2-3-unreachable")
+      enterBarrier("split-brain")
 
       runOn(node1) {
         waitForSurvivors(node1)
         waitForDownOrGone(node2, node3, node4, node5)
       }
 
-      enterBarrier("node2-3-4-5-downed")
-
       runOn(node2, node3, node4, node5) {
         waitForSelfDowning
       }
 
-      enterBarrier("node2-3-4-5-suicide")
+      enterBarrier("split-brain-resolved")
     }
 }

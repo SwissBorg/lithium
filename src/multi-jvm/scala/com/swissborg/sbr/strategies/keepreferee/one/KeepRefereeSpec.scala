@@ -27,31 +27,27 @@ class KeepRefereeSpec extends ThreeNodeSpec("KeepReferee", KeepRefereeSpecThreeN
         }
       }
 
-      enterBarrier("node2-3-disconnected")
+      enterBarrier("links-failed")
 
       runOn(node1) {
-        waitForUp(node1)
         waitToBecomeUnreachable(node2, node3)
       }
 
       runOn(node2, node3) {
-        waitForUp(node2, node3)
         waitToBecomeUnreachable(node1)
       }
 
-      enterBarrier("node2-3-unreachable")
+      enterBarrier("split-brain")
 
       runOn(node1) {
         waitForSurvivors(node1)
         waitForDownOrGone(node2, node3)
       }
 
-      enterBarrier("node2-3-downed")
-
       runOn(node2, node3) {
         waitForSelfDowning
       }
 
-      enterBarrier("node-2-3-suicide")
+      enterBarrier("split-brain-resolved")
     }
 }

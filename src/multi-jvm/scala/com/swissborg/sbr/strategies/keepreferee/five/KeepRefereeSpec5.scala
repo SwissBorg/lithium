@@ -26,40 +26,31 @@ class KeepRefereeSpec5 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNo
         testConductor.blackhole(node4, node5, Direction.Receive).await
       }
 
-      enterBarrier("node5-disconnected")
+      enterBarrier("links-failed")
 
       runOn(node4) {
-        waitForUp(node4)
         waitToBecomeUnreachable(node5)
       }
 
-      enterBarrier("node5-unreachable")
-
       runOn(node5) {
-        waitForUp(node5)
         waitToBecomeUnreachable(node4)
       }
 
-      enterBarrier("node4-unreachable")
-
       runOn(node1, node2, node3) {
-        waitForUp(node1, node2, node3)
         waitToBecomeUnreachable(node4, node5)
       }
 
-      enterBarrier("node4-5-unreachable")
+      enterBarrier("split-brain")
 
       runOn(node1, node2, node3) {
         waitForSurvivors(node1, node2, node3)
         waitForDownOrGone(node4, node5)
       }
 
-      enterBarrier("node1-2-3-ok")
-
       runOn(node4, node5) {
         waitForSelfDowning
       }
 
-      enterBarrier("node4-5-suicide")
+      enterBarrier("split-brain-resolved")
     }
 }

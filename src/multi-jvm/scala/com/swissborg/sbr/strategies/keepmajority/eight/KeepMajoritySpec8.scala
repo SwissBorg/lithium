@@ -29,7 +29,7 @@ class KeepMajority8 extends TenNodeSpec("StaticQuorum", KeepMajoritySpecTenNodeC
         val b = testConductor.blackhole(node2, node3, Direction.Receive).await
       }
 
-      enterBarrier("links-disconnected")
+      enterBarrier("links-failed")
 
       runOn(node1, node4, node5, node6, node7, node8) {
         waitForSurvivors(node1, node4, node5, node6, node7, node8)
