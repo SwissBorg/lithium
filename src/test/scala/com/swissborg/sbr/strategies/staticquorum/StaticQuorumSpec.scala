@@ -7,17 +7,13 @@ import com.swissborg.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenari
 class StaticQuorumSpec extends SBSpec {
 
   "StaticQuorum" must {
-    "handle symmetric split scenarios with a correctly defined quorum size" in {
-      forAll { simulation: Simulation[SyncIO, StaticQuorum, SymmetricSplitScenario] =>
-        simulation.splitBrainResolved.unsafeRunSync() shouldBe true
-      }
-    }
+    simulate[SyncIO, StaticQuorum, SymmetricSplitScenario](
+      "handle symmetric split scenarios with a correctly defined quorum size"
+    )(_.unsafeRunSync())
 
-    "handle a split during the oldest-removed scenarios" in {
-      forAll { simulation: Simulation[SyncIO, StaticQuorum, OldestRemovedScenario] =>
-        simulation.splitBrainResolved.unsafeRunSync() shouldBe true
-      }
-    }
+    simulate[SyncIO, StaticQuorum, OldestRemovedScenario]("handle a split during the oldest-removed scenarios")(
+      _.unsafeRunSync()
+    )
     // TODO check if can really be handled
     //    "2 - should handle split during up-dissemination" in {
     //      forAll { scenario: UpDisseminationScenario =>

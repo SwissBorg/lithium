@@ -8,16 +8,8 @@ import scala.util.Try
 
 class KeepMajoritySpec extends SBSpec {
   "KeepMajority" must {
-    "handle symmetric split scenarios" in {
-      forAll { simulation: Simulation[Try, KeepMajority, SymmetricSplitScenario] =>
-        simulation.splitBrainResolved.get shouldBe true
-      }
-    }
+    simulate[Try, KeepMajority, SymmetricSplitScenario]("handle symmetric split scenarios")(_.get)
 
-    "handle a split during the oldest-removed scenarios" in {
-      forAll { simulation: Simulation[Try, KeepMajority, OldestRemovedScenario] =>
-        simulation.splitBrainResolved.get shouldBe true
-      }
-    }
+    simulate[Try, KeepMajority, OldestRemovedScenario]("handle a split during the oldest-removed scenarios")(_.get)
   }
 }

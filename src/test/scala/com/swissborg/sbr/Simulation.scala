@@ -1,7 +1,7 @@
 package com.swissborg.sbr
 
-import cats.implicits._
 import cats.{Functor, Monoid}
+import cats.implicits._
 import com.swissborg.sbr.scenarios.Scenario
 import com.swissborg.sbr.strategy.Strategy
 import com.swissborg.sbr.utils.PostResolution
@@ -21,7 +21,7 @@ class Simulation[F[_]: Functor, Strat[_[_]], S <: Scenario](val strategy: Strat[
   }
 }
 object Simulation {
-  implicit def arbSetup[F[_]: Functor, Strat[_[_]], S <: Scenario: Arbitrary](
+  implicit def arbSimulation[F[_]: Functor, Strat[_[_]], S <: Scenario: Arbitrary](
     implicit builder: ArbitraryStrategy[F, Strat],
     M: Monoid[F[PostResolution]],
     ev: Strat[F] <:< Strategy[F]

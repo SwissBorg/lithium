@@ -1,27 +1,15 @@
 package com.swissborg.sbr.strategies.keepreferee
 
 import cats.Id
+import com.swissborg.sbr.SBSpec
 import com.swissborg.sbr.scenarios._
-import com.swissborg.sbr.{SBSpec, Simulation}
 
 class KeepRefereeSpec extends SBSpec {
   "KeepReferee" must {
-    "handle symmetric split scenarios" in {
-      forAll { simulation: Simulation[Id, KeepReferee, SymmetricSplitScenario] =>
-        simulation.splitBrainResolved shouldBe true
-      }
-    }
+    simulate[Id, KeepReferee, SymmetricSplitScenario]("handle symmetric split scenarios")(identity)
 
-    "handle split during up-dissemination" in {
-      forAll { simulation: Simulation[Id, KeepReferee, UpDisseminationScenario] =>
-        simulation.splitBrainResolved shouldBe true
-      }
-    }
+    simulate[Id, KeepReferee, UpDisseminationScenario]("handle split during up-dissemination")(identity)
 
-    "handle a split during the oldest-removed scenarios" in {
-      forAll { simulation: Simulation[Id, KeepReferee, OldestRemovedScenario] =>
-        simulation.splitBrainResolved shouldBe true
-      }
-    }
+    simulate[Id, KeepReferee, OldestRemovedScenario]("handle a split during the oldest-removed scenarios")(identity)
   }
 }
