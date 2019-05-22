@@ -12,8 +12,10 @@ class KeepOldestSpec extends SBSpec {
   "KeepOldest" must {
     "handle symmetric split scenarios" in {
       forAll { (scenario: SymmetricSplitScenario, downIfAlone: Boolean, role: String) =>
+        val keepOldest = new KeepOldest[Try](Config(downIfAlone, role))
+
         val remainingPartitions = scenario.worldViews.foldMap { worldView =>
-          KeepOldest[Try](Config(downIfAlone, role))
+          keepOldest
             .takeDecision(worldView)
             .map(PostResolution.fromDecision(worldView))
         }.get
@@ -24,8 +26,10 @@ class KeepOldestSpec extends SBSpec {
 
     "handle split during up-dissemination" in {
       forAll { (scenario: UpDisseminationScenario, downIfAlone: Boolean, role: String) =>
+        val keepOldest = new KeepOldest[Try](Config(downIfAlone, role))
+
         val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          KeepOldest[Try](Config(downIfAlone, role))
+          keepOldest
             .takeDecision(worldView)
             .map(PostResolution.fromDecision(worldView))
         }.get

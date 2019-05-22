@@ -34,7 +34,7 @@ class SBResolver(_strategy: Strategy[SyncIO], stableAfter: FiniteDuration) exten
 
   private val cluster     = Cluster(context.system)
   private val selfAddress = cluster.selfMember.address
-  private val strategy    = Union[SyncIO](_strategy, IndirectlyConnected())
+  private val strategy    = new Union[SyncIO](_strategy, new IndirectlyConnected)
 
   override def receive: Receive = {
     case e @ HandleSplitBrain(worldView) =>

@@ -14,7 +14,7 @@ import com.swissborg.sbr.strategy.{Strategy, StrategyReader}
  *
  * This strategy is useful when the cluster is dynamic.
  */
-final case class KeepMajority[F[_]](config: Config)(implicit F: ApplicativeError[F, Throwable]) extends Strategy[F] {
+class KeepMajority[F[_]](config: Config)(implicit F: ApplicativeError[F, Throwable]) extends Strategy[F] {
   import KeepMajority._
   import config._
 

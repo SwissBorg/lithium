@@ -26,8 +26,8 @@ class KeepOldestSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty)
       )
 
-      KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(DownUnreachable(w))
-      KeepOldest[Try](Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(DownUnreachable(w))
+      new KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(DownUnreachable(w))
+      new KeepOldest[Try](Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(DownUnreachable(w))
     }
 
     "down the other partition when being the oldest and alone" in {
@@ -36,7 +36,7 @@ class KeepOldestSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(bb, cc), seenBy = Set.empty)
       )
 
-      KeepOldest[Try](Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(DownUnreachable(w))
+      new KeepOldest[Try](Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(DownUnreachable(w))
     }
 
     "down itself when being the oldest node and alone" in {
@@ -45,7 +45,7 @@ class KeepOldestSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(bb, cc), seenBy = Set.empty)
       )
 
-      KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(DownReachable(w))
+      new KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(DownReachable(w))
     }
 
     "down the reachable nodes when the oldest is unreachable and not alone" in {
@@ -54,8 +54,8 @@ class KeepOldestSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(aa, cc), seenBy = Set.empty)
       )
 
-      KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(DownReachable(w))
-      KeepOldest[Try](Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(DownReachable(w))
+      new KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(DownReachable(w))
+      new KeepOldest[Try](Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(DownReachable(w))
     }
 
     "down the correct nodes when the oldest is unreachable and alone" in {
@@ -64,8 +64,8 @@ class KeepOldestSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(aa), seenBy = Set.empty)
       )
 
-      KeepOldest[Try](Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(DownReachable(w))
-      KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(DownUnreachable(w))
+      new KeepOldest[Try](Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(DownReachable(w))
+      new KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(DownUnreachable(w))
     }
 
     "down the unreachable nodes when the oldest is reachable and not alone" in {
@@ -74,8 +74,8 @@ class KeepOldestSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(cc), seenBy = Set.empty)
       )
 
-      KeepOldest[Try](Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(DownUnreachable(w))
-      KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(DownUnreachable(w))
+      new KeepOldest[Try](Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(DownUnreachable(w))
+      new KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(DownUnreachable(w))
     }
 
     // ---
@@ -86,10 +86,10 @@ class KeepOldestSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc, dd, ee), Set(bb), seenBy = Set.empty)
       )
 
-      KeepOldest[Try](Config(downIfAlone = true, role = "role")).takeDecision(w).get should ===(
+      new KeepOldest[Try](Config(downIfAlone = true, role = "role")).takeDecision(w).get should ===(
         DownUnreachable(w)
       )
-      KeepOldest[Try](Config(downIfAlone = false, role = "role")).takeDecision(w).get should ===(
+      new KeepOldest[Try](Config(downIfAlone = false, role = "role")).takeDecision(w).get should ===(
         DownUnreachable(w)
       )
     }
@@ -100,7 +100,7 @@ class KeepOldestSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc, dd, ee), Set(bb, dd, ee), seenBy = Set.empty)
       )
 
-      KeepOldest[Try](Config(downIfAlone = false, role = "role")).takeDecision(w).get should ===(
+      new KeepOldest[Try](Config(downIfAlone = false, role = "role")).takeDecision(w).get should ===(
         DownUnreachable(w)
       )
     }
@@ -111,7 +111,7 @@ class KeepOldestSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc, dd, ee), Set(aa, bb, dd, ee), seenBy = Set.empty)
       )
 
-      KeepOldest[Try](Config(downIfAlone = true, role = "role")).takeDecision(w).get should ===(DownReachable(w))
+      new KeepOldest[Try](Config(downIfAlone = true, role = "role")).takeDecision(w).get should ===(DownReachable(w))
     }
 
     "down the reachable nodes when the oldest is unreachable and not alone (with role)" in {
@@ -120,8 +120,8 @@ class KeepOldestSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc, dd, ee), Set(cc, dd), seenBy = Set.empty)
       )
 
-      KeepOldest[Try](Config(downIfAlone = true, role = "role")).takeDecision(w).get should ===(DownReachable(w))
-      KeepOldest[Try](Config(downIfAlone = false, role = "role")).takeDecision(w).get should ===(
+      new KeepOldest[Try](Config(downIfAlone = true, role = "role")).takeDecision(w).get should ===(DownReachable(w))
+      new KeepOldest[Try](Config(downIfAlone = false, role = "role")).takeDecision(w).get should ===(
         DownReachable(w)
       )
     }
@@ -132,10 +132,11 @@ class KeepOldestSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc, dd, ee), Set(cc, aa, bb), seenBy = Set.empty)
       )
 
-      KeepOldest[Try](Config(downIfAlone = false, role = "role")).takeDecision(w).get should ===(
+      new KeepOldest[Try](Config(downIfAlone = false, role = "role")).takeDecision(w).get should ===(
         DownReachable(w)
       )
-      KeepOldest[Try](Config(downIfAlone = true, role = "role")).takeDecision(w).get should ===(
+
+      new KeepOldest[Try](Config(downIfAlone = true, role = "role")).takeDecision(w).get should ===(
         DownUnreachable(w)
       )
     }
@@ -146,10 +147,11 @@ class KeepOldestSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc, dd, ee), Set(aa, bb, ee), seenBy = Set.empty)
       )
 
-      KeepOldest[Try](Config(downIfAlone = false, role = "role")).takeDecision(w).get should ===(
+      new KeepOldest[Try](Config(downIfAlone = false, role = "role")).takeDecision(w).get should ===(
         DownUnreachable(w)
       )
-      KeepOldest[Try](Config(downIfAlone = true, role = "role")).takeDecision(w).get should ===(
+
+      new KeepOldest[Try](Config(downIfAlone = true, role = "role")).takeDecision(w).get should ===(
         DownUnreachable(w)
       )
     }
@@ -160,10 +162,11 @@ class KeepOldestSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa), seenBy = Set.empty)
       )
 
-      KeepOldest[Try](Config(downIfAlone = false, role = "")).takeDecision(w).map(_.simplify).get should ===(
+      new KeepOldest[Try](Config(downIfAlone = false, role = "")).takeDecision(w).map(_.simplify).get should ===(
         Idle
       )
-      KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).map(_.simplify).get should ===(Idle)
+
+      new KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).map(_.simplify).get should ===(Idle)
     }
 
     "down the cluster when uncertain if alone" in {
@@ -174,14 +177,16 @@ class KeepOldestSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(aa, bb), seenBy = Set.empty)
       )
 
-      KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(DownReachable(w))
+      val keepOldest = new KeepOldest[Try](Config(downIfAlone = true, role = ""))
+
+      keepOldest.takeDecision(w).get should ===(DownReachable(w))
 
       val w1 = WorldView.fromSnapshot(
         aa,
         CurrentClusterState(SortedSet(aa, bb, cc), Set(bb, cc), seenBy = Set.empty)
       )
 
-      KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w1).get should ===(DownReachable(w1))
+      keepOldest.takeDecision(w1).get should ===(DownReachable(w1))
     }
   }
 }

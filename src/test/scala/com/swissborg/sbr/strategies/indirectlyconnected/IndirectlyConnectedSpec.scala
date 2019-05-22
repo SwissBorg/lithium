@@ -5,10 +5,12 @@ import cats.implicits._
 import com.swissborg.sbr._
 
 class IndirectlyConnectedSpec extends SBSpec {
+  private val indirectlyConnected: IndirectlyConnected[Id] = new IndirectlyConnected[Id]
+
   "IndirectlyConnected" must {
     "down self if unreachable" in {
       forAll { worldView: WorldView =>
-        IndirectlyConnected[Id]().takeDecision(worldView).map {
+        indirectlyConnected.takeDecision(worldView).map {
           case DownIndirectlyConnected(nodes) => worldView.indirectlyConnectedNodes should ===(nodes)
           case _                              => fail
         }
