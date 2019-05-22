@@ -30,17 +30,17 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
   override def downRemovalMargin: FiniteDuration = config.stableAfter
 
   override def downingActorProps: Option[Props] = {
-    val keepMajority = KeepMajority.name
-    val keepOldest   = KeepOldest.name
-    val keepReferee  = KeepReferee.name
-    val staticQuorum = StaticQuorum.name
+    val keepMajority = KeepMajority.Config.name
+    val keepOldest   = KeepOldest.Config.name
+    val keepReferee  = KeepReferee.Config.name
+    val staticQuorum = StaticQuorum.Config.name
     val downAll      = DownAll.name
 
     val strategy = config.activeStrategy match {
-      case `keepMajority`  => KeepMajority.load.map(SBResolver.props(_, config.stableAfter))
-      case `keepOldest`    => KeepOldest.load.map(SBResolver.props(_, config.stableAfter))
-      case `keepReferee`   => KeepReferee.load.map(SBResolver.props(_, config.stableAfter))
-      case `staticQuorum`  => StaticQuorum.load.map(SBResolver.props(_, config.stableAfter))
+      case `keepMajority`  => KeepMajority.Config.load.map(c => SBResolver.props(KeepMajority(c), config.stableAfter))
+      case `keepOldest`    => KeepOldest.Config.load.map(c => SBResolver.props(KeepOldest(c), config.stableAfter))
+      case `keepReferee`   => KeepReferee.Config.load.map(c => SBResolver.props(KeepReferee(c), config.stableAfter))
+      case `staticQuorum`  => StaticQuorum.Config.load.map(c => SBResolver.props(StaticQuorum(c), config.stableAfter))
       case `downAll`       => SBResolver.props(DownAll(), config.stableAfter).asRight
       case unknownStrategy => UnknownStrategy(unknownStrategy).asLeft
     }

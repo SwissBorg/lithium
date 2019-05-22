@@ -5,13 +5,12 @@ import com.swissborg.sbr.{StrategyDecision, WorldView}
 /**
  * Interface for split-brain resolution strategies.
  */
-trait Strategy {
+trait Strategy[F[_]] {
 
   /**
-   * Attempts to provide strategy decision given the world view
-   * otherwise an error.
+   * The strategy decision given the world view.
    *
    * @param worldView the world view of the cluster from the callers actor sytem.
    */
-  def takeDecision(worldView: WorldView): Either[Throwable, StrategyDecision]
+  def takeDecision(worldView: WorldView): F[StrategyDecision]
 }

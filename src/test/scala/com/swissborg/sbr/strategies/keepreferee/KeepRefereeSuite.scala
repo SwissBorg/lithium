@@ -4,7 +4,9 @@ import akka.actor.Address
 import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.MemberStatus.Up
 import akka.cluster.swissborg.TestMember
-import com.swissborg.sbr.strategies.keepreferee.KeepReferee.{Address => RefereeAddress}
+import cats.Id
+import com.swissborg.sbr.strategies.keepreferee.KeepReferee.Config
+import com.swissborg.sbr.strategies.keepreferee.KeepReferee.Config.{Address => RefereeAddress}
 import com.swissborg.sbr.{DownReachable, DownUnreachable, WorldView}
 import eu.timepit.refined._
 import eu.timepit.refined.auto._
@@ -26,7 +28,7 @@ class KeepRefereeSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty)
       )
 
-      KeepReferee(referee, 1).takeDecision(w) should ===(Right(DownUnreachable(w)))
+      KeepReferee[Id](Config(referee, 1)).takeDecision(w) should ===(DownUnreachable(w))
     }
 
     "down the reachable nodes when being the referee and not reaching enough nodes" in {
@@ -35,7 +37,7 @@ class KeepRefereeSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty)
       )
 
-      KeepReferee(referee, 3).takeDecision(w) should ===(Right(DownReachable(w)))
+      KeepReferee[Id](Config(referee, 3)).takeDecision(w) should ===(DownReachable(w))
     }
 
     "down the unreachable nodes when the referee is reachable and reaching enough nodes" in {
@@ -44,7 +46,7 @@ class KeepRefereeSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty)
       )
 
-      KeepReferee(referee, 1).takeDecision(w) should ===(Right(DownUnreachable(w)))
+      KeepReferee[Id](Config(referee, 1)).takeDecision(w) should ===(DownUnreachable(w))
     }
 
     "down the reachable nodes when the referee is reachable and not reaching enough nodes" in {
@@ -53,7 +55,7 @@ class KeepRefereeSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty)
       )
 
-      KeepReferee(referee, 3).takeDecision(w) should ===(Right(DownReachable(w)))
+      KeepReferee[Id](Config(referee, 3)).takeDecision(w) should ===(DownReachable(w))
     }
 
     "down the reachable nodes when the referee is unreachable" in {
@@ -62,8 +64,8 @@ class KeepRefereeSuite extends WordSpec with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc), Set(aa), seenBy = Set.empty)
       )
 
-      KeepReferee(referee, 1).takeDecision(w) should ===(Right(DownReachable(w)))
-      KeepReferee(referee, 3).takeDecision(w) should ===(Right(DownReachable(w)))
+      KeepReferee[Id](Config(referee, 1)).takeDecision(w) should ===(DownReachable(w))
+      KeepReferee[Id](Config(referee, 3)).takeDecision(w) should ===(DownReachable(w))
     }
 
     "compile for valid addresses" in {

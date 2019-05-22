@@ -130,7 +130,6 @@ abstract class TenNodeSpec(name: String, config: TenNodeSpecConfig)
   }
 
   private val addresses: Map[RoleName, Address] = roles.map(r => r -> node(r).address).toMap
-  addresses.foreach(a => log.debug(s"$a"))
 
   private def addressOf(roleName: RoleName): Address = addresses(roleName)
 

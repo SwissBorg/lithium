@@ -1,8 +1,10 @@
 package com.swissborg.sbr.strategies.keepreferee
 
+import cats.Applicative
 import cats.implicits._
 import com.swissborg.sbr._
-import com.swissborg.sbr.strategies.keepreferee.KeepReferee.Address
+import com.swissborg.sbr.strategies.keepreferee.KeepReferee.Config
+import com.swissborg.sbr.strategies.keepreferee.KeepReferee.Config.Address
 import com.swissborg.sbr.strategy.{Strategy, StrategyReader}
 import eu.timepit.refined._
 import eu.timepit.refined.api.Refined
@@ -10,9 +12,18 @@ import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric._
 import eu.timepit.refined.string._
 
-final case class KeepReferee(address: String Refined Address, downAllIfLessThanNodes: Int Refined Positive)
-    extends Strategy {
-  override def takeDecision(worldView: WorldView): Either[Throwable, StrategyDecision] =
+/**
+ * Split-brain strategy that will keep the partition containing the referee ([[config.address]])
+ * and down all the other partitions.
+ * If the remaining partition has less than [[config.downAllIfLessThanNodes]] the cluster will
+ * be downed.
+ *
+ * This strategy is useful when the cluster has a node that is critical to its operation.
+ */
+final case class KeepReferee[F[_]: Applicative](config: Config) extends Strategy[F] {
+  import config._
+
+  override def takeDecision(worldView: WorldView): F[StrategyDecision] =
     worldView.consideredReachableNodes
       .find(_.member.address.toString === address.value)
       .fold[StrategyDecision](DownReachable(worldView)) { _ =>
@@ -21,10 +32,22 @@ final case class KeepReferee(address: String Refined Address, downAllIfLessThanN
         else
           DownUnreachable(worldView)
       }
-      .asRight
+      .pure[F]
 }
 
-object KeepReferee extends StrategyReader[KeepReferee] {
-  override val name: String = "keep-referee"
-  type Address = MatchesRegex[W.`"([0-9A-Za-z]+.)*[0-9A-Za-z]+://[0-9A-Za-z]+@([0-9A-Za-z]+.)*[0-9A-Za-z]+:[0-9]+"`.T]
+object KeepReferee {
+
+  /**
+   * [[KeepReferee]] config.
+   *
+   * @param address the address of the referee.
+   * @param downAllIfLessThanNodes the minimum number of nodes that should be remaining in the cluster.
+   *                                 Else the cluster gets downed.
+   */
+  final case class Config(address: String Refined Address, downAllIfLessThanNodes: Int Refined Positive)
+
+  object Config extends StrategyReader[Config] {
+    override val name: String = "keep-referee"
+    type Address = MatchesRegex[W.`"([0-9A-Za-z]+.)*[0-9A-Za-z]+://[0-9A-Za-z]+@([0-9A-Za-z]+.)*[0-9A-Za-z]+:[0-9]+"`.T]
+  }
 }

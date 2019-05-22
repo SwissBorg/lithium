@@ -1,62 +1,73 @@
 package com.swissborg.sbr.strategies.keepmajority
 
 import akka.cluster.Member
+import cats.ApplicativeError
 import cats.implicits._
 import com.swissborg.sbr._
+import com.swissborg.sbr.strategies.keepmajority.KeepMajority.Config
 import com.swissborg.sbr.strategy.{Strategy, StrategyReader}
 
 /**
- * Represents the "Keep Majority" split-brain resolution strategy.
+ * Split-brain resolver strategy that will keep the partition containing more than half of the nodes and down the other
+ * ones. In case of an even number and nodes and none is a majority the partition containing the node
+ * if the lowest address will be picked as a survivor.
  *
- * @param role the role of nodes to take in account.
+ * This strategy is useful when the cluster is dynamic.
  */
-final case class KeepMajority(role: String) extends Strategy {
+final case class KeepMajority[F[_]](config: Config)(implicit F: ApplicativeError[F, Throwable]) extends Strategy[F] {
   import KeepMajority._
+  import config._
 
-  /**
-   * Strategy that will down a partition if it is not a majority. In case of an even number of nodes
-   * it will choose the partition with the lowest address.
-   *
-   * A `role` can be provided to only take in account the nodes with that role in the decisions.
-   * This can be useful if there are nodes that are more important than others.
-   */
-  override def takeDecision(worldView: WorldView): Either[Throwable, StrategyDecision] = {
+  override def takeDecision(worldView: WorldView): F[StrategyDecision] = {
     val totalNodes = worldView.consideredNodesWithRole(role).size
 
-    val majority =
-      if (totalNodes <= 0) {
-        // makes sure that the partition will always down itself
-        1
-      } else {
-        totalNodes / 2 + 1
-      }
+    val majority = Math.max(totalNodes / 2 + 1, 1)
 
     val reachableConsideredNodes   = worldView.consideredReachableNodesWithRole(role)
     val unreachableConsideredNodes = worldView.consideredUnreachableNodesWithRole(role)
 
     if (reachableConsideredNodes.size >= majority) {
-      DownUnreachable(worldView).asRight
+      DownUnreachable(worldView).pure[F].widen
     } else if (unreachableConsideredNodes.size >= majority)
-      DownReachable(worldView).asRight
-    else if (reachableConsideredNodes.size === unreachableConsideredNodes.size) {
+      DownReachable(worldView).pure[F].widen
+    else if (totalNodes > 0 && reachableConsideredNodes.size === unreachableConsideredNodes.size) {
       // check if the node with the lowest address is in this partition
       worldView
         .consideredNodesWithRole(role)
         .toList
         .sortBy(_.member.address)(Member.addressOrdering)
         .headOption
-        .fold[Either[Throwable, StrategyDecision]](NoMajority.asLeft) {
-          case _: ReachableNode   => DownUnreachable(worldView).asRight
-          case _: UnreachableNode => DownReachable(worldView).asRight
+        .fold(NoMajority.raiseError[F, StrategyDecision]) {
+          case _: ReachableNode =>
+            DownUnreachable(worldView).pure[F].widen
+
+          case _: UnreachableNode =>
+            DownReachable(worldView).pure[F].widen
+
           case _: IndirectlyConnectedNode =>
-            new IllegalStateException("No indirectly connected node should be considered").asLeft
+            new IllegalStateException("No indirectly connected node should be considered")
+              .raiseError[F, StrategyDecision]
         }
-    } else NoMajority.asLeft
+    } else {
+      // There are no nodes with the configured role in the cluster so
+      // there is no partition with a majority. In this case we make
+      // the safe decision to down the current partition.
+      DownReachable(worldView).pure[F].widen
+    }
   }
 }
 
-object KeepMajority extends StrategyReader[KeepMajority] {
-  override val name: String = "keep-majority"
+object KeepMajority {
+
+  /**
+   * [[KeepMajority]] configuration.
+   *
+   * @param role the role of the nodes to take in account.
+   */
+  final case class Config(role: String)
+  object Config extends StrategyReader[Config] {
+    override val name: String = "keep-majority"
+  }
 
   case object NoMajority extends Throwable
 }

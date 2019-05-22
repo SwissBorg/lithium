@@ -1,9 +1,11 @@
 package com.swissborg.sbr.strategies.keepreferee
 
+import cats.Id
 import cats.implicits._
 import com.swissborg.sbr.SBSpec
 import com.swissborg.sbr.scenarios.{OldestRemovedScenario, SymmetricSplitScenario, UpDisseminationScenario}
-import com.swissborg.sbr.strategies.keepreferee.KeepReferee.Address
+import com.swissborg.sbr.strategies.keepreferee.KeepReferee.Config
+import com.swissborg.sbr.strategies.keepreferee.KeepReferee.Config.Address
 import com.swissborg.sbr.utils.PostResolution
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric._
@@ -20,11 +22,12 @@ class KeepRefereeSpec extends SBSpec {
           .toTry
           .get
 
-        val remainingPartitions = scenario.worldViews.foldMap { worldView =>
-          KeepReferee(referee, downAllIfLessThanNodes)
-            .takeDecision(worldView)
-            .foldMap(PostResolution.fromDecision(worldView))
-        }
+        val remainingPartitions = scenario.worldViews
+          .foldMap { worldView =>
+            KeepReferee[Id](Config(referee, downAllIfLessThanNodes))
+              .takeDecision(worldView)
+              .map(PostResolution.fromDecision(worldView))
+          }
 
         remainingPartitions.noSplitBrain shouldBe true
       }
@@ -38,11 +41,12 @@ class KeepRefereeSpec extends SBSpec {
           .toTry
           .get
 
-        val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-          KeepReferee(referee, downAllIfLessThanNodes)
-            .takeDecision(worldView)
-            .foldMap(PostResolution.fromDecision(worldView))
-        }
+        val remainingSubClusters = scenario.worldViews
+          .foldMap { worldView =>
+            KeepReferee[Id](Config(referee, downAllIfLessThanNodes))
+              .takeDecision(worldView)
+              .map(PostResolution.fromDecision(worldView))
+          }
 
         remainingSubClusters.noSplitBrain shouldBe true
       }
@@ -60,11 +64,12 @@ class KeepRefereeSpec extends SBSpec {
               .toTry
               .get
 
-            val remainingSubClusters = scenario.worldViews.foldMap { worldView =>
-              KeepReferee(referee, downAllIfLessThanNodes)
-                .takeDecision(worldView)
-                .foldMap(PostResolution.fromDecision(worldView))
-            }
+            val remainingSubClusters = scenario.worldViews
+              .foldMap { worldView =>
+                KeepReferee[Id](Config(referee, downAllIfLessThanNodes))
+                  .takeDecision(worldView)
+                  .map(PostResolution.fromDecision(worldView))
+              }
 
             remainingSubClusters.noSplitBrain shouldBe true
           }

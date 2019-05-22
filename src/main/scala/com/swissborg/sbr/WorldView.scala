@@ -9,6 +9,8 @@ import cats.implicits._
 import com.swissborg.sbr.WorldView.Status
 import com.swissborg.sbr.failuredetector.SBFailureDetector._
 import com.swissborg.sbr.implicits._
+import io.circe.Encoder
+import io.circe.generic.semiauto.deriveEncoder
 
 /**
  * Represents the view of the cluster from the point of view of the
@@ -255,9 +257,26 @@ final case class WorldView private (
     // in parallel.
     case _: IndirectlyConnectedNode => false
   }
+
+  lazy val simple: SimpleWorldView = SimpleWorldView(
+    selfUniqueAddress,
+    reachableNodes.toList.map(n => SimpleMember.fromMember(n.member)),
+    indirectlyConnectedNodes.toList.map(n => SimpleMember.fromMember(n.member)),
+    unreachableNodes.toList.map(n => SimpleMember.fromMember(n.member))
+  )
 }
 
 object WorldView {
+  final case class SimpleWorldView(
+    selfUniqueAddress: UniqueAddress,
+    reachableMembers: List[SimpleMember],
+    indirectlyConnectedMembers: List[SimpleMember],
+    unreachableMembers: List[SimpleMember],
+  )
+
+  object SimpleWorldView {
+    implicit val simpleWorldViewEncoder: Encoder[SimpleWorldView] = deriveEncoder
+  }
 
   /**
    * Create an empty world view.
