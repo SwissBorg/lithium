@@ -3,12 +3,11 @@ package com.swissborg.sbr
 import cats.{Applicative, ApplicativeError}
 import cats.effect.Sync
 import com.swissborg.sbr.scenarios.Scenario
-import com.swissborg.sbr.strategies.keepmajority.ArbitraryInstances.arbKeepMajority
 import com.swissborg.sbr.strategies.keepmajority.KeepMajority
+import com.swissborg.sbr.strategies.keepoldest.KeepOldest
 import com.swissborg.sbr.strategies.keepreferee.KeepReferee
 import com.swissborg.sbr.strategies.keepreferee.KeepReferee.Config.Address
 import com.swissborg.sbr.strategies.staticquorum.StaticQuorum
-import com.swissborg.sbr.strategies.staticquorum.StaticQuorum.Config
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
@@ -47,13 +46,26 @@ object ArbitraryStrategy {
         for {
           quorumSize <- chooseNum(minQuorumSize, clusterSize.value)
           role       <- arbitrary[String]
-        } yield new StaticQuorum(Config(role, refineV[Positive](quorumSize).right.get))
+        } yield new StaticQuorum(StaticQuorum.Config(role, refineV[Positive](quorumSize).right.get))
       }
     }
 
   implicit def keepMajorityStrategyBuilder[F[_]](
     implicit ev: ApplicativeError[F, Throwable]
   ): ArbitraryStrategy[F, KeepMajority] = new ArbitraryStrategy[F, KeepMajority] {
-    override def fromScenario(scenario: Scenario): Arbitrary[KeepMajority[F]] = arbKeepMajority
+    override def fromScenario(scenario: Scenario): Arbitrary[KeepMajority[F]] =
+      Arbitrary(arbitrary[String].map(role => new KeepMajority(KeepMajority.Config(role))))
+  }
+
+  implicit def keepOldestStrategyBuilder[F[_]](
+    implicit F: ApplicativeError[F, Throwable]
+  ): ArbitraryStrategy[F, KeepOldest] = new ArbitraryStrategy[F, KeepOldest] {
+    override def fromScenario(scenario: Scenario): Arbitrary[KeepOldest[F]] = Arbitrary {
+      for {
+        downIfAlone <- arbitrary[Boolean]
+        role        <- arbitrary[String]
+      } yield new KeepOldest(KeepOldest.Config(downIfAlone, role))
+    }
+
   }
 }
