@@ -15,7 +15,7 @@ import com.swissborg.sbr.strategy.{Strategy, StrategyReader}
  * This strategy is useful when you are trying do not want the singleton instances to be migrated
  * after a resolution. The oldest node in the cluster contains the current singleton instance.
  */
-class KeepOldest[F[_]](config: Config)(implicit F: ApplicativeError[F, Throwable]) extends Strategy[F] {
+class KeepOldest[F[_]: ApplicativeError[?[_], Throwable]](config: Config) extends Strategy[F] {
   import config._
 
   override def takeDecision(worldView: WorldView): F[StrategyDecision] = {
