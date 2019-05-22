@@ -16,13 +16,13 @@ import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen.chooseNum
 
-trait ArbitraryStrategy[F[_], Strategy[_[_]]] {
-  def fromScenario(scenario: Scenario): Arbitrary[Strategy[F]]
+trait ArbitraryStrategy[F] {
+  def fromScenario(scenario: Scenario): Arbitrary[F]
 }
 
 object ArbitraryStrategy {
-  implicit def keepRefereeStrategyBuilder[F[_]: Applicative]: ArbitraryStrategy[F, KeepReferee] =
-    new ArbitraryStrategy[F, KeepReferee] {
+  implicit def keepRefereeStrategyBuilder[F[_]: Applicative]: ArbitraryStrategy[KeepReferee[F]] =
+    new ArbitraryStrategy[KeepReferee[F]] {
       override def fromScenario(scenario: Scenario): Arbitrary[KeepReferee[F]] = Arbitrary {
         val nodes = scenario.worldViews.head.nodes
 
@@ -38,8 +38,8 @@ object ArbitraryStrategy {
       }
     }
 
-  implicit def staticQuorumStrategyBuilder[F[_]: Sync]: ArbitraryStrategy[F, StaticQuorum] =
-    new ArbitraryStrategy[F, StaticQuorum] {
+  implicit def staticQuorumStrategyBuilder[F[_]: Sync]: ArbitraryStrategy[StaticQuorum[F]] =
+    new ArbitraryStrategy[StaticQuorum[F]] {
       override def fromScenario(scenario: Scenario): Arbitrary[StaticQuorum[F]] = Arbitrary {
         val clusterSize = scenario.clusterSize
 
@@ -51,27 +51,25 @@ object ArbitraryStrategy {
       }
     }
 
-  implicit def keepMajorityStrategyBuilder[F[_]](
-    implicit ev: ApplicativeError[F, Throwable]
-  ): ArbitraryStrategy[F, KeepMajority] = new ArbitraryStrategy[F, KeepMajority] {
-    override def fromScenario(scenario: Scenario): Arbitrary[KeepMajority[F]] =
-      Arbitrary(arbitrary[String].map(role => new KeepMajority(KeepMajority.Config(role))))
-  }
-
-  implicit def keepOldestStrategyBuilder[F[_]](
-    implicit F: ApplicativeError[F, Throwable]
-  ): ArbitraryStrategy[F, KeepOldest] = new ArbitraryStrategy[F, KeepOldest] {
-    override def fromScenario(scenario: Scenario): Arbitrary[KeepOldest[F]] = Arbitrary {
-      for {
-        downIfAlone <- arbitrary[Boolean]
-        role        <- arbitrary[String]
-      } yield new KeepOldest(KeepOldest.Config(downIfAlone, role))
+  implicit def keepMajorityStrategyBuilder[F[_]: ApplicativeError[?[_], Throwable]]: ArbitraryStrategy[KeepMajority[F]] =
+    new ArbitraryStrategy[KeepMajority[F]] {
+      override def fromScenario(scenario: Scenario): Arbitrary[KeepMajority[F]] =
+        Arbitrary(arbitrary[String].map(role => new KeepMajority(KeepMajority.Config(role))))
     }
 
-  }
+  implicit def keepOldestStrategyBuilder[F[_]: ApplicativeError[?[_], Throwable]]: ArbitraryStrategy[KeepOldest[F]] =
+    new ArbitraryStrategy[KeepOldest[F]] {
+      override def fromScenario(scenario: Scenario): Arbitrary[KeepOldest[F]] = Arbitrary {
+        for {
+          downIfAlone <- arbitrary[Boolean]
+          role        <- arbitrary[String]
+        } yield new KeepOldest(KeepOldest.Config(downIfAlone, role))
+      }
 
-  implicit def downAllStrategyBuilder[F[_]: Applicative]: ArbitraryStrategy[F, DownAll] =
-    new ArbitraryStrategy[F, DownAll] {
+    }
+
+  implicit def downAllStrategyBuilder[F[_]: Applicative]: ArbitraryStrategy[DownAll[F]] =
+    new ArbitraryStrategy[DownAll[F]] {
       override def fromScenario(scenario: Scenario): Arbitrary[DownAll[F]] = Arbitrary(Gen.const(new DownAll[F]()))
     }
 }
