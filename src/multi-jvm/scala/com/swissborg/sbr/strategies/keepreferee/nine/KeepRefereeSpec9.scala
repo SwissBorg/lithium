@@ -21,9 +21,9 @@ class KeepRefereeSpec9MultiJvmNode10 extends KeepRefereeSpec9
  * Node8 and node9 are indirectly connected in a ten node cluster
  * Node9 and node10 are indirectly connected in a ten node cluster
  */
-class KeepRefereeSpec9 extends TenNodeSpec("StaticQuorum", KeepRefereeSpecTenNodeConfig) {
+class KeepRefereeSpec9 extends TenNodeSpec("KeepReferee", KeepRefereeSpecTenNodeConfig) {
   override def assertions(): Unit =
-    "handle indirectly connected nodes" in within(120 seconds) {
+    "handle scenario 9" in within(120 seconds) {
       runOn(node1) {
         testConductor.blackhole(node8, node9, Direction.Receive).await
         testConductor.blackhole(node9, node10, Direction.Receive).await

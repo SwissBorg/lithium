@@ -24,11 +24,8 @@ class StaticQuorumSpec2MultiJvmNode5 extends StaticQuorumSpec2
  */
 class StaticQuorumSpec2 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Config) {
   override def assertions(): Unit =
-    "Three partitions, bidirectional link failure" in within(60 seconds) {
+    "handle scenario 2" in within(60 seconds) {
       runOn(node1) {
-        // Partition of node1, node2, node3 <- survives
-        // Partition of node 4              <- killed
-        // Partition of node 5              <- killed
         com.swissborg.sbr.TestUtil
           .linksToKillForPartitions(List(node1, node2, node3) :: List(node4) :: List(node5) :: Nil)
           .foreach {
@@ -37,20 +34,6 @@ class StaticQuorumSpec2 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Co
       }
 
       enterBarrier("links-failed")
-
-      runOn(node1, node2, node3) {
-        waitToBecomeUnreachable(node4, node5)
-      }
-
-      runOn(node4) {
-        waitToBecomeUnreachable(node1, node2, node3, node5)
-      }
-
-      runOn(node5) {
-        waitToBecomeUnreachable(node1, node2, node3, node4)
-      }
-
-      enterBarrier("split-brain")
 
       runOn(node1, node2, node3) {
         waitForSurvivors(node1, node2, node3)

@@ -23,7 +23,7 @@ class KeepRefereeSpec8MultiJvmNode10 extends KeepRefereeSpec8
  */
 class KeepRefereeSpec8 extends TenNodeSpec("KeepReferee", KeepRefereeSpecTenNodeConfig) {
   override def assertions(): Unit =
-    "handle indirectly connected nodes" in within(120 seconds) {
+    "handle scenario 8" in within(120 seconds) {
       runOn(node1) {
         testConductor.blackhole(node9, node10, Direction.Receive).await
         testConductor.blackhole(node3, node4, Direction.Receive).await

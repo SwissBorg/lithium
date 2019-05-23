@@ -24,15 +24,15 @@ class KeepOldestSpec10MultiJvmNode10 extends KeepOldestSpec10
  */
 class KeepOldestSpec10 extends TenNodeSpec("KeepOldest", KeepOldestSpecTenNodeConfig) {
   override def assertions(): Unit =
-    "handle a network partition with indirectly-connected nodes" in within(120 seconds) {
+    "handle scenario 10" in within(120 seconds) {
       runOn(node1) {
-        val a = linksToKillForPartitions(
+        linksToKillForPartitions(
           List(List(node1, node2, node3, node4, node5, node6, node7, node8), List(node9, node10))
         ).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
         }
 
-        val b = testConductor.blackhole(node7, node8, Direction.Receive).await
+        testConductor.blackhole(node7, node8, Direction.Receive).await
       }
 
       enterBarrier("links-failed")

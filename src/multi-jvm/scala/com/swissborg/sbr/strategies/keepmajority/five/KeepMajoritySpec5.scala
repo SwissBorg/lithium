@@ -12,9 +12,9 @@ class KeepMajoritySpec5MultiJvmNode3 extends KeepMajoritySpec5
 class KeepMajoritySpec5MultiJvmNode4 extends KeepMajoritySpec5
 class KeepMajoritySpec5MultiJvmNode5 extends KeepMajoritySpec5
 
-class KeepMajoritySpec5 extends FiveNodeSpec("StaticQuorum", KeepMajoritySpecFiveNodeConfig) {
+class KeepMajoritySpec5 extends FiveNodeSpec("KeepMajority", KeepMajoritySpecFiveNodeConfig) {
   override def assertions(): Unit =
-    "Unidirectional link failure" in within(120 seconds) {
+    "handle scenario 5" in within(120 seconds) {
       runOn(node1) {
         // Node4 cannot receive node5 messages
         val _ = testConductor.blackhole(node4, node5, Direction.Receive).await

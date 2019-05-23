@@ -25,32 +25,13 @@ class KeepRefereeSpec6MultiJvmNode5 extends KeepRefereeSpec6
  */
 class KeepRefereeSpec6 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNodeConfig) {
   override def assertions(): Unit =
-    "handle indirectly connected nodes" in within(120 seconds) {
+    "handle scenario 6" in within(120 seconds) {
       runOn(node1) {
-        // Node4 cannot receive node5 messages
         testConductor.blackhole(node1, node4, Direction.Receive).await
         testConductor.blackhole(node3, node5, Direction.Receive).await
       }
 
       enterBarrier("links-failed")
-
-      runOn(node1) {
-        waitToBecomeUnreachable(node4)
-      }
-
-      runOn(node4) {
-        waitToBecomeUnreachable(node1)
-      }
-
-      runOn(node3) {
-        waitToBecomeUnreachable(node5)
-      }
-
-      runOn(node5) {
-        waitToBecomeUnreachable(node3)
-      }
-
-      enterBarrier("split-brain")
 
       runOn(node1, node3, node4, node5) {
         waitForSelfDowning

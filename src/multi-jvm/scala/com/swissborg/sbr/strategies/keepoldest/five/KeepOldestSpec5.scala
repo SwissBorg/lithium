@@ -18,28 +18,14 @@ class KeepOldestSpec5MultiJvmNode5 extends KeepOldestSpec5
  * Node4 and node5 should down themselves as they are indirectly connected.
  * The three other nodes survive as they can reach the oldest.
  */
-class KeepOldestSpec5 extends FiveNodeSpec("KeepReferee", KeepOldestSpecFiveNodeConfig) {
+class KeepOldestSpec5 extends FiveNodeSpec("KeepOldest", KeepOldestSpecFiveNodeConfig) {
   override def assertions(): Unit =
-    "handle indirectly-connected nodes" in within(60 seconds) {
+    "handle scenario 11" in within(60 seconds) {
       runOn(node1) {
-        val _ = testConductor.blackhole(node4, node5, Direction.Receive).await
+        testConductor.blackhole(node4, node5, Direction.Receive).await
       }
 
       enterBarrier("links-failed")
-
-      runOn(node4) {
-        waitToBecomeUnreachable(node5)
-      }
-
-      runOn(node5) {
-        waitToBecomeUnreachable(node4)
-      }
-
-      runOn(node1, node2, node3) {
-        waitToBecomeUnreachable(node4, node5)
-      }
-
-      enterBarrier("split-brain")
 
       runOn(node1, node2, node3) {
         waitForSurvivors(node1, node2, node3)

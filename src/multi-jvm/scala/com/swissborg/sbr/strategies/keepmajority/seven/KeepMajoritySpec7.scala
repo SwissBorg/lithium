@@ -20,9 +20,9 @@ class KeepMajoritySpec7MultiJvmNode10 extends KeepMajority7
 /**
  * Node9 and node10 are indirectly connected in a ten node cluster
  */
-class KeepMajority7 extends TenNodeSpec("StaticQuorum", KeepMajoritySpecTenNodeConfig) {
+class KeepMajority7 extends TenNodeSpec("KeepMajority", KeepMajoritySpecTenNodeConfig) {
   override def assertions(): Unit =
-    "Unidirectional link failure" in within(120 seconds) {
+    "handle scenario 7" in within(120 seconds) {
       runOn(node1) {
         // Node9 cannot receive node10 messages
         val _ = testConductor.blackhole(node9, node10, Direction.Receive).await

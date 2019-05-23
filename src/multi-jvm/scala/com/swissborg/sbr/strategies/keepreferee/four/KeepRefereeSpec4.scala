@@ -20,7 +20,7 @@ class KeepRefereeSpec4MultiJvmNode5 extends KeepRefereeSpec4
  */
 class KeepRefereeSpec4 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNodeConfig) {
   override def assertions(): Unit =
-    "handle indirectly connected nodes" in within(120 seconds) {
+    "handle scenario 4" in within(120 seconds) {
       runOn(node1) {
         // Node4 cannot receive node5 messages
         // Node4 and node5 will shutdown because they are indirectly connected.
@@ -28,20 +28,6 @@ class KeepRefereeSpec4 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNo
       }
 
       enterBarrier("links-failed")
-
-      runOn(node4) {
-        waitToBecomeUnreachable(node5)
-      }
-
-      runOn(node5) {
-        waitToBecomeUnreachable(node4)
-      }
-
-      runOn(node1, node2, node3) {
-        waitToBecomeUnreachable(node4, node5)
-      }
-
-      enterBarrier("split-brain")
 
       runOn(node1, node2, node3) {
         waitForSurvivors(node1, node2, node3)

@@ -13,22 +13,14 @@ class KeepMajoritySpecMultiJvmNode3 extends KeepMajoritySpec
 
 class KeepMajoritySpec extends ThreeNodeSpec("KeepMajority", KeepMajoritySpecThreeNodeConfig) {
   override def assertions(): Unit =
-    "Bidirectional link failure" in within(60 seconds) {
+    "handle scenario 1" in within(60 seconds) {
       runOn(node1) {
-        // Partition with node1 and node2 <- survive
-        // Partition with node3           <- killed
         linksToKillForPartitions(List(node1, node2) :: List(node3) :: Nil).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
         }
       }
 
       enterBarrier("links-failed")
-
-      runOn(node1, node2) {
-        waitToBecomeUnreachable(node3)
-      }
-
-      enterBarrier("split-brain")
 
       runOn(node1, node2) {
         waitForSurvivors(node1, node2)
