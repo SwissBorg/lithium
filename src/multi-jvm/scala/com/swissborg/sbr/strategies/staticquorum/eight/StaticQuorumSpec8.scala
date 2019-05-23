@@ -23,11 +23,10 @@ class StaticQuorumSpec8MultiJvmNode10 extends StaticQuorumSpec8
  */
 class StaticQuorumSpec8 extends TenNodeSpec("StaticQuorum", StaticQuorumSpec3Config) {
   override def assertions(): Unit =
-    "Split-brain" in within(120 seconds) {
+    "handle scenario 8" in within(120 seconds) {
       runOn(node1) {
-        // Node9 cannot receive node10 messages
-        val a = testConductor.blackhole(node9, node10, Direction.Receive).await
-        val b = testConductor.blackhole(node2, node3, Direction.Receive).await
+        testConductor.blackhole(node9, node10, Direction.Receive).await
+        testConductor.blackhole(node2, node3, Direction.Receive).await
       }
 
       enterBarrier("links-failed")

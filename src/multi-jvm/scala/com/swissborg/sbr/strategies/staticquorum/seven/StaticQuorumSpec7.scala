@@ -22,10 +22,10 @@ class StaticQuorumSpec7MultiJvmNode10 extends StaticQuorumSpec7
  */
 class StaticQuorumSpec7 extends TenNodeSpec("StaticQuorum", StaticQuorumSpec3Config) {
   override def assertions(): Unit =
-    "Unidirectional link failure" in within(120 seconds) {
+    "handle scenario 7" in within(120 seconds) {
       runOn(node1) {
         // Node9 cannot receive node10 messages
-        val _ = testConductor.blackhole(node9, node10, Direction.Receive).await
+        testConductor.blackhole(node9, node10, Direction.Receive).await
       }
 
       enterBarrier("links-failed")

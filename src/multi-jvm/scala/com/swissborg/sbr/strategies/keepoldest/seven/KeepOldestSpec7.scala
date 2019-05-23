@@ -22,10 +22,9 @@ class KeepOldestSpec7MultiJvmNode10 extends KeepOldestSpec7
  */
 class KeepOldestSpec7 extends TenNodeSpec("KeepOldest", KeepOldestSpecTenNodeConfig) {
   override def assertions(): Unit =
-    "handle indirectly-connected nodes" in within(120 seconds) {
+    "handle scenario 7" in within(120 seconds) {
       runOn(node1) {
-        // Node9 cannot receive node10 messages
-        val _ = testConductor.blackhole(node9, node10, Direction.Receive).await
+        testConductor.blackhole(node9, node10, Direction.Receive).await
       }
 
       enterBarrier("links-failed")

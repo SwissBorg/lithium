@@ -27,7 +27,7 @@ class KeepRefereeSpec2MultiJvmNode5 extends KeepRefereeSpec2
  */
 class KeepRefereeSpec2 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNodeConfig) {
   override def assertions(): Unit =
-    "handle a clean network partition" in within(60 seconds) {
+    "handle scenario 2" in within(60 seconds) {
       runOn(node1) {
         linksToKillForPartitions(List(List(node1, node2), List(node3), List(node4), List(node5))).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
@@ -35,24 +35,6 @@ class KeepRefereeSpec2 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNo
       }
 
       enterBarrier("links-failed")
-
-      runOn(node1, node2) {
-        waitToBecomeUnreachable(node3, node4, node5)
-      }
-
-      runOn(node3) {
-        waitToBecomeUnreachable(node1, node2, node4, node5)
-      }
-
-      runOn(node4) {
-        waitToBecomeUnreachable(node1, node2, node3, node5)
-      }
-
-      runOn(node5) {
-        waitToBecomeUnreachable(node1, node2, node3, node4)
-      }
-
-      enterBarrier("split-brain")
 
       runOn(node1, node2) {
         waitForSurvivors(node1, node2)

@@ -12,10 +12,9 @@ class KeepMajoritySpec4MultiJvmNode3 extends KeepMajoritySpec4
 
 class KeepMajoritySpec4 extends ThreeNodeSpec("KeepMajority", KeepMajoritySpecThreeNodeConfig) {
   override def assertions(): Unit =
-    "Unidirectional link failure" in within(120 seconds) {
+    "handle scenario 4" in within(120 seconds) {
       runOn(node1) {
-        // Node2 cannot receive node3 messages
-        val _ = testConductor.blackhole(node2, node3, Direction.Receive).await
+        testConductor.blackhole(node2, node3, Direction.Receive).await
       }
 
       enterBarrier("links-failed")
