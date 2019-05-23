@@ -63,13 +63,15 @@ final case class WorldView private (
    * states. These status are ignored since a node can join and become
    * weakly-up during a network-partition.
    */
-  lazy val consideredNodes: Set[Node] = nodes.collect { case node if shouldBeConsidered(node) => node }
+  lazy val consideredNodes: Set[CleanNode] = nodes.collect {
+    case node: CleanNode if shouldBeConsidered(node) => node
+  }
 
   /**
    * The nodes with the given role, that need to be considered in
    * split-brain resolutions.
    */
-  def consideredNodesWithRole(role: String): Set[Node] =
+  def consideredNodesWithRole(role: String): Set[CleanNode] =
     if (role.nonEmpty) consideredNodes.filter(_.member.roles.contains(role)) else consideredNodes
 
   /**
