@@ -1,4 +1,4 @@
-# Split-brain Resolver for Akka Clusters
+# SwissBorg Split-brain Resolver for Akka Clusters
 
 When a cluster member becomes unreachable the leader cannot perform its 
 duties anymore. Members cannot change state, singletons cannot be moved
@@ -174,3 +174,6 @@ Indirectly connected nodes are downed as they sit on the intersection of two
 partitions. As result both partitions will assume it is in theirs leading to
 all sorts of trouble. By downing them the partitions become clean partitions
 that do not overlap.
+
+# License
+The SwissBorg Split-Brain Resolver is Open Source and available under the Apache 2 License.
