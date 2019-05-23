@@ -2,13 +2,14 @@ pipeline {
 
     agent {
         docker {
-            image 'docker.sharedborg.com/sbt-j11-build:128-3.4'
-            args '-v ${HOME}/.ivy2:${WORKSPACE}/.ivy2 -v ${HOME}/.sbt:${WORKSPACE}/.sbt -u root --privileged -m4G --cpus 2'
+            image 'sbt-j11-build:128-5.8'
+            args '-v /var/tmp/.ivy2:${WORKSPACE}/.ivy2 -v /var/tmp/.sbt:${WORKSPACE}/.sbt -m8G --cpus 4'
+
         }
     }
 
     environment {
-        SBT_OPTS = '-Xmx1G -Duser.home=.'
+        SBT_OPTS = '-Duser.home=.'
         NEXUS = credentials('nexus_deployer')
     }
 
@@ -31,7 +32,7 @@ pipeline {
         stage('Test') {
             steps {
                 gitlabCommitStatus(name: 'test') {
-                    sh 'sbt test multi-jvm:test'
+                    sh 'sbt test multi-jvm:test '
                 }
             }
         }
