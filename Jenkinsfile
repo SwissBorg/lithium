@@ -4,7 +4,7 @@ pipeline {
         docker {
             image 'sbt-j11-build:128-5.8'
             args '-v /var/tmp/.ivy2:${WORKSPACE}/.ivy2 -v /var/tmp/.sbt:${WORKSPACE}/.sbt -m8G --cpus 4'
-
+            registryUrl 'https://dockerpush.sharedborg.com'
         }
     }
 
