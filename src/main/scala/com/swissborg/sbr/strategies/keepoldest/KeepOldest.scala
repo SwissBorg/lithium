@@ -71,10 +71,6 @@ class KeepOldest[F[_]: ApplicativeError[?[_], Throwable]](config: Config) extend
         }
 
         decision.pure[F]
-
-      case _: IndirectlyConnectedNode =>
-        new IllegalStateException("Indirectly connected nodes should not be considered")
-          .raiseError[F, StrategyDecision]
     }
   }
 }

@@ -36,10 +36,17 @@ object Node {
   implicit val nodeOrder: Order[Node]       = Order.fromOrdering
 }
 
+sealed trait CleanNode extends Node
+
+object CleanNode {
+  implicit val consideredNodeOrdering: Ordering[CleanNode] = Ordering.by(_.member)
+  implicit val consideredNodeOrder: Order[CleanNode]       = Order.fromOrdering
+}
+
 /**
  * A cluster node that cannot be reached from any of its observers.
  */
-final case class UnreachableNode(member: Member) extends Node {
+final case class UnreachableNode(member: Member) extends CleanNode {
   override def copyMember(member: Member): Node = copy(member = member)
 }
 
@@ -51,7 +58,7 @@ object UnreachableNode {
 /**
  * A cluster nodes that can be reached by all its observers.
  */
-final case class ReachableNode(member: Member) extends Node {
+final case class ReachableNode(member: Member) extends CleanNode {
   override def copyMember(member: Member): Node = copy(member = member)
 }
 
