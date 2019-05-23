@@ -22,7 +22,7 @@ class RoleStaticQuorumSpecMultiJvmNode5 extends RoleStaticQuorumSpec
  */
 class RoleStaticQuorumSpec extends FiveNodeSpec("StaticQuorum", RoleStaticQuorumSpecConfig) {
   override def assertions(): Unit =
-    "Two partitions, bidirectional link failure" in within(60 seconds) {
+    "handle scenario 3" in within(60 seconds) {
       runOn(node1) {
         com.swissborg.sbr.TestUtil.linksToKillForPartitions(List(node1, node2) :: List(node3, node4, node5) :: Nil).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
@@ -30,16 +30,6 @@ class RoleStaticQuorumSpec extends FiveNodeSpec("StaticQuorum", RoleStaticQuorum
       }
 
       enterBarrier("links-failed")
-
-      runOn(node3, node4, node5) {
-        waitToBecomeUnreachable(node1, node2)
-      }
-
-      runOn(node1, node2) {
-        waitToBecomeUnreachable(node3, node4, node5)
-      }
-
-      enterBarrier("split-brain")
 
       runOn(node1, node2) {
         waitForDownOrGone(node3, node4, node5)
