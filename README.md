@@ -1,24 +1,25 @@
-# Split-brain resolver for Akka clusters
+# SwissBorg Split-brain Resolver for Akka Clusters
 
 When a cluster member becomes unreachable the leader cannot perform its 
 duties anymore. Members cannot change state, singletons cannot be moved
 to a different member. In such situations the cluster administrator has
 to manually down members so the leader can continue its duties. This 
 library provides a few strategies that can automatically down members 
-without user intervention.
+without user intervention. 
 
-## Stable after
+## Stable After
 Split-brain resolution is only run after the cluster has been stable for 
 a configured amount of time. The stability is affected by members changing
 state and failure detections. However, the stability is not affected by
 members becoming "joining" or "weakly-up" as they are not counted in decisions.
 The reason for this is that a node can move to those states during network 
-partitions and as result potentially not seen by all the partitions.
+partitions and as result potentially not be seen by all the partitions.
 
 The `stable-after` duration should be chosen longer than the time it takes
-to gossip cluster membership changes. Moreover, it should be long enough 
-so that persistent actors are stopped before they are started on another 
-node.
+to gossip cluster membership changes. Additionally, since a partition cannot
+communicate together, the duration should be large enough so that persistent
+actor have the time to stop in one partition before being instantiated on
+the surviving partition. 
 
 ```hocon
 akka.cluster {
@@ -31,9 +32,9 @@ com.swissborg.sbr {
   active-strategy = off
 
   # Duration during which the cluster must be stable before taking
-  # action on the network-partition. The duration must be chosen as
-  # longer than the time it takes for singletons and shards to be 
-  # moved to surviving partitions.
+  # action on the network-partition. The duration must chose large
+  # enough to allow for membership events to be gossiped and persistent
+  # actor to be migrated.
   stable-after = 30s
 }
 ```
@@ -41,70 +42,80 @@ com.swissborg.sbr {
 ## Strategies
 
 
-### Static quorum
-Keeps the side of a partition that has at least the specified number of reachable members.
+### Static Quorum
+Keeps the partition that contains at least `quorum-size` nodes and downs
+all the other partitions.
 
-This strategy is useful when the size of the cluster is fixed or the number of nodes
-with the given role is fixed. 
-
-The `quorum-size` should be chosen as at least more than half the number nodes in
-the cluster. As a consequence, if the cluster grows and breaks this assumption two
-partition might see itself as a quorum and down each other. Leading to a split-brain.
+The `quorum-size` should be chosen as strictly more than half the nodes
+in the cluster, only counting nodes with the configured `role`.
 
 In a cluster with 5 nodes, in the case of a split of two partitions. One with 3 nodes
 and the other with 2 nodes, the 3 node partition will survive. With only 3 nodes still
 in the cluster there is the risk that the cluster will downed while fixing the next failure.
 Hence, new nodes should be added to the cluster after resolutions.
 
-The strategy could also lead to the downing of the cluster when multiple partitions occur
-and none of them is a quorum. The same also happens when a large amount of nodes crash
-and not enough nodes remain.
+The cluster can down itself in a few cases:
+ * When the cluster grows too large it will down itself to avoid creating a split-brain when multiple partitions form a quorum. 
+ * When multiple partitions occur and none of them forms a quorum. 
+ * When a large amount of nodes crash and not enough nodes remain to form a quorum.
+
+This strategy is useful when the size of the cluster is fixed or the number of nodes
+with the given role is fixed.
+
+By design this strategy cannot lead to a split-brain.
 
 #### Configuration
 ```hocon
 com.swissborg.sbr {
   active-strategy = "static-quorum"
   static-quorum {
-    # The minimum number of members a partition must have.
+    # Minimum number of nodes in the surviving partition.
     quorum-size = undefined
     
-    # Take the decision based only on members with this role.
+    # Only take in account nodes with this role.
     role = ""
   }
 }
 ```
 
-### Keep majority
-Keeps the side of partition that has a majority of reachable members. 
-If the partitions are the same size the one containing the member with the
-lowest address is kept.
+### Keep Majority
+Keeps the side of partition that contains the majority of nodes and downs
+the other partitions. In the case where they have the same size the one 
+containing the member with the lowest address is kept.
 
-This strategy is useful when the size of the cluster or the number of nodes with 
-the given role is not known in advance.
+The cluster can down itself in a few cases:
+ * When multiple partitions occur and none of them forms a majority.
+ * When a majority of nodes crash, the remaining nodes do not form a majority and down themselves. 
 
-Similarly to the `static-quorum` strategy, if none of partitions are in majority
-they will down themselves and down the entire cluster.
+This strategy is useful when the size of the cluster is dynamic
+
+This strategy can on rare occasions lead to a split-brain when a network partition
+occurs during a membership dissemination and a partition ends up seeing certain nodes
+as Up while others do not.
 
 #### Configuration
 ```hocon
 com.swissborg.sbr {
   active-strategy = "keep-majority"
   keep-majority {
-    # Take the decision based only on members with this role.
+    # Only take in account nodes with this role.
     role = ""
   }
 }
 ```
 
-### Keep referee
-Keeps the partition that can contains the specified member.
+### Keep Referee
+Keeps the partition that can contains the specified member and downs the other
+partitions.
 
-This strategy is useful when there is a node containing critical resources.
-However, this means that in case of a crash of the referee, the entire cluster
-will be downed. On the other hand, it is not possible to end up with a split-brain.
+The cluster can down itself in a few cases:
+ * When the referee crashes.
+ * When the number of nodes is below `down-all-if-less-than-nodes`. 
 
-The cluster will be downed if the partition containing the referee has 
-strictly less nodes than the configure `down-all-if-less-than-nodes`.
+This strategy is useful when the cluster has a node without which it 
+cannot run.
+
+By design this strategy cannot lead to a split-brain.
 
 #### Configuration
 ```hocon
@@ -112,27 +123,32 @@ com.swissborg.sbr {
   active-strategy = "keep-referee"
   keep-referee {
     # Address of the member in the format "akka.tcp://system@host:port"
-    address = ""
+    address = undefined
     
-    # The minimum number of nodes the partition containing the 
-    # referee must contain. Otherwise, the cluster is downed.
+    # Minimum number of nodes in the surviving partition.
     down-all-if-less-than-nodes = 1
   }
 }
 ```
 
-### Keep oldest
-Keeps the partition that can contains the oldest member in the cluster.
+### Keep Oldest
+Keeps the partition that can contains the oldest member in the cluster and downs 
+the other partitions.
 
-This strategy is useful as the oldest member contains the active Cluster Singleton. 
-Minimizing the down time of singletons.
+By enabling `down-if-alone` the other partitions will down the oldest node if
+it is cut-off from the rest. This can prevent the scenario where you have a 100
+node cluster, the oldest node become unreachable. 99 nodes will be downed and 
+leave the cluster heavily crippled.
 
-Similarly to the referee, if the partition containing the oldest node is very
-small compared to the other partitions, the cluster size will drastically 
-decreased.
+When `down-if-alone` is enabled, multiple partitions occur, and the oldest node is alone.
+The cluster will down itself as a partition cannot know if the unreachable nodes are in
+a single partition or form multiple ones. Hence, it then assumes that there is only one
+other partition and downs itself. On the other side, the oldest node (who is alone) knows
+it is alone and will down itself.
 
-By enabling `down-if-alone`, the other partitions will down the oldest node if
-it is cut-off from the rest. Otherwise, all the other nodes will down themselves.
+This strategy can on rare occasions lead to a split-brain when a network partition
+occurs during a membership dissemination and a partition ends up seeing the oldest 
+nodes as Removed and selecting the second-oldest as the oldest.
 
 #### Configuration
 
@@ -140,16 +156,24 @@ it is cut-off from the rest. Otherwise, all the other nodes will down themselves
 com.swissborg.sbr {
   active-strategy = "keep-oldest"
   keep-oldest {
-    # When enabled, downs the oldest member when alone.
-    down-if-alone = on
+    # Down the oldest member when alone.
+    down-if-alone = no
     
-    # Take the decision based only on members with this role.
+    # Only take in account nodes with this role.
     role = ""
   }
 }
 ```
 
-## Indirectly connected members
+## Indirectly Connected Members
 An indirectly connected member is a cluster member that has a mix of nodes
 that can reach and not reach it. Such members are downed in combination 
-with the ones downed by the configured strategy.
+with the ones downed by the configured strategy. 
+
+Indirectly connected nodes are downed as they sit on the intersection of two 
+partitions. As result both partitions will assume it is in theirs leading to
+all sorts of trouble. By downing them the partitions become clean partitions
+that do not overlap.
+
+# License
+The SwissBorg Split-Brain Resolver is Open Source and available under the Apache 2 License.
