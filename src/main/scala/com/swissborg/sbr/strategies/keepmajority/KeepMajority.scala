@@ -43,10 +43,6 @@ class KeepMajority[F[_]: ApplicativeError[?[_], Throwable]](config: Config) exte
 
           case _: UnreachableNode =>
             DownReachable(worldView).pure[F].widen
-
-          case _: IndirectlyConnectedNode =>
-            new IllegalStateException("No indirectly connected node should be considered")
-              .raiseError[F, StrategyDecision]
         }
     } else {
       // There are no nodes with the configured role in the cluster so
