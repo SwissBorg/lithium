@@ -22,7 +22,6 @@ class KeepRefereeSpec5 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNo
   override def assertions(): Unit =
     "handle scenario 5" in within(60 seconds) {
       runOn(node1) {
-        // Node4 cannot receive node5 messages
         testConductor.blackhole(node4, node5, Direction.Receive).await
       }
 
