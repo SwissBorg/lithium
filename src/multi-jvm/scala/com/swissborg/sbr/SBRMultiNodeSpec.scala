@@ -48,7 +48,7 @@ abstract class SBRMultiNodeSpec(val config: MultiNodeConfig)
 
   private def downedItself(implicit system: ActorSystem): Boolean = {
     val selfAddress = Cluster(system).selfAddress
-    Cluster(system).state.members.exists(m => m.address === selfAddress && m.status === Down)
+    Cluster(system).state.members.exists(m => m.address === selfAddress && (m.status === Down || m.address === Removed))
   }
 
   private def allDownOrGone(roleNames: RoleName*): Boolean =
