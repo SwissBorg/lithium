@@ -22,7 +22,7 @@ class RoleKeepOldestSpecMultiJvmNode5 extends RoleKeepOldestSpec
  */
 class RoleKeepOldestSpec extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecConfig) {
   override def assertions(): Unit =
-    "handle a network partition" in within(60 seconds) {
+    "handle scenario 3" in within(60 seconds) {
       runOn(node1) {
         // Partition with node1 and node2          <- survive (contains oldest node given role)
         // Partition with node3, node4, and node 5 <- killed
@@ -34,16 +34,6 @@ class RoleKeepOldestSpec extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecCo
       }
 
       enterBarrier("links-failed")
-
-      runOn(node3, node4, node5) {
-        waitToBecomeUnreachable(node1, node2)
-      }
-
-      runOn(node1, node2) {
-        waitToBecomeUnreachable(node3, node4, node5)
-      }
-
-      enterBarrier("split-brain")
 
       runOn(node1, node2) {
         waitForSurvivors(node1, node2)

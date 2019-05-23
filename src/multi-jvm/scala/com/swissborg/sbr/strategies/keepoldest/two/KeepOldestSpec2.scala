@@ -25,7 +25,7 @@ class KeepOldestSpec2MultiJvmNode5 extends KeepOldestSpec2
  */
 class KeepOldestSpec2 extends FiveNodeSpec("KeepOldest", KeepOldestSpecFiveNodeConfig) {
   override def assertions(): Unit =
-    "handle a network partition" in within(120 seconds) {
+    "handle scenario 2" in within(120 seconds) {
       runOn(node1) {
         linksToKillForPartitions(List(node1) :: List(node2, node3) :: List(node4, node5) :: Nil).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
@@ -33,20 +33,6 @@ class KeepOldestSpec2 extends FiveNodeSpec("KeepOldest", KeepOldestSpecFiveNodeC
       }
 
       enterBarrier("link-failed")
-
-      runOn(node1) {
-        waitToBecomeUnreachable(node2, node3, node4, node5)
-      }
-
-      runOn(node2, node3) {
-        waitToBecomeUnreachable(node1, node4, node5)
-      }
-
-      runOn(node4, node5) {
-        waitToBecomeUnreachable(node1, node2, node3)
-      }
-
-      enterBarrier("split-brain")
 
       runOn(node1) {
         waitForSurvivors(node1)

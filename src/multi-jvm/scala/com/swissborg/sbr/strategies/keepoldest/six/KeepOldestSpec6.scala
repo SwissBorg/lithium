@@ -21,31 +21,13 @@ class KeepOldestSpec6MultiJvmNode5 extends KeepOldestSpec6
  */
 class KeepOldestSpec6 extends FiveNodeSpec("KeepOldest", KeepOldestSpecFiveNodeConfig) {
   override def assertions(): Unit =
-    "handle indirectly-connected nodes" in within(120 seconds) {
+    "handle scenario 6" in within(120 seconds) {
       runOn(node1) {
-        val a = testConductor.blackhole(node2, node4, Direction.Receive).await
-        val b = testConductor.blackhole(node3, node5, Direction.Receive).await
+        testConductor.blackhole(node2, node4, Direction.Receive).await
+        testConductor.blackhole(node3, node5, Direction.Receive).await
       }
 
       enterBarrier("links-failed")
-
-      runOn(node2) {
-        waitToBecomeUnreachable(node4)
-      }
-
-      runOn(node4) {
-        waitToBecomeUnreachable(node2)
-      }
-
-      runOn(node3) {
-        waitToBecomeUnreachable(node5)
-      }
-
-      runOn(node5) {
-        waitToBecomeUnreachable(node3)
-      }
-
-      enterBarrier("split-brain")
 
       runOn(node1) {
         waitForDownOrGone(node2, node3, node4, node5)
