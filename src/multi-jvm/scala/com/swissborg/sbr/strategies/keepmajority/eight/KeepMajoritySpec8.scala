@@ -20,13 +20,12 @@ class KeepMajoritySpec8MultiJvmNode10 extends KeepMajority8
 /**
  * Node9 and node10 are indirectly connected in a ten node cluster
  */
-class KeepMajority8 extends TenNodeSpec("StaticQuorum", KeepMajoritySpecTenNodeConfig) {
+class KeepMajority8 extends TenNodeSpec("KeepMajority", KeepMajoritySpecTenNodeConfig) {
   override def assertions(): Unit =
-    "Split-brain" in within(120 seconds) {
+    "handle scenario 8" in within(120 seconds) {
       runOn(node1) {
-        // Node9 cannot receive node10 messages
-        val a = testConductor.blackhole(node9, node10, Direction.Receive).await
-        val b = testConductor.blackhole(node2, node3, Direction.Receive).await
+        testConductor.blackhole(node9, node10, Direction.Receive).await
+        testConductor.blackhole(node2, node3, Direction.Receive).await
       }
 
       enterBarrier("links-failed")

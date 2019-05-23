@@ -21,33 +21,13 @@ class KeepMajoritySpec6MultiJvmNode5 extends KeepMajoritySpec6
  */
 class KeepMajoritySpec6 extends FiveNodeSpec("KeepMajority", KeepMajoritySpecFiveNodeConfig) {
   override def assertions(): Unit =
-    "Unidirectional link failure" in within(120 seconds) {
+    "handle scenario 6" in within(120 seconds) {
       runOn(node1) {
-        // Node4 cannot receive node5 messages
-        val a = testConductor.blackhole(node2, node4, Direction.Receive).await
-        val b = testConductor.blackhole(node3, node5, Direction.Receive).await
+        testConductor.blackhole(node2, node4, Direction.Receive).await
+        testConductor.blackhole(node3, node5, Direction.Receive).await
       }
 
       enterBarrier("links-failed")
-
-      runOn(node2) {
-        waitToBecomeUnreachable(node4)
-      }
-
-      runOn(node4) {
-        waitToBecomeUnreachable(node2)
-      }
-
-
-      runOn(node3) {
-        waitToBecomeUnreachable(node5)
-      }
-
-      runOn(node5) {
-        waitToBecomeUnreachable(node3)
-      }
-
-      enterBarrier("split-brain")
 
       runOn(node2, node3, node4, node5) {
         waitForSelfDowning

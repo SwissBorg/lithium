@@ -21,32 +21,14 @@ class StaticQuorumSpec6MultiJvmNode5 extends StaticQuorumSpec6
  */
 class StaticQuorumSpec6 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Config) {
   override def assertions(): Unit =
-    "Unidirectional link failure" in within(120 seconds) {
+    "handle scenario 6" in within(120 seconds) {
       runOn(node1) {
         // Node4 cannot receive node5 messages
-        val a = testConductor.blackhole(node1, node4, Direction.Receive).await
-        val b = testConductor.blackhole(node3, node5, Direction.Receive).await
+        testConductor.blackhole(node1, node4, Direction.Receive).await
+        testConductor.blackhole(node3, node5, Direction.Receive).await
       }
 
       enterBarrier("links-failed")
-
-      runOn(node1) {
-        waitToBecomeUnreachable(node4)
-      }
-
-      runOn(node4) {
-        waitToBecomeUnreachable(node1)
-      }
-
-      runOn(node3) {
-        waitToBecomeUnreachable(node5)
-      }
-
-      runOn(node5) {
-        waitToBecomeUnreachable(node3)
-      }
-
-      enterBarrier("split-brain")
 
       runOn(node1, node2, node3, node4, node5) {
         waitForSelfDowning

@@ -19,26 +19,12 @@ class KeepRefereeSpec3MultiJvmNode3 extends KeepRefereeSpec3
  */
 class KeepRefereeSpec3 extends ThreeNodeSpec("KeepReferee", KeepRefereeSpecThreeNodeConfig) {
   override def assertions(): Unit =
-    "handle indirectly connected members" in within(60 seconds) {
+    "handle scenario 3" in within(60 seconds) {
       runOn(node1) {
         testConductor.blackhole(node1, node2, Direction.Receive).await
       }
 
       enterBarrier("links-failed")
-
-      runOn(node1) {
-        waitToBecomeUnreachable(node2)
-      }
-
-      runOn(node2) {
-        waitToBecomeUnreachable(node1)
-      }
-
-      runOn(node3) {
-        waitToBecomeUnreachable(node1, node2)
-      }
-
-      enterBarrier("split-brain")
 
       runOn(node1, node2, node3) {
         waitForSelfDowning

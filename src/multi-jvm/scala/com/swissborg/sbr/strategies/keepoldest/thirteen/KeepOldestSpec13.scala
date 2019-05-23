@@ -26,7 +26,7 @@ class KeepOldestSpec13MultiJvmNode5 extends KeepOldestSpec13
  */
 class KeepOldestSpec13 extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecDownAloneConfig) {
   override def assertions(): Unit =
-    "down the partition with the oldest node when alone" in within(60 seconds) {
+    "handle scenario 13" in within(60 seconds) {
       runOn(node1) {
         linksToKillForPartitions(List(node1, node2, node3, node4) :: List(node5) :: Nil)
           .foreach {
@@ -37,24 +37,6 @@ class KeepOldestSpec13 extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecDown
       }
 
       enterBarrier("links-failed")
-
-      runOn(node1, node2) {
-        waitToBecomeUnreachable(node5)
-      }
-
-      runOn(node3) {
-        waitToBecomeUnreachable(node4, node5)
-      }
-
-      runOn(node4) {
-        waitToBecomeUnreachable(node3, node5)
-      }
-
-      runOn(node5) {
-        waitToBecomeUnreachable(node1, node2, node3, node4)
-      }
-
-      enterBarrier("split-brain")
 
       runOn(node1, node2) {
         waitForDownOrGone(node3, node4, node5)

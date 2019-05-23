@@ -22,9 +22,9 @@ class KeepRefereeSpec10MultiJvmNode10 extends KeepRefereeSpec10
  * Network partition between node1 -...- node8 and node9 - node10.
  * Indirect connections between node7 and node8.
  */
-class KeepRefereeSpec10 extends TenNodeSpec("StaticQuorum", KeepRefereeSpecTenNodeConfig) {
+class KeepRefereeSpec10 extends TenNodeSpec("KeepReferee", KeepRefereeSpecTenNodeConfig) {
   override def assertions(): Unit =
-    "handle a mix of a network partition and indirectly connected nodes" in within(120 seconds) {
+    "handle scenario 10" in within(120 seconds) {
       runOn(node1) {
         linksToKillForPartitions(
           List(List(node1, node2, node3, node4, node5, node6, node7, node8), List(node9, node10))

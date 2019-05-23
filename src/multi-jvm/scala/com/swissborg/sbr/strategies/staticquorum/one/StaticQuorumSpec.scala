@@ -20,7 +20,7 @@ class StaticQuorumSpecMultiJvmNode3 extends StaticQuorumSpec
  */
 class StaticQuorumSpec extends ThreeNodeSpec("StaticQuorum", StaticQuorumSpecConfig) {
   override def assertions(): Unit =
-    "Bidirectional link failure" in within(60 seconds) {
+    "handle scenario 1" in within(60 seconds) {
       runOn(node1) {
         // Partition with node1 and node 2 <- survive
         // Partition with node 3           <- killed

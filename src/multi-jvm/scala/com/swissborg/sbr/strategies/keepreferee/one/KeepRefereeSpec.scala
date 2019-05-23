@@ -20,7 +20,7 @@ class KeepRefereeSpecMultiJvmNode3 extends KeepRefereeSpec
  */
 class KeepRefereeSpec extends ThreeNodeSpec("KeepReferee", KeepRefereeSpecThreeNodeConfig) {
   override def assertions(): Unit =
-    "handle a clean network partition" in within(60 seconds) {
+    "handle scenario 1" in within(60 seconds) {
       runOn(node1) {
         com.swissborg.sbr.TestUtil.linksToKillForPartitions(List(node1) :: List(node2, node3) :: Nil).foreach {
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
@@ -28,16 +28,6 @@ class KeepRefereeSpec extends ThreeNodeSpec("KeepReferee", KeepRefereeSpecThreeN
       }
 
       enterBarrier("links-failed")
-
-      runOn(node1) {
-        waitToBecomeUnreachable(node2, node3)
-      }
-
-      runOn(node2, node3) {
-        waitToBecomeUnreachable(node1)
-      }
-
-      enterBarrier("split-brain")
 
       runOn(node1) {
         waitForSurvivors(node1)

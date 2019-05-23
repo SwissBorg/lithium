@@ -14,11 +14,8 @@ class KeepMajoritySpec2MultiJvmNode5 extends KeepMajoritySpec2
 
 class KeepMajoritySpec2 extends FiveNodeSpec("KeepMajority", KeepMajoritySpecFiveNodeConfig) {
   override def assertions(): Unit =
-    "Three partitions, bidirectional link failure" in within(60 seconds) {
+    "handle scenario 2" in within(60 seconds) {
       runOn(node1) {
-        // Partition with node1, node2, node3 <- survive
-        // Partition with node 4              <- killed
-        // Partition with node 5              <- killed
         TestUtil
           .linksToKillForPartitions(List(node1, node2, node3) :: List(node4) :: List(node5) :: Nil)
           .foreach {
@@ -27,20 +24,6 @@ class KeepMajoritySpec2 extends FiveNodeSpec("KeepMajority", KeepMajoritySpecFiv
       }
 
       enterBarrier("links-failed")
-
-      runOn(node1, node2, node3) {
-        waitToBecomeUnreachable(node4, node5)
-      }
-
-      runOn(node4) {
-        waitToBecomeUnreachable(node1, node2, node3, node5)
-      }
-
-      runOn(node5) {
-        waitToBecomeUnreachable(node1, node2, node3, node4)
-      }
-
-      enterBarrier("split-brain")
 
       runOn(node1, node2, node3) {
         waitForSurvivors(node1, node2, node3)
