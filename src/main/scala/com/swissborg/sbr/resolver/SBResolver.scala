@@ -37,13 +37,14 @@ class SBResolver(_strategy: Strategy[SyncIO], stableAfter: FiniteDuration, downA
 
   private val cluster: Cluster                 = Cluster(context.system)
   private val selfAddress: Address             = cluster.selfMember.address
-  private val strategy: Union[SyncIO]          = new Union(_strategy, new IndirectlyConnected)
+  private val defaultStrategy: Union[SyncIO]   = new Union(_strategy, new IndirectlyConnected)
   private val downAll: downall.DownAll[SyncIO] = new downall.DownAll()
 
   override def receive: Receive = {
     case e @ HandleSplitBrain(worldView) =>
+      log.info("SPLIT-BRAIN")
       log.info(e.simple.asJson.noSpaces)
-      runStrategy(strategy, worldView).unsafeRunSync()
+      runStrategy(defaultStrategy, worldView).unsafeRunSync()
 
     case DownAll(worldView) =>
       log.info("DOWN-ALL")
@@ -53,6 +54,7 @@ class SBResolver(_strategy: Strategy[SyncIO], stableAfter: FiniteDuration, downA
   private def runStrategy(strategy: Strategy[SyncIO], worldView: WorldView): SyncIO[Unit] = {
     def down(nodes: Set[Node]): OptionT[SyncIO, Unit] =
       liftF(nodes.toList.traverse_(node => SyncIO(cluster.down(node.member.address))))
+
     // Execute the decision by downing all the nodes to be downed if
     // the current node is the leader. Otherwise, do nothing.
     def execute(decision: StrategyDecision): SyncIO[Unit] = {

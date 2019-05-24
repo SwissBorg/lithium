@@ -6,6 +6,7 @@ import akka.cluster.MemberStatus.{Joining, Removed, WeaklyUp}
 import akka.cluster.{Member, UniqueAddress}
 import cats.data.NonEmptySet
 import cats.implicits._
+import cats.kernel.Eq
 import com.swissborg.sbr.WorldView.Status
 import com.swissborg.sbr.failuredetector.SBFailureDetector._
 import com.swissborg.sbr.implicits._
@@ -278,6 +279,10 @@ object WorldView {
 
   object SimpleWorldView {
     implicit val simpleWorldViewEncoder: Encoder[SimpleWorldView] = deriveEncoder
+    implicit val simpleWorldEq: Eq[SimpleWorldView] = Eq.and(
+      Eq.and(Eq.and(Eq.by(_.reachableMembers), Eq.by(_.unreachableMembers)), Eq.by(_.indirectlyConnectedMembers)),
+      Eq.by(_.selfUniqueAddress)
+    )
   }
 
   /**
