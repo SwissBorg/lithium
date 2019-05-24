@@ -19,7 +19,14 @@ The `stable-after` duration should be chosen longer than the time it takes
 to gossip cluster membership changes. Additionally, since a partition cannot
 communicate together, the duration should be large enough so that persistent
 actor have the time to stop in one partition before being instantiated on
-the surviving partition. 
+the surviving partition.
+
+The `down-all-when-unstable` flag when enabled will down the partition 
+if the cluster has been unstable for longer than `stable-after + 3/4 * stable-after`.
+This stops the situation where a persistent actor is started in the surviving 
+partition before being stopped in its original partition because the `stable-after`
+timeout in the original is never hit. It is recommended to leave this setting enabled.
+
 
 ```hocon
 akka.cluster {
@@ -36,6 +43,12 @@ com.swissborg.sbr {
   # enough to allow for membership events to be gossiped and persistent
   # actor to be migrated.
   stable-after = 30s
+  
+  # Down the partition if it has been unstable for too long. If the cluster
+  # wait too long before downing itself persistent actors might already be
+  # restarted on another partition, leading to two instances of the same
+  # persistent actor.
+  down-all-when-unstable = on
 }
 ```
 
