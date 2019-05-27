@@ -200,7 +200,7 @@ object SBReporter {
    */
   sealed abstract case class DiffInfo(changeIsStable: Boolean, hasNewUnreachableOrIndirectlyConnected: Boolean)
 
-  object DiffInfo {
+  private[sbr] object DiffInfo {
     def apply(oldWorldView: WorldView, updatedWorldView: WorldView): DiffInfo = {
       // Remove members that are `Joining` or `WeaklyUp` as they
       // can appear during a split-brain.
@@ -210,6 +210,18 @@ object SBReporter {
           case UnreachableNode(member) if member.status =!= Joining && member.status =!= WeaklyUp         => member
           case IndirectlyConnectedNode(member) if member.status =!= Joining && member.status =!= WeaklyUp => member
         }.toList
+
+      /**
+       * True if the both lists contain the same members in the same order.
+       *
+       * Warning: expects both arguments to be sorted.
+       */
+      def pairWiseEquals(members1: List[Member], members2: List[Member]): Boolean =
+        members1.sorted.zip(members2.sorted).forall {
+          case (member1, member2) =>
+            member1 === member2 && // only compares unique addresses
+              member1.status === member2.status
+        }
 
       val oldReachable           = nonJoining(oldWorldView.reachableNodes)
       val oldIndirectlyConnected = nonJoining(oldWorldView.indirectlyConnectedNodes)
@@ -228,17 +240,5 @@ object SBReporter {
 
       new DiffInfo(stable, increase) {}
     }
-
-    /**
-     * True if the both lists contain the same members in the same order.
-     *
-     * Warning: expects both arguments to be sorted.
-     */
-    private def pairWiseEquals(members1: List[Member], members2: List[Member]): Boolean =
-      members1.sorted.zip(members2.sorted).forall {
-        case (member1, member2) =>
-          member1 === member2 && // only compares unique addresses
-            member1.status === member2.status
-      }
   }
 }
