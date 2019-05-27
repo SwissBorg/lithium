@@ -8,10 +8,10 @@ import cats.data.StateT
 import cats.data.StateT._
 import cats.effect.SyncIO
 import cats.implicits._
+import com.swissborg.sbr._
 import com.swissborg.sbr.failuredetector.SBFailureDetector
 import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.resolver.SBResolver
-import com.swissborg.sbr._
 
 import scala.concurrent.duration._
 
@@ -205,13 +205,14 @@ object SBReporter {
 
   object DiffInfo {
     def apply(oldWorldView: WorldView, updatedWorldView: WorldView): DiffInfo = {
-      // Joining and WeaklyUp nodes are counted in the diff as they can appear during a split-brain.
-      def nonJoining[N <: Node](nodes: Set[N]): Set[Member] =
+      // Remove members that are `Joining` or `WeaklyUp` as they
+      // can appear during a split-brain.
+      def nonJoining[N <: Node](nodes: Set[N]): List[Member] =
         nodes.iterator.collect {
           case ReachableNode(member) if member.status =!= Joining && member.status =!= WeaklyUp           => member
           case UnreachableNode(member) if member.status =!= Joining && member.status =!= WeaklyUp         => member
           case IndirectlyConnectedNode(member) if member.status =!= Joining && member.status =!= WeaklyUp => member
-        }.toSet
+        }.toList
 
       val oldReachable           = nonJoining(oldWorldView.reachableNodes)
       val oldIndirectlyConnected = nonJoining(oldWorldView.indirectlyConnectedNodes)
@@ -221,14 +222,26 @@ object SBReporter {
       val updatedIndirectlyConnected = nonJoining(updatedWorldView.indirectlyConnectedNodes)
       val updatedUnreachable         = nonJoining(updatedWorldView.unreachableNodes)
 
-      val stable = oldReachable === updatedReachable &&
+      val stable = pairWiseEquals(oldReachable, updatedReachable) &&
         // A change between unreachable and indirectly-connected does not affect the stability.
-        (oldIndirectlyConnected ++ oldUnreachable) === (updatedIndirectlyConnected ++ updatedUnreachable)
+        pairWiseEquals(oldIndirectlyConnected ++ oldUnreachable, updatedIndirectlyConnected ++ updatedUnreachable)
 
       val increase =
-        oldIndirectlyConnected.size < oldIndirectlyConnected.size || oldUnreachable.size < updatedUnreachable.size
+        oldIndirectlyConnected.size < updatedIndirectlyConnected.size || oldUnreachable.size < updatedUnreachable.size
 
       new DiffInfo(stable, increase) {}
     }
+
+    /**
+     * True if the both lists contain the same members in the same order.
+     *
+     * Warning: expects both arguments to be sorted.
+     */
+    private def pairWiseEquals(members1: List[Member], members2: List[Member]): Boolean =
+      members1.sorted.zip(members2.sorted).forall {
+        case (member1, member2) =>
+          member1 === member2 && // only compares unique addresses
+            member1.status === member2.status
+      }
   }
 }
