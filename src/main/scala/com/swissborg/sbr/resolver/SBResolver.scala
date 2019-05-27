@@ -47,9 +47,11 @@ class SBResolver(_strategy: Strategy[SyncIO], stableAfter: FiniteDuration, downA
       runStrategy(defaultStrategy, worldView).unsafeRunSync()
 
     case DownAll(worldView) =>
-      log.info("DOWN-ALL")
-      log.info(worldView.simple.asJson.noSpaces)
-      if (downAllWhenUnstable) runStrategy(downAll, worldView).unsafeRunSync()
+      if (downAllWhenUnstable) {
+        log.info("DOWN-ALL")
+        log.info(worldView.simple.asJson.noSpaces)
+        runStrategy(downAll, worldView).unsafeRunSync()
+      }
   }
 
   private def runStrategy(strategy: Strategy[SyncIO], worldView: WorldView): SyncIO[Unit] = {
