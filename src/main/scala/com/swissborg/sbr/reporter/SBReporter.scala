@@ -21,7 +21,7 @@ import scala.concurrent.duration._
  * @param splitBrainResolver the actor that resolves the split-brain scenarios.
  * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
  */
-class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, downAllWhenUnstable: Boolean)
+class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration)
     extends Actor
     with Stash
     with ActorLogging
@@ -84,7 +84,7 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
     val updatedState = f(state)
 
     val ongoingSplitBrain = hasSplitBrain(state.worldView)
-    val diff              = worldViewDiff(state.worldView, updatedState.worldView)
+    val diff              = DiffInfo(state.worldView, updatedState.worldView)
 
     // Cancel the `ClusterIsUnstable` event when
     // the split-brain has worsened.
@@ -100,11 +100,9 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
       if (diff.hasNewUnreachableOrIndirectlyConnected) scheduleClusterIsUnstable
       else SyncIO.unit
 
-    val resetClusterIsStableWhenUnstable = if (diff.changeIsStable) {
-      SyncIO.unit
-    } else {
-      resetClusterIsStable
-    }
+    val resetClusterIsStableWhenUnstable =
+      if (diff.changeIsStable) SyncIO.unit
+      else resetClusterIsStable
 
     for {
       _ <- clusterIsUnstableIsActive.ifM(cancelClusterIsUnstableWhenSplitBrainResolved,
@@ -117,13 +115,13 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
     modifyS(_.enqueue(e))
 
   private def withReachableMember(m: Member): Eval[Unit] =
-    modifyS(_.withReachableMember(m))
+    modifyS(_.withReachableMember(m)) >> liftF(SyncIO(log.debug("withReachableMember({})", m)))
 
   private def withUnreachableMember(m: Member): Eval[Unit] =
     modifyS(_.withUnreachableMember(m)) >> liftF(SyncIO(log.debug("withUnreachableMember({})", m)))
 
   private def withIndirectlyConnectedMember(m: Member): Eval[Unit] =
-    modifyS(_.withIndirectlyConnectedMember(m))
+    modifyS(_.withIndirectlyConnectedMember(m)) >> liftF(SyncIO(log.debug("withIndirectlyConnectedMember({})", m)))
 
   private val scheduleClusterIsStable: SyncIO[Unit] =
     SyncIO(timers.startSingleTimer(ClusterIsStable, ClusterIsStable, stableAfter))
@@ -175,37 +173,6 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
   private def hasSplitBrain(worldView: WorldView): Boolean =
     worldView.unreachableNodes.nonEmpty || worldView.indirectlyConnectedNodes.nonEmpty
 
-  private def worldViewDiff(worldView0: WorldView, worldView1: WorldView): WorldViewDiff = {
-    val simple0 = worldView0.simple
-    val nonJoiningNodes0 = simple0.copy(
-      reachableMembers =
-        simple0.reachableMembers.filterNot(member => member.status === Joining || member.status === WeaklyUp),
-      unreachableMembers = simple0.unreachableMembers
-        .filterNot(member => member.status === Joining || member.status === WeaklyUp),
-      indirectlyConnectedMembers = simple0.indirectlyConnectedMembers.filterNot(
-        member => member.status === Joining || member.status === WeaklyUp
-      )
-    )
-
-    val simple1 = worldView1.simple
-    val nonJoiningNodes1 = simple1.copy(
-      reachableMembers =
-        simple1.reachableMembers.filterNot(member => member.status === Joining || member.status === WeaklyUp),
-      unreachableMembers = simple1.unreachableMembers
-        .filterNot(member => member.status === Joining || member.status === WeaklyUp),
-      indirectlyConnectedMembers = simple1.indirectlyConnectedMembers.filterNot(
-        member => member.status === Joining || member.status === WeaklyUp
-      )
-    )
-
-    val stable = nonJoiningNodes0 === nonJoiningNodes1
-    val increase = !stable &&
-      (nonJoiningNodes0.unreachableMembers.size < nonJoiningNodes1.unreachableMembers.size ||
-        nonJoiningNodes0.indirectlyConnectedMembers.size < nonJoiningNodes1.indirectlyConnectedMembers.size)
-
-    WorldViewDiff(stable, increase)
-  }
-
   override def preStart(): Unit = {
     cluster.subscribe(self, InitialStateAsSnapshot, classOf[akka.cluster.ClusterEvent.MemberEvent])
     Converter(context.system).subscribeToSeenChanged(self)
@@ -219,17 +186,49 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
 }
 
 object SBReporter {
-  type Eval[A] = StateT[SyncIO, SBReporterState, A]
+  private type Eval[A] = StateT[SyncIO, SBReporterState, A]
 
-  def props(downer: ActorRef, stableAfter: FiniteDuration, downAllWhenUnstable: Boolean): Props =
-    Props(new SBReporter(downer, stableAfter, downAllWhenUnstable))
+  def props(downer: ActorRef, stableAfter: FiniteDuration): Props = Props(new SBReporter(downer, stableAfter))
 
-  final private case class WorldViewDiff(changeIsStable: Boolean, hasNewUnreachableOrIndirectlyConnected: Boolean)
+  final private case object ClusterIsStable
+  final private case object ClusterIsUnstable
+  final case class IndirectlyConnectedMember(member: Member)
 
   /**
-   * For internal use.
+   * Information on the difference between two world views.
+   *
+   * @param changeIsStable true if both world views are the same ignoring `Joining` and `WeaklyUp` members.
+   * @param hasNewUnreachableOrIndirectlyConnected true if the updated world view has more unreachable or indirectly
+   *                                               connected nodes.
    */
-  final case object ClusterIsStable
-  final case object ClusterIsUnstable
-  final case class IndirectlyConnectedMember(member: Member)
+  sealed abstract case class DiffInfo(changeIsStable: Boolean, hasNewUnreachableOrIndirectlyConnected: Boolean)
+
+  object DiffInfo {
+    def apply(oldWorldView: WorldView, updatedWorldView: WorldView): DiffInfo = {
+      // Joining and WeaklyUp nodes are counted in the diff as they can appear during a split-brain.
+      def nonJoining[N <: Node](nodes: Set[N]): Set[Member] =
+        nodes.iterator.collect {
+          case ReachableNode(member) if member.status =!= Joining && member.status =!= WeaklyUp           => member
+          case UnreachableNode(member) if member.status =!= Joining && member.status =!= WeaklyUp         => member
+          case IndirectlyConnectedNode(member) if member.status =!= Joining && member.status =!= WeaklyUp => member
+        }.toSet
+
+      val oldReachable           = nonJoining(oldWorldView.reachableNodes)
+      val oldIndirectlyConnected = nonJoining(oldWorldView.indirectlyConnectedNodes)
+      val oldUnreachable         = nonJoining(oldWorldView.unreachableNodes)
+
+      val updatedReachable           = nonJoining(updatedWorldView.reachableNodes)
+      val updatedIndirectlyConnected = nonJoining(updatedWorldView.indirectlyConnectedNodes)
+      val updatedUnreachable         = nonJoining(updatedWorldView.unreachableNodes)
+
+      val stable = oldReachable === updatedReachable &&
+        // A change between unreachable and indirectly-connected does not affect the stability.
+        (oldIndirectlyConnected ++ oldUnreachable) === (updatedIndirectlyConnected ++ updatedUnreachable)
+
+      val increase =
+        oldIndirectlyConnected.size < oldIndirectlyConnected.size || oldUnreachable.size < updatedUnreachable.size
+
+      new DiffInfo(stable, increase) {}
+    }
+  }
 }
