@@ -4,6 +4,7 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorSystem, Props}
 import akka.cluster.DowningProvider
+import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.sbr.resolver.SBResolver
 import com.swissborg.sbr.strategies.downall.DownAll
@@ -11,6 +12,7 @@ import com.swissborg.sbr.strategies.keepmajority.KeepMajority
 import com.swissborg.sbr.strategies.keepoldest.KeepOldest
 import com.swissborg.sbr.strategies.keepreferee.KeepReferee
 import com.swissborg.sbr.strategies.staticquorum.StaticQuorum
+import com.swissborg.sbr.strategy.Strategy
 import com.swissborg.sbr.strategy.StrategyReader.UnknownStrategy
 import eu.timepit.refined.pureconfig._
 import pureconfig.generic.auto._
@@ -36,24 +38,16 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
     val staticQuorum = StaticQuorum.Config.name
     val downAll      = DownAll.name
 
+    def sbResolver(strategy: Strategy[SyncIO]): Props =
+      SBResolver.props(strategy, config.stableAfter, config.downAllWhenUnstable)
+
     val strategy = config.activeStrategy match {
-      case `keepMajority` =>
-        KeepMajority.Config.load.map(c => SBResolver.props(new KeepMajority(c), config.stableAfter))
-
-      case `keepOldest` =>
-        KeepOldest.Config.load.map(c => SBResolver.props(new KeepOldest(c), config.stableAfter))
-
-      case `keepReferee` =>
-        KeepReferee.Config.load.map(c => SBResolver.props(new KeepReferee(c), config.stableAfter))
-
-      case `staticQuorum` =>
-        StaticQuorum.Config.load.map(c => SBResolver.props(new StaticQuorum(c), config.stableAfter))
-
-      case `downAll` =>
-        SBResolver.props(new DownAll, config.stableAfter).asRight
-
-      case unknownStrategy =>
-        UnknownStrategy(unknownStrategy).asLeft
+      case `keepMajority`  => KeepMajority.Config.load.map(c => sbResolver(new KeepMajority(c)))
+      case `keepOldest`    => KeepOldest.Config.load.map(c => sbResolver(new KeepOldest(c)))
+      case `keepReferee`   => KeepReferee.Config.load.map(c => sbResolver(new KeepReferee(c)))
+      case `staticQuorum`  => StaticQuorum.Config.load.map(c => sbResolver(new StaticQuorum(c)))
+      case `downAll`       => sbResolver(new DownAll).asRight
+      case unknownStrategy => UnknownStrategy(unknownStrategy).asLeft
     }
 
     strategy.toTry.get.some
@@ -61,7 +55,7 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
 }
 
 object DowningProviderImpl {
-  sealed abstract case class Config(activeStrategy: String, stableAfter: FiniteDuration)
+  sealed abstract case class Config(activeStrategy: String, stableAfter: FiniteDuration, downAllWhenUnstable: Boolean)
 
   object Config {
     // TODO handle errors
@@ -69,11 +63,8 @@ object DowningProviderImpl {
       new Config(
         system.settings.config.getString("com.swissborg.sbr.active-strategy"),
         FiniteDuration(system.settings.config.getDuration("com.swissborg.sbr.stable-after").toMillis,
-                       TimeUnit.MILLISECONDS)
-//        FiniteDuration(
-//          system.settings.config.getDuration("akka.cluster.split-brain-resolver.down-all-when-unstable").toMillis,
-//          TimeUnit.MILLISECONDS
-//        ) // TODO
+                       TimeUnit.MILLISECONDS),
+        system.settings.config.getBoolean("com.swissborg.sbr.down-all-when-unstable")
       ) {}
   }
 }
