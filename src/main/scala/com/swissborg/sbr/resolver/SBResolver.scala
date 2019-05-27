@@ -26,6 +26,7 @@ import scala.concurrent.duration._
  *
  * @param _strategy the strategy with which to resolved the split-brain.
  * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
+ * @param downAllWhenUnstable down the partition if the cluster has been unstable for longer than `stableAfter + 3/4 * stableAfter`.
  */
 class SBResolver(_strategy: Strategy[SyncIO], stableAfter: FiniteDuration, downAllWhenUnstable: Boolean)
     extends Actor
@@ -33,7 +34,7 @@ class SBResolver(_strategy: Strategy[SyncIO], stableAfter: FiniteDuration, downA
 
   import SBResolver._
 
-  context.actorOf(SBReporter.props(self, stableAfter, downAllWhenUnstable))
+  context.actorOf(SBReporter.props(self, stableAfter))
 
   private val cluster: Cluster                 = Cluster(context.system)
   private val selfAddress: Address             = cluster.selfMember.address
@@ -42,13 +43,13 @@ class SBResolver(_strategy: Strategy[SyncIO], stableAfter: FiniteDuration, downA
 
   override def receive: Receive = {
     case e @ HandleSplitBrain(worldView) =>
-      log.info("SPLIT-BRAIN")
       log.info(e.simple.asJson.noSpaces)
       runStrategy(defaultStrategy, worldView).unsafeRunSync()
 
     case DownAll(worldView) =>
       log.info("DOWN-ALL")
-      runStrategy(downAll, worldView).unsafeRunSync()
+      log.info(worldView.simple.asJson.noSpaces)
+      if (downAllWhenUnstable) runStrategy(downAll, worldView).unsafeRunSync()
   }
 
   private def runStrategy(strategy: Strategy[SyncIO], worldView: WorldView): SyncIO[Unit] = {
