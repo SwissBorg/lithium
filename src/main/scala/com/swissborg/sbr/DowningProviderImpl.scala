@@ -64,11 +64,7 @@ object DowningProviderImpl {
         system.settings.config.getString("com.swissborg.sbr.active-strategy"),
         FiniteDuration(system.settings.config.getDuration("com.swissborg.sbr.stable-after").toMillis,
                        TimeUnit.MILLISECONDS),
-        true
-//        FiniteDuration(
-//          system.settings.config.getDuration("akka.cluster.split-brain-resolver.down-all-when-unstable").toMillis,
-//          TimeUnit.MILLISECONDS
-//        ) // TODO
+        system.settings.config.getBoolean("com.swissborg.sbr.down-all-when-unstable")
       ) {}
   }
 }
