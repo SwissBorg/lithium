@@ -150,9 +150,6 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration)
   private val handleSplitBrain: Eval[Unit] =
     for {
       _ <- liftF[SyncIO, SBReporterState, Unit](cancelClusterIsUnstable)
-      _ <- liftF[SyncIO, SBReporterState, Unit](
-        clusterIsUnstableIsActive.flatMap(b => SyncIO(log.debug("ACTIVE {}", b)))
-      )
       _ <- ifSplitBrain(SBResolver.HandleSplitBrain(_))
     } yield ()
 
