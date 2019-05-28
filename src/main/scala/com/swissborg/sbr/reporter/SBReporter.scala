@@ -21,7 +21,7 @@ import scala.concurrent.duration._
  * @param splitBrainResolver the actor that resolves the split-brain scenarios.
  * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
  */
-class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration)
+class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, downAllWhenUnstable: Boolean)
     extends Actor
     with Stash
     with ActorLogging
@@ -83,31 +83,37 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration)
   private def modifyS(f: SBReporterState => SBReporterState): Eval[Unit] = modifyF { state =>
     val updatedState = f(state)
 
-    val ongoingSplitBrain = hasSplitBrain(state.worldView)
-    val diff              = DiffInfo(state.worldView, updatedState.worldView)
+    val diff = DiffInfo(state.worldView, updatedState.worldView)
 
     // Cancel the `ClusterIsUnstable` event when
     // the split-brain has worsened.
-    val cancelClusterIsUnstableWhenSplitBrainResolved =
-      if (ongoingSplitBrain) SyncIO.unit
+    def cancelClusterIsUnstableIfSplitBrainResolved: SyncIO[Unit] =
+      if (hasSplitBrain(state.worldView)) SyncIO.unit
       else cancelClusterIsUnstable
 
     // Schedule the `ClusterIsUnstable` event if
     // a split-brain has appeared. This way
     // it doesn't get rescheduled for problematic
     // nodes that are being downed.
-    val scheduleClusterIsUnstableWhenSplitBrainWorsened =
+    def scheduleClusterIsUnstableIfSplitBrainWorsened: SyncIO[Unit] =
       if (diff.hasNewUnreachableOrIndirectlyConnected) scheduleClusterIsUnstable
       else SyncIO.unit
 
-    val resetClusterIsStableWhenUnstable =
+    // Reset `ClusterIsStable` if the modification is not stable.
+    val resetClusterIsStableIfUnstable: SyncIO[Unit] =
       if (diff.changeIsStable) SyncIO.unit
       else resetClusterIsStable
 
     for {
-      _ <- clusterIsUnstableIsActive.ifM(cancelClusterIsUnstableWhenSplitBrainResolved,
-                                         scheduleClusterIsUnstableWhenSplitBrainWorsened)
-      _ <- resetClusterIsStableWhenUnstable
+      // Run `ClusterIsUnstable` timer only when needed. If the timer is running
+      // while deactivated it will interfere with the `ClusterIsStable` and
+      // cancel it gets triggered.
+      _ <- if (downAllWhenUnstable)
+        clusterIsUnstableIsActive.ifM(cancelClusterIsUnstableIfSplitBrainResolved,
+                                      scheduleClusterIsUnstableIfSplitBrainWorsened)
+      else SyncIO.unit
+
+      _ <- resetClusterIsStableIfUnstable
     } yield updatedState
   }
 
@@ -124,11 +130,15 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration)
     modifyS(_.withIndirectlyConnectedMember(m)) >> liftF(SyncIO(log.debug("withIndirectlyConnectedMember({})", m)))
 
   private val scheduleClusterIsStable: SyncIO[Unit] =
-    SyncIO(timers.startSingleTimer(ClusterIsStable, ClusterIsStable, stableAfter))
+    SyncIO(timers.startSingleTimer(ClusterIsStable, ClusterIsStable, stableAfter)) >> SyncIO(
+      log.debug("START STABLE")
+    )
 
   private val cancelClusterIsStable: SyncIO[Unit] = SyncIO(timers.cancel(ClusterIsStable))
 
-  private val resetClusterIsStable: SyncIO[Unit] = cancelClusterIsStable >> scheduleClusterIsStable
+  private val resetClusterIsStable: SyncIO[Unit] = cancelClusterIsStable >> scheduleClusterIsStable >> SyncIO(
+    log.debug("RESET STABLE")
+  )
 
   private val scheduleClusterIsUnstable: SyncIO[Unit] =
     SyncIO(
@@ -151,6 +161,7 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration)
     for {
       _ <- liftF[SyncIO, SBReporterState, Unit](cancelClusterIsUnstable)
       _ <- ifSplitBrain(SBResolver.HandleSplitBrain(_))
+      _ <- liftF(scheduleClusterIsStable)
     } yield ()
 
   private val downAll: Eval[Unit] = for {
@@ -173,6 +184,7 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration)
   override def preStart(): Unit = {
     cluster.subscribe(self, InitialStateAsSnapshot, classOf[akka.cluster.ClusterEvent.MemberEvent])
     Converter(context.system).subscribeToSeenChanged(self)
+    scheduleClusterIsStable.unsafeRunSync()
   }
 
   override def postStop(): Unit = {
@@ -185,7 +197,8 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration)
 object SBReporter {
   private type Eval[A] = StateT[SyncIO, SBReporterState, A]
 
-  def props(downer: ActorRef, stableAfter: FiniteDuration): Props = Props(new SBReporter(downer, stableAfter))
+  def props(downer: ActorRef, stableAfter: FiniteDuration, downAllWhenUnstable: Boolean): Props =
+    Props(new SBReporter(downer, stableAfter, downAllWhenUnstable))
 
   final private case object ClusterIsStable
   final private case object ClusterIsUnstable
