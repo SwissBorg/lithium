@@ -83,29 +83,29 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
   private def modifyS(f: SBReporterState => SBReporterState): Eval[Unit] = modifyF { state =>
     val updatedState = f(state)
 
-    val ongoingSplitBrain = hasSplitBrain(state.worldView)
-    val diff              = DiffInfo(state.worldView, updatedState.worldView)
+    val diff = DiffInfo(state.worldView, updatedState.worldView)
 
     // Cancel the `ClusterIsUnstable` event when
     // the split-brain has worsened.
-    val cancelClusterIsUnstableIfSplitBrainResolved =
-      if (ongoingSplitBrain) SyncIO.unit
+    def cancelClusterIsUnstableIfSplitBrainResolved: SyncIO[Unit] =
+      if (hasSplitBrain(state.worldView)) SyncIO.unit
       else cancelClusterIsUnstable
 
     // Schedule the `ClusterIsUnstable` event if
     // a split-brain has appeared. This way
     // it doesn't get rescheduled for problematic
     // nodes that are being downed.
-    val scheduleClusterIsUnstableIfSplitBrainWorsened =
+    def scheduleClusterIsUnstableIfSplitBrainWorsened: SyncIO[Unit] =
       if (diff.hasNewUnreachableOrIndirectlyConnected) scheduleClusterIsUnstable
       else SyncIO.unit
 
-    val resetClusterIsStableIfUnstable =
+    // Reset `ClusterIsStable` if the modification is not stable.
+    val resetClusterIsStableIfUnstable: SyncIO[Unit] =
       if (diff.changeIsStable) SyncIO.unit
       else resetClusterIsStable
 
     for {
-      // Run `ClusterIsUnstable` timer when needed. If the timer is running
+      // Run `ClusterIsUnstable` timer only when needed. If the timer is running
       // while deactivated it will interfere with the `ClusterIsStable` and
       // cancel it gets triggered.
       _ <- if (downAllWhenUnstable)
@@ -161,6 +161,7 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
     for {
       _ <- liftF[SyncIO, SBReporterState, Unit](cancelClusterIsUnstable)
       _ <- ifSplitBrain(SBResolver.HandleSplitBrain(_))
+      _ <- liftF(scheduleClusterIsStable)
     } yield ()
 
   private val downAll: Eval[Unit] = for {
