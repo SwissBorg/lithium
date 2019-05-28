@@ -10,6 +10,7 @@ import com.swissborg.sbr.WorldView.SimpleWorldView
 import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.reporter.SBReporter
 import com.swissborg.sbr.resolver.SBResolver.HandleSplitBrain.SimpleHandleSplitBrain
+import com.swissborg.sbr.strategies.downall
 import com.swissborg.sbr.strategies.Union
 import com.swissborg.sbr.strategies.indirectlyconnected.IndirectlyConnected
 import com.swissborg.sbr.strategy.Strategy
@@ -25,29 +26,36 @@ import scala.concurrent.duration._
  *
  * @param _strategy the strategy with which to resolved the split-brain.
  * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
+ * @param downAllWhenUnstable down the partition if the cluster has been unstable for longer than `stableAfter + 3/4 * stableAfter`.
  */
-class SBResolver(_strategy: Strategy[SyncIO], stableAfter: FiniteDuration) extends Actor with ActorLogging {
+class SBResolver(_strategy: Strategy[SyncIO], stableAfter: FiniteDuration, downAllWhenUnstable: Boolean)
+    extends Actor
+    with ActorLogging {
 
   import SBResolver._
 
-  private val _ = context.actorOf(SBReporter.props(self, stableAfter))
+  context.actorOf(SBReporter.props(self, stableAfter, downAllWhenUnstable))
 
-  private val cluster     = Cluster(context.system)
-  private val selfAddress = cluster.selfMember.address
-  private val strategy    = new Union[SyncIO](_strategy, new IndirectlyConnected)
+  private val cluster: Cluster                 = Cluster(context.system)
+  private val selfAddress: Address             = cluster.selfMember.address
+  private val defaultStrategy: Union[SyncIO]   = new Union(_strategy, new IndirectlyConnected)
+  private val downAll: downall.DownAll[SyncIO] = new downall.DownAll()
 
   override def receive: Receive = {
     case e @ HandleSplitBrain(worldView) =>
       log.info(e.simple.asJson.noSpaces)
+      runStrategy(defaultStrategy, worldView).unsafeRunSync()
 
-      runStrategy(strategy, worldView)
-        .handleErrorWith(err => SyncIO(log.error(err, "An error occurred during decision making.")))
-        .unsafeRunSync()
+    case DownAll(worldView) =>
+      log.info("DOWN-ALL")
+      log.info(worldView.simple.asJson.noSpaces)
+      runStrategy(downAll, worldView).unsafeRunSync()
   }
 
   private def runStrategy(strategy: Strategy[SyncIO], worldView: WorldView): SyncIO[Unit] = {
     def down(nodes: Set[Node]): OptionT[SyncIO, Unit] =
       liftF(nodes.toList.traverse_(node => SyncIO(cluster.down(node.member.address))))
+
     // Execute the decision by downing all the nodes to be downed if
     // the current node is the leader. Otherwise, do nothing.
     def execute(decision: StrategyDecision): SyncIO[Unit] = {
@@ -64,14 +72,18 @@ class SBResolver(_strategy: Strategy[SyncIO], stableAfter: FiniteDuration) exten
     }
 
     strategy.takeDecision(worldView).flatMap(execute)
-  }
+  }.handleErrorWith(err => SyncIO(log.error(err, "An error occurred during decision making.")))
 }
 
 object SBResolver {
-  def props(strategy: Strategy[SyncIO], stableAfter: FiniteDuration): Props =
-    Props(new SBResolver(strategy, stableAfter))
+  def props(strategy: Strategy[SyncIO], stableAfter: FiniteDuration, downAllWhenUnstable: Boolean): Props =
+    Props(new SBResolver(strategy, stableAfter, downAllWhenUnstable))
 
-  final case class HandleSplitBrain(worldView: WorldView) {
+  sealed trait Event {
+    def worldView: WorldView
+  }
+
+  final case class HandleSplitBrain(worldView: WorldView) extends Event {
     lazy val simple: SimpleHandleSplitBrain = SimpleHandleSplitBrain(worldView.simple)
   }
 
@@ -82,4 +94,6 @@ object SBResolver {
       implicit val simpleHandleSplitBrainEncoder: Encoder[SimpleHandleSplitBrain] = deriveEncoder
     }
   }
+
+  final case class DownAll(worldView: WorldView) extends Event
 }
