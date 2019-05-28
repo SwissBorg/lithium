@@ -21,7 +21,7 @@ import scala.concurrent.duration._
  * @param splitBrainResolver the actor that resolves the split-brain scenarios.
  * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
  */
-class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration)
+class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, downAllWhenUnstable: Boolean)
     extends Actor
     with Stash
     with ActorLogging
@@ -105,8 +105,14 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration)
       else resetClusterIsStable
 
     for {
-      _ <- clusterIsUnstableIsActive.ifM(cancelClusterIsUnstableIfSplitBrainResolved,
-                                         scheduleClusterIsUnstableIfSplitBrainWorsened)
+      // Run `ClusterIsUnstable` timer when needed. If the timer is running
+      // while deactivated it will interfere with the `ClusterIsStable` and
+      // cancel it gets triggered.
+      _ <- if (downAllWhenUnstable)
+        clusterIsUnstableIsActive.ifM(cancelClusterIsUnstableIfSplitBrainResolved,
+                                      scheduleClusterIsUnstableIfSplitBrainWorsened)
+      else SyncIO.unit
+
       _ <- resetClusterIsStableIfUnstable
     } yield updatedState
   }
@@ -190,7 +196,8 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration)
 object SBReporter {
   private type Eval[A] = StateT[SyncIO, SBReporterState, A]
 
-  def props(downer: ActorRef, stableAfter: FiniteDuration): Props = Props(new SBReporter(downer, stableAfter))
+  def props(downer: ActorRef, stableAfter: FiniteDuration, downAllWhenUnstable: Boolean): Props =
+    Props(new SBReporter(downer, stableAfter, downAllWhenUnstable))
 
   final private case object ClusterIsStable
   final private case object ClusterIsUnstable
