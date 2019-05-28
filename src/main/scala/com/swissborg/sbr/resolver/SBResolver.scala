@@ -34,7 +34,7 @@ class SBResolver(_strategy: Strategy[SyncIO], stableAfter: FiniteDuration, downA
 
   import SBResolver._
 
-  context.actorOf(SBReporter.props(self, stableAfter))
+  context.actorOf(SBReporter.props(self, stableAfter, downAllWhenUnstable))
 
   private val cluster: Cluster                 = Cluster(context.system)
   private val selfAddress: Address             = cluster.selfMember.address
@@ -47,11 +47,9 @@ class SBResolver(_strategy: Strategy[SyncIO], stableAfter: FiniteDuration, downA
       runStrategy(defaultStrategy, worldView).unsafeRunSync()
 
     case DownAll(worldView) =>
-      if (downAllWhenUnstable) {
-        log.info("DOWN-ALL")
-        log.info(worldView.simple.asJson.noSpaces)
-        runStrategy(downAll, worldView).unsafeRunSync()
-      }
+      log.info("DOWN-ALL")
+      log.info(worldView.simple.asJson.noSpaces)
+      runStrategy(downAll, worldView).unsafeRunSync()
   }
 
   private def runStrategy(strategy: Strategy[SyncIO], worldView: WorldView): SyncIO[Unit] = {
