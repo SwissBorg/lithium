@@ -8,7 +8,7 @@ import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.sbr.WorldView.SimpleWorldView
 import com.swissborg.sbr.implicits._
-import com.swissborg.sbr.reporter.SBReporter
+import com.swissborg.sbr.splitbrain.SBSplitBrainReporter
 import com.swissborg.sbr.resolver.SBResolver.HandleSplitBrain.SimpleHandleSplitBrain
 import com.swissborg.sbr.strategies.downall
 import com.swissborg.sbr.strategies.Union
@@ -34,7 +34,7 @@ class SBResolver(_strategy: Strategy[SyncIO], stableAfter: FiniteDuration, downA
 
   import SBResolver._
 
-  context.actorOf(SBReporter.props(self, stableAfter, downAllWhenUnstable))
+  context.actorOf(SBSplitBrainReporter.props(self, stableAfter, downAllWhenUnstable))
 
   private val cluster: Cluster                 = Cluster(context.system)
   private val selfAddress: Address             = cluster.selfMember.address
