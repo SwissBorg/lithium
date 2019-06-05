@@ -1,4 +1,4 @@
-package com.swissborg.sbr.reporter
+package com.swissborg.sbr.splitbrain
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Address, Props, Stash, Timers}
 import akka.cluster.ClusterEvent._
@@ -9,7 +9,7 @@ import cats.data.StateT._
 import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.sbr._
-import com.swissborg.sbr.failuredetector.SBFailureDetector
+import com.swissborg.sbr.reachability.SBReachabilityReporter
 import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.resolver.SBResolver
 
@@ -21,29 +21,29 @@ import scala.concurrent.duration._
  * @param splitBrainResolver the actor that resolves the split-brain scenarios.
  * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
  */
-class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, downAllWhenUnstable: Boolean)
+class SBSplitBrainReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, downAllWhenUnstable: Boolean)
     extends Actor
     with Stash
     with ActorLogging
     with Timers {
-  import SBReporter._
+  import SBSplitBrainReporter._
 
   private val cluster    = Cluster(context.system)
   private val selfMember = cluster.selfMember
 
-  context.actorOf(SBFailureDetector.props(self), "sbr-fd")
+  context.actorOf(SBReachabilityReporter.props(self), "sbr-fd")
 
   override def receive: Receive = initializing
 
   private def initializing: Receive = {
     case snapshot: CurrentClusterState =>
       unstashAll()
-      context.become(active(SBReporterState.fromSnapshot(selfMember, snapshot)))
+      context.become(active(SBSplitBrainReporterState.fromSnapshot(selfMember, snapshot)))
 
     case _ => stash()
   }
 
-  private def active(state: SBReporterState): Receive = {
+  private def active(state: SBSplitBrainReporterState): Receive = {
     case e: MemberEvent =>
       context.become(active(enqueue(e).runS(state).unsafeRunSync()))
 
@@ -80,7 +80,7 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
   /**
    * Modify the state using `f` and TODO
    */
-  private def modifyS(f: SBReporterState => SBReporterState): Eval[Unit] = modifyF { state =>
+  private def modifyS(f: SBSplitBrainReporterState => SBSplitBrainReporterState): Eval[Unit] = modifyF { state =>
     val updatedState = f(state)
 
     val diff = DiffInfo(state.worldView, updatedState.worldView)
@@ -159,13 +159,13 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
    */
   private val handleSplitBrain: Eval[Unit] =
     for {
-      _ <- liftF[SyncIO, SBReporterState, Unit](cancelClusterIsUnstable)
+      _ <- liftF[SyncIO, SBSplitBrainReporterState, Unit](cancelClusterIsUnstable)
       _ <- ifSplitBrain(SBResolver.HandleSplitBrain(_))
       _ <- liftF(scheduleClusterIsStable)
     } yield ()
 
   private val downAll: Eval[Unit] = for {
-    _ <- liftF[SyncIO, SBReporterState, Unit](cancelClusterIsStable)
+    _ <- liftF[SyncIO, SBSplitBrainReporterState, Unit](cancelClusterIsStable)
     _ <- ifSplitBrain(SBResolver.DownAll)
   } yield ()
 
@@ -194,11 +194,11 @@ class SBReporter(splitBrainResolver: ActorRef, stableAfter: FiniteDuration, down
   }
 }
 
-object SBReporter {
-  private type Eval[A] = StateT[SyncIO, SBReporterState, A]
+object SBSplitBrainReporter {
+  private type Eval[A] = StateT[SyncIO, SBSplitBrainReporterState, A]
 
   def props(downer: ActorRef, stableAfter: FiniteDuration, downAllWhenUnstable: Boolean): Props =
-    Props(new SBReporter(downer, stableAfter, downAllWhenUnstable))
+    Props(new SBSplitBrainReporter(downer, stableAfter, downAllWhenUnstable))
 
   final private case object ClusterIsStable
   final private case object ClusterIsUnstable
