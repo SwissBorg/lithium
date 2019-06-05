@@ -9,8 +9,8 @@
     </appender>
 
     <logger name="com.swissborg.sbr.resolver.SBResolver" level="${APPLICATION_LOG_LEVEL}"/>
-    <logger name="com.swissborg.sbr.reporter.SBReporter" level="${APPLICATION_LOG_LEVEL}"/>
-    <logger name="com.swissborg.sbr.failuredetector.SBFailureDetector" level="${APPLICATION_LOG_LEVEL}"/>
+    <logger name="com.swissborg.sbr.splitbrain.SBSplitBrainReporter" level="${APPLICATION_LOG_LEVEL}"/>
+    <logger name="com.swissborg.sbr.reachability.SBReachabilityReporter" level="${APPLICATION_LOG_LEVEL}"/>
 
     <root level="${GENERAL_LOG_LEVEL}">
         <appender-ref ref="STDOUT"/>

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package com.swissborg.sbr.failuredetector.SBFailureDetectorProtocol;
+package com.swissborg.sbr.reachability.SBReachabilityReporterProtocol;
 
 import "scalapb/scalapb.proto";
 import "google/protobuf/wrappers.proto";
@@ -10,10 +10,13 @@ option (scalapb.options) = {
     flat_package: true
 };
 
-message SBFailureDetectorMsg {
+message SBReachabilityReporterMsg {
     oneof Payload {
         Contention contention = 1;
-        ContentionAck ack = 2;
+        ContentionAck contentionAck = 2;
+
+        Introduction introduction = 3;
+        IntroductionAck introductionAck = 4;
     }
 }
 
@@ -29,6 +32,21 @@ message ContentionAck {
     AkkaInternal observer = 2;
     AkkaInternal subject = 3;
     google.protobuf.Int64Value version = 4;
+}
+
+message Introduction {
+    message Record {
+        AkkaInternal subject = 1;
+        AkkaInternal observer = 2;
+        repeated AkkaInternal disagreeing = 3;
+        google.protobuf.Int64Value version = 4;
+    }
+
+    repeated Record contentions = 1;
+}
+
+message IntroductionAck {
+    AkkaInternal from = 1;
 }
 
 message AkkaInternal {

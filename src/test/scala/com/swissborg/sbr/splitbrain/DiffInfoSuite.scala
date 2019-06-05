@@ -1,11 +1,11 @@
-package com.swissborg.sbr.reporter
+package com.swissborg.sbr.splitbrain
 
 import akka.actor.Address
 import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.MemberStatus.{Down, Exiting, Joining, Leaving, Removed, Up, WeaklyUp}
 import akka.cluster.swissborg.TestMember
 import com.swissborg.sbr.WorldView
-import com.swissborg.sbr.reporter.SBReporter.DiffInfo
+import com.swissborg.sbr.splitbrain.SBSplitBrainReporter.DiffInfo
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.collection.immutable.SortedSet
