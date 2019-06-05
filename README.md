@@ -30,7 +30,7 @@ timeout in the original is never hit. It is recommended to leave this setting en
 
 ```hocon
 akka.cluster {
-  downing-provider-class = "akka.cluster.sbr.DowningProviderImpl"
+  downing-provider-class = "com.swissborg.sbr.DowningProviderImpl"
 }
 
 com.swissborg.sbr {

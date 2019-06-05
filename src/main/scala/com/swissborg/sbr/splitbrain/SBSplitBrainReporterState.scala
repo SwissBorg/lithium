@@ -1,27 +1,27 @@
-package com.swissborg.sbr.reporter
+package com.swissborg.sbr.splitbrain
 
 import akka.actor.Address
 import akka.cluster.ClusterEvent._
 import akka.cluster.Member
-import com.swissborg.sbr.reporter.SBReporterState.ChangeQueue
-import com.swissborg.sbr.{WorldView, reporter}
+import com.swissborg.sbr.splitbrain.SBSplitBrainReporterState.ChangeQueue
+import com.swissborg.sbr.{WorldView, splitbrain}
 
 import scala.collection.immutable.Queue
 
 /**
- * State of the [[SBReporter]].
+ * State of the [[SBSplitBrainReporter]].
  *
  * @param worldView the view of the cluster from the current cluster node.
  * @param changeQueue queue accumulating membership state changed.
  */
-final case class SBReporterState(worldView: WorldView, changeQueue: ChangeQueue) {
-  import SBReporterState._
+final case class SBSplitBrainReporterState(worldView: WorldView, changeQueue: ChangeQueue) {
+  import SBSplitBrainReporterState._
 
   /**
    * Update the world view with the changes described by the change-queue after
    * finalizing it with `seenBy`.
    */
-  def consumeQueue(seenBy: Set[Address]): SBReporterState =
+  def consumeQueue(seenBy: Set[Address]): SBSplitBrainReporterState =
     copy(
       worldView = changeQueue match {
         case Empty => worldView.withAllSeenBy(seenBy)
@@ -44,9 +44,9 @@ final case class SBReporterState(worldView: WorldView, changeQueue: ChangeQueue)
       changeQueue = Empty
     )
 
-  lazy val pruneRemoved: SBReporterState = copy(worldView = worldView.pruneRemoved)
+  lazy val pruneRemoved: SBSplitBrainReporterState = copy(worldView = worldView.pruneRemoved)
 
-  def enqueue(e: MemberEvent): SBReporterState =
+  def enqueue(e: MemberEvent): SBSplitBrainReporterState =
     copy(changeQueue = changeQueue match {
       case Empty                  => AwaitingEvents(Queue(e))
       case AwaitingEvents(events) => AwaitingEvents(events.enqueue(e))
@@ -56,25 +56,25 @@ final case class SBReporterState(worldView: WorldView, changeQueue: ChangeQueue)
   /**
    * Set the member as reachable.
    */
-  def withReachableMember(m: Member): SBReporterState =
+  def withReachableMember(m: Member): SBSplitBrainReporterState =
     copy(worldView = worldView.withReachableMember(m))
 
   /**
    * Set the member as unreachable.
    */
-  def withUnreachableMember(m: Member): SBReporterState =
+  def withUnreachableMember(m: Member): SBSplitBrainReporterState =
     copy(worldView = worldView.withUnreachableMember(m))
 
   /**
    * Set the member as indirectly connected.
    */
-  def withIndirectlyConnectedMember(m: Member): SBReporterState =
+  def withIndirectlyConnectedMember(m: Member): SBSplitBrainReporterState =
     copy(worldView = worldView.withIndirectlyConnectedMember(m))
 }
 
-object SBReporterState {
-  def fromSnapshot(selfMember: Member, snapshot: CurrentClusterState): SBReporterState =
-    reporter.SBReporterState(WorldView.fromSnapshot(selfMember, snapshot), Empty)
+object SBSplitBrainReporterState {
+  def fromSnapshot(selfMember: Member, snapshot: CurrentClusterState): SBSplitBrainReporterState =
+    splitbrain.SBSplitBrainReporterState(WorldView.fromSnapshot(selfMember, snapshot), Empty)
 
   /**
    * Queue accumulating the membership changes.

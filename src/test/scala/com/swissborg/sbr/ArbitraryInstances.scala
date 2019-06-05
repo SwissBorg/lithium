@@ -7,7 +7,8 @@ import akka.cluster.swissborg.AkkaArbitraryInstances._
 import akka.cluster.{Member, MemberStatus, UniqueAddress, Reachability => _}
 import cats.Order
 import cats.data.{NonEmptyMap, NonEmptySet}
-import com.swissborg.sbr.failuredetector.SBFailureDetector._
+import com.swissborg.sbr.reachability.SBReachabilityReporter._
+import com.swissborg.sbr.reachability.SBReachabilityReporterState.{ContentionAggregator, Observer, Subject}
 import org.scalacheck.Arbitrary
 import org.scalacheck.Arbitrary._
 import org.scalacheck.Gen
@@ -256,6 +257,25 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
       version  <- arbitrary[Long]
     } yield ContentionAck(from, observer, subject, version)
   )
+
+  implicit val arbContentionAggregator: Arbitrary[ContentionAggregator] = Arbitrary(
+    for {
+      disagreeing <- arbitrary[Set[UniqueAddress]]
+      version     <- arbitrary[Long]
+    } yield ContentionAggregator(disagreeing, version)
+  )
+
+  // TODO super duper slow
+//  implicit val arbIntroduction: Arbitrary[Introduction] = {
+//    val bla: Arbitrary[(Subject, List[(Observer, ContentionAggregator)])] = implicitly
+//
+//    Arbitrary(for {
+//      a        <- Gen.mapOf[Observer, ContentionAggregator](arbitrary[(Observer, ContentionAggregator)])
+//      subjects <- arbitrary[Set[Subject]]
+//    } yield Introduction(subjects.map(s => s -> a)(collection.breakOut)))
+//  }
+
+  implicit val arbIntroductionAck: Arbitrary[IntroductionAck] = Arbitrary(arbActorPath0.arbitrary.map(IntroductionAck))
 }
 
 trait ArbitraryInstances0 {
