@@ -131,7 +131,7 @@ class SBReachabilityReporter(val sbReporter: ActorRef) extends Actor with ActorL
             // Cancel the timer for the previous observer, subject pair contention
             // as there is only one timer per such pair. There's no need to make sure
             // it was delivered, the new contention will override it.
-            _ <- cancelContentionResend(key)
+            _ <- liftF(cancelContentionResend(key))
             _ <- sendContentionWithRetry(contention, to)
             _ <- modify[SyncIO, SBReachabilityReporterState](_.expectContentionAck(ack))
           } yield ()
@@ -179,13 +179,17 @@ class SBReachabilityReporter(val sbReporter: ActorRef) extends Actor with ActorL
     } else {
       val path = pathAtAddress(node.address, self.path)
 
-      val cancelContentionResend0 =
-        inspect[SyncIO, SBReachabilityReporterState, Option[ContentionAck]](_.waitingForContentionAck.get(path))
-          .flatMap(_.fold[Eval[Unit]](liftF(SyncIO.unit))((ContentionKey.fromAck _).andThen(cancelContentionResend)))
+      val cancelContentionResend0: Eval[Unit] = inspectF {
+        _.pendingContentionAcks
+          .getOrElse(path, Set.empty)
+          .foldLeft(SyncIO.unit) {
+            case (cancelContentionResends, ack) =>
+              cancelContentionResends >> cancelContentionResend(ContentionKey.fromAck(ack))
+          }
+      }
 
-      val cancelIntroductionResend0 =
-        inspect[SyncIO, SBReachabilityReporterState, Option[IntroductionAck]](_.waitingForIntroductionAck.get(path))
-          .flatMap(_.fold[Eval[Unit]](liftF(SyncIO.unit))(cancelIntroductionResend))
+      val cancelIntroductionResend0: Eval[Unit] =
+        inspectF(_.pendingIntroductionAcks.get(path).fold(SyncIO.unit)(cancelIntroductionResend))
 
       for {
         _ <- cancelContentionResend0
@@ -254,13 +258,13 @@ class SBReachabilityReporter(val sbReporter: ActorRef) extends Actor with ActorL
 
   private def registerContentionAck(ack: ContentionAck): Eval[Unit] =
     for {
-      _ <- cancelContentionResend(ContentionKey.fromAck(ack))
+      _ <- liftF(cancelContentionResend(ContentionKey.fromAck(ack)))
       _ <- modify[SyncIO, SBReachabilityReporterState](_.registerContentionAck(ack))
     } yield ()
 
   private def registerIntroductionAck(ack: IntroductionAck): Eval[Unit] =
     for {
-      _ <- cancelIntroductionResend(ack)
+      _ <- liftF(cancelIntroductionResend(ack))
       _ <- modify[SyncIO, SBReachabilityReporterState](_.registerIntroductionAck(ack))
     } yield ()
 
@@ -307,8 +311,8 @@ class SBReachabilityReporter(val sbReporter: ActorRef) extends Actor with ActorL
     )
   }
 
-  private def cancelContentionResend(key: ContentionKey): Eval[Unit]     = liftF(SyncIO(timers.cancel(key)))
-  private def cancelIntroductionResend(ack: IntroductionAck): Eval[Unit] = liftF(SyncIO(timers.cancel(ack)))
+  private def cancelContentionResend(key: ContentionKey): SyncIO[Unit]     = SyncIO(timers.cancel(key))
+  private def cancelIntroductionResend(ack: IntroductionAck): SyncIO[Unit] = SyncIO(timers.cancel(ack))
 
   override def preStart(): Unit = {
     cluster.subscribe(self, classOf[MemberEvent], classOf[ReachabilityEvent])

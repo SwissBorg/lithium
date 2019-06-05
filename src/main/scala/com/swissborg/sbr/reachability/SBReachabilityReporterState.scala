@@ -15,8 +15,8 @@ final private[sbr] case class SBReachabilityReporterState private (
   selfPath: ActorPath,
   reachabilities: Map[Subject, VersionedReachability],
   contentions: Map[Subject, Map[Observer, ContentionAggregator]],
-  waitingForContentionAck: Map[ActorPath, ContentionAck],
-  waitingForIntroductionAck: Map[ActorPath, IntroductionAck]
+  pendingContentionAcks: Map[ActorPath, Set[ContentionAck]],
+  pendingIntroductionAcks: Map[ActorPath, IntroductionAck]
 ) {
 
   /**
@@ -174,22 +174,33 @@ final private[sbr] case class SBReachabilityReporterState private (
       // as for all of them there is no disputed observer or all the
       // observers agree.
       contentions = updatedM -- updatedReachabilities.keySet,
-      waitingForContentionAck = waitingForContentionAck - pathToRemove,
-      waitingForIntroductionAck = waitingForIntroductionAck - pathToRemove
+      pendingContentionAcks = pendingContentionAcks - pathToRemove,
+      pendingIntroductionAcks = pendingIntroductionAcks - pathToRemove
     )
   }
 
   def expectContentionAck(ack: ContentionAck): SBReachabilityReporterState =
-    copy(waitingForContentionAck = waitingForContentionAck + (ack.from -> ack))
+    copy(
+      pendingContentionAcks = pendingContentionAcks + (ack.from -> (pendingContentionAcks
+        .getOrElse(ack.from, Set.empty) + ack))
+    )
 
   def registerContentionAck(ack: ContentionAck): SBReachabilityReporterState =
-    copy(waitingForContentionAck = waitingForContentionAck - ack.from)
+    pendingContentionAcks.get(ack.from).fold(this) { pendingAcks =>
+      val newPendingAcks = pendingAcks - ack
+
+      val newPendingContentionAcks =
+        if (newPendingAcks.isEmpty) pendingContentionAcks - ack.from
+        else pendingContentionAcks + (ack.from -> newPendingAcks)
+
+      copy(pendingContentionAcks = newPendingContentionAcks)
+    }
 
   def expectIntroductionAck(ack: IntroductionAck): SBReachabilityReporterState =
-    copy(waitingForIntroductionAck = waitingForIntroductionAck + (ack.from -> ack))
+    copy(pendingIntroductionAcks = pendingIntroductionAcks + (ack.from -> ack))
 
   def registerIntroductionAck(ack: IntroductionAck): SBReachabilityReporterState =
-    copy(waitingForIntroductionAck = waitingForIntroductionAck - ack.from)
+    copy(pendingIntroductionAcks = pendingIntroductionAcks - ack.from)
 
   /**
    * Set the subject as indirectly connected.
