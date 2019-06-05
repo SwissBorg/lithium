@@ -5,7 +5,7 @@ import akka.cluster.ClusterEvent._
 import akka.cluster.Member
 import akka.cluster.MemberStatus._
 import akka.cluster.swissborg.TestMember
-import com.swissborg.sbr.failuredetector.SBFailureDetector.Reachable
+import com.swissborg.sbr.reachability.SBReachabilityReporter.Reachable
 import com.swissborg.sbr.WorldView.Status
 import com.swissborg.sbr.implicits._
 import org.scalatest.{Matchers, WordSpec}
