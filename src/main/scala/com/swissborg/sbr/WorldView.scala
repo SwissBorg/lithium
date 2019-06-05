@@ -8,7 +8,7 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import cats.kernel.Eq
 import com.swissborg.sbr.WorldView.Status
-import com.swissborg.sbr.failuredetector.SBFailureDetector._
+import com.swissborg.sbr.reachability.SBReachabilityReporter._
 import com.swissborg.sbr.implicits._
 import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder

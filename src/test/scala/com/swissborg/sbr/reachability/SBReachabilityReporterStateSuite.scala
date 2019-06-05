@@ -1,12 +1,13 @@
-package com.swissborg.sbr.failuredetector
+package com.swissborg.sbr.reachability
 
 import akka.actor.{ActorPath, Address}
 import akka.cluster.UniqueAddress
-import com.swissborg.sbr.failuredetector.SBFailureDetector._
+import com.swissborg.sbr.reachability.SBReachabilityReporter._
+import com.swissborg.sbr.reachability.SBReachabilityReporterState.ContentionAggregator
 import org.scalatest.{Matchers, WordSpec}
 
-class SBFailureDetectorStateSuite extends WordSpec with Matchers {
-  import SBFailureDetectorStateSuite._
+class SBReachabilityReporterStateSuite extends WordSpec with Matchers {
+  import SBReachabilityReporterStateSuite._
 
   val aa = UniqueAddress(Address("akka.tcp", "sys", "a", 2552), 1L)
   val bb = UniqueAddress(Address("akka.tcp", "sys", "b", 2552), 2L)
@@ -14,9 +15,9 @@ class SBFailureDetectorStateSuite extends WordSpec with Matchers {
   val dd = UniqueAddress(Address("akka.tcp", "sys", "d", 2552), 4L)
   val ee = UniqueAddress(Address("akka.tcp", "sys", "e", 2552), 5L)
 
-  "SBRFailureDetectorState" must {
+  "SBReachabilityReporterState" must {
     "be reachable when empty" in {
-      val s = SBFailureDetectorState(testPath(aa))
+      val s = SBReachabilityReporterState(testPath(aa))
       s.updatedStatus(aa)._1 should ===(Some(Reachable))
 
       val (status, s2) = s.updatedStatus(bb)
@@ -26,26 +27,26 @@ class SBFailureDetectorStateSuite extends WordSpec with Matchers {
     }
 
     "be unreachable when there is no contention" in {
-      val s = SBFailureDetectorState(testPath(aa)).withUnreachableFrom(aa, bb)
+      val s = SBReachabilityReporterState(testPath(aa)).withUnreachableFrom(aa, bb)
       s.updatedStatus(bb)._1 should ===(Some(Unreachable))
 
-      val s1 = SBFailureDetectorState(testPath(aa)).withReachable(bb).withUnreachableFrom(aa, bb)
+      val s1 = SBReachabilityReporterState(testPath(aa)).withReachable(bb).withUnreachableFrom(aa, bb)
       s1.updatedStatus(bb)._1 should ===(Some(Unreachable))
     }
 
     "be indirectly connected when there is a contention" in {
-      val s = SBFailureDetectorState(testPath(aa)).withContention(bb, cc, dd, 1)
+      val s = SBReachabilityReporterState(testPath(aa)).withContention(bb, cc, dd, 1)
       s.updatedStatus(dd)._1 should ===(Some(IndirectlyConnected))
     }
 
     "be unreachable when a contention is resolved" in {
-      val s = SBFailureDetectorState(testPath(aa)).withContention(aa, cc, dd, 1).withUnreachableFrom(aa, dd)
+      val s = SBReachabilityReporterState(testPath(aa)).withContention(aa, cc, dd, 1).withUnreachableFrom(aa, dd)
       s.updatedStatus(dd)._1 should ===(Some(Unreachable))
     }
 
     "be unreachable only when all the contentions are resolved" in {
       val s =
-        SBFailureDetectorState(testPath(aa))
+        SBReachabilityReporterState(testPath(aa))
           .withContention(cc, aa, bb, 1)
           .withContention(cc, dd, bb, 1)
           .withContention(ee, aa, bb, 1)
@@ -62,7 +63,7 @@ class SBFailureDetectorStateSuite extends WordSpec with Matchers {
     }
 
     "ignore a contention for old versions" in {
-      val s = SBFailureDetectorState(testPath(aa))
+      val s = SBReachabilityReporterState(testPath(aa))
         .withContention(ee, aa, bb, 2)
         .withContention(cc, aa, bb, 1)
 
@@ -71,7 +72,7 @@ class SBFailureDetectorStateSuite extends WordSpec with Matchers {
     }
 
     "reset a contention when there is a new version" in {
-      val s = SBFailureDetectorState(testPath(aa))
+      val s = SBReachabilityReporterState(testPath(aa))
         .withContention(cc, aa, bb, 1)
         .withContention(ee, aa, bb, 2)
 
@@ -80,7 +81,7 @@ class SBFailureDetectorStateSuite extends WordSpec with Matchers {
     }
 
     "update a contention when it is for the current version" in {
-      val s = SBFailureDetectorState(testPath(aa))
+      val s = SBReachabilityReporterState(testPath(aa))
         .withContention(cc, aa, bb, 1)
         .withContention(ee, aa, bb, 1)
 
@@ -90,7 +91,7 @@ class SBFailureDetectorStateSuite extends WordSpec with Matchers {
 
     "become reachable after calling reachable" in {
       val s =
-        SBFailureDetectorState(testPath(aa))
+        SBReachabilityReporterState(testPath(aa))
           .withUnreachableFrom(aa, bb)
           .withContention(aa, bb, cc, 1)
           .withContention(dd, bb, cc, 1)
@@ -103,7 +104,7 @@ class SBFailureDetectorStateSuite extends WordSpec with Matchers {
 
     "update contentions when a node is removed" in {
       val s =
-        SBFailureDetectorState(testPath(aa))
+        SBReachabilityReporterState(testPath(aa))
           .withContention(aa, bb, cc, 1)
           .withContention(aa, dd, bb, 2)
           .withContention(dd, cc, aa, 1)
@@ -116,10 +117,70 @@ class SBFailureDetectorStateSuite extends WordSpec with Matchers {
       s2.updatedStatus(cc)._1 should ===(Some(Reachable))
       s2.updatedStatus(aa)._1 should ===(Some(IndirectlyConnected))
     }
+
+    "not change contentions when merging the same contentions" in {
+      val s0 =
+        SBReachabilityReporterState(testPath(aa))
+          .withContention(aa, bb, cc, 1)
+          .withContention(aa, dd, bb, 2)
+          .withContention(dd, cc, aa, 1)
+
+      val s1 =
+        SBReachabilityReporterState(testPath(bb))
+          .withContention(aa, bb, cc, 1)
+          .withContention(aa, dd, bb, 2)
+          .withContention(dd, cc, aa, 1)
+
+      s0.withContentions(s1.contentions).contentions should ===(s0.contentions)
+    }
+
+    "add new contentions when merging unknown ones" in {
+      val s0 =
+        SBReachabilityReporterState(testPath(aa))
+          .withContention(dd, cc, aa, 1)
+
+      val s1 =
+        SBReachabilityReporterState(testPath(bb))
+          .withContention(aa, bb, cc, 1)
+
+      s0.withContentions(s1.contentions).contentions should ===(
+        Map(cc -> Map(bb -> ContentionAggregator(Set(aa), 1)), aa -> Map(cc -> ContentionAggregator(Set(dd), 1)))
+      )
+    }
+
+    "use the contention with the last version when merging contentions" in {
+      val s0 =
+        SBReachabilityReporterState(testPath(aa))
+          .withContention(aa, bb, cc, 2) // newer
+          .withContention(dd, cc, aa, 1)
+
+      val s1 =
+        SBReachabilityReporterState(testPath(bb))
+          .withContention(aa, bb, cc, 1)
+          .withContention(dd, cc, aa, 2) // newer
+
+      s0.withContentions(s1.contentions).contentions should ===(
+        Map(cc -> Map(bb -> ContentionAggregator(Set(aa), 2)), aa -> Map(cc -> ContentionAggregator(Set(dd), 2)))
+      )
+    }
+
+    "merge the aggregators when merging contentions" in {
+      val s0 =
+        SBReachabilityReporterState(testPath(aa))
+          .withContention(aa, cc, dd, 2) // newer
+
+      val s1 =
+        SBReachabilityReporterState(testPath(bb))
+          .withContention(bb, cc, dd, 2)
+
+      s0.withContentions(s1.contentions).contentions should ===(
+        Map(dd -> Map(cc -> ContentionAggregator(Set(aa, bb), 2)))
+      )
+    }
   }
 }
 
-object SBFailureDetectorStateSuite {
+object SBReachabilityReporterStateSuite {
   def testPath(uniqueAddress: UniqueAddress): ActorPath =
     ActorPath.fromString(s"${uniqueAddress.address.toString}/user/test")
 }
