@@ -1,6 +1,6 @@
 package com.swissborg.sbr.protobuf
 
-import akka.actor.{ActorPath, ExtendedActorSystem}
+import akka.actor.ExtendedActorSystem
 import akka.cluster.UniqueAddress
 import akka.serialization.{SerializationExtension, Serializer, SerializerWithStringManifest, Serializers}
 import com.google.protobuf.ByteString
@@ -82,7 +82,7 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
 
   private def contentionAckFromProto(contentionAck: rr.ContentionAck): ContentionAck = contentionAck match {
     case rr.ContentionAck(Some(to), Some(observer), Some(subject), Some(version)) =>
-      ContentionAck(toActorPath(to), toUniqueAddress(observer), toUniqueAddress(subject), version)
+      ContentionAck(toUniqueAddress(to), toUniqueAddress(observer), toUniqueAddress(subject), version)
 
     case _ => throw new SerializationException(s"Missing fields in $contentionAck")
   }
@@ -140,7 +140,7 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
   }
 
   private def introductionAckFromProto(introductionAck: rr.IntroductionAck): IntroductionAck = introductionAck match {
-    case rr.IntroductionAck(Some(from)) => IntroductionAck(toActorPath(from))
+    case rr.IntroductionAck(Some(from)) => IntroductionAck(toUniqueAddress(from))
     case _                              => throw new SerializationException(s"Missing fields in $introductionAck")
   }
 
@@ -163,9 +163,6 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
     fromAkkaInternalProtoByteArray[UniqueAddress](uniqueAddress.serializerId,
                                                   uniqueAddress.manifest,
                                                   uniqueAddress.bytes.toByteArray)
-
-  private def toActorPath(actorPath: rr.AkkaInternal): ActorPath =
-    fromAkkaInternalProtoByteArray[ActorPath](actorPath.serializerId, actorPath.manifest, actorPath.bytes.toByteArray)
 
   private def fromAkkaInternalProtoByteArray[A <: AnyRef](serializerId: Int,
                                                           manifest: Option[String],

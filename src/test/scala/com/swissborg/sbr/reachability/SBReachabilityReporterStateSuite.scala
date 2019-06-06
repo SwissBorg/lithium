@@ -177,6 +177,76 @@ class SBReachabilityReporterStateSuite extends WordSpec with Matchers {
         Map(dd -> Map(cc -> ContentionAggregator(Set(aa, bb), 2)))
       )
     }
+
+    "expect a contention ack" in {
+      val contentionAck = ContentionAck(bb, cc, dd, 0L)
+
+      val s = SBReachabilityReporterState(testPath(aa)).expectContentionAck(contentionAck)
+
+      s.pendingContentionAcks.get(bb) should ===(Some(Set(contentionAck)))
+    }
+
+    "expect multiple contention acks" in {
+      val contentionAck0 = ContentionAck(bb, cc, dd, 0L)
+      val contentionAck1 = ContentionAck(bb, cc, ee, 0L)
+      val contentionAck2 = ContentionAck(bb, cc, dd, 1L)
+
+      val s = SBReachabilityReporterState(testPath(aa))
+        .expectContentionAck(contentionAck0)
+        .expectContentionAck(contentionAck1)
+        .expectContentionAck(contentionAck2)
+
+      s.pendingContentionAcks.get(bb) should ===(Some(Set(contentionAck0, contentionAck1, contentionAck2)))
+    }
+
+    "remove the contention ack" in {
+      val contentionAck0 = ContentionAck(bb, cc, dd, 0L)
+      val contentionAck1 = ContentionAck(bb, cc, ee, 0L)
+      val contentionAck2 = ContentionAck(bb, cc, dd, 1L)
+
+      val s = SBReachabilityReporterState(testPath(aa))
+        .expectContentionAck(contentionAck0)
+        .expectContentionAck(contentionAck1)
+        .expectContentionAck(contentionAck2)
+        .registerContentionAck(contentionAck1)
+
+      s.pendingContentionAcks.get(bb) should ===(Some(Set(contentionAck0, contentionAck2)))
+    }
+
+    "remove all contention acks" in {
+      val contentionAck0 = ContentionAck(bb, cc, dd, 0L)
+      val contentionAck1 = ContentionAck(bb, cc, ee, 0L)
+      val contentionAck2 = ContentionAck(bb, cc, dd, 1L)
+
+      val s = SBReachabilityReporterState(testPath(aa))
+        .expectContentionAck(contentionAck0)
+        .expectContentionAck(contentionAck1)
+        .expectContentionAck(contentionAck2)
+        .remove(bb)
+
+      s.pendingContentionAcks.get(bb) should ===(None)
+    }
+
+    "expect an introduction ack" in {
+      val introductionAck = IntroductionAck(bb)
+      val s               = SBReachabilityReporterState(testPath(aa)).expectIntroductionAck(introductionAck)
+      s.pendingIntroductionAcks.get(bb) should ===(Some(introductionAck))
+    }
+
+    "remove the pending introduction ack" in {
+      val introductionAck = IntroductionAck(bb)
+
+      val s = SBReachabilityReporterState(testPath(aa))
+        .expectIntroductionAck(introductionAck)
+        .registerIntroductionAck(introductionAck)
+
+      s.pendingIntroductionAcks.get(bb) should ===(None)
+    }
+
+    "remove all pending introduction acks" in {
+      val s = SBReachabilityReporterState(testPath(aa)).expectIntroductionAck(IntroductionAck(bb)).remove(bb)
+      s.pendingIntroductionAcks.get(bb) should ===(None)
+    }
   }
 }
 
