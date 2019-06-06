@@ -4,7 +4,6 @@ import akka.actor.ActorPath
 import akka.cluster.UniqueAddress
 import cats.Monoid
 import cats.implicits._
-import com.swissborg.sbr.Util.pathAtAddress
 import com.swissborg.sbr.reachability.SBReachabilityReporter._
 import com.swissborg.sbr.reachability.SBReachabilityReporterState._
 
@@ -15,8 +14,8 @@ final private[sbr] case class SBReachabilityReporterState private (
   selfPath: ActorPath,
   reachabilities: Map[Subject, VersionedReachability],
   contentions: Map[Subject, Map[Observer, ContentionAggregator]],
-  pendingContentionAcks: Map[ActorPath, Set[ContentionAck]],
-  pendingIntroductionAcks: Map[ActorPath, IntroductionAck]
+  pendingContentionAcks: Map[UniqueAddress, Set[ContentionAck]],
+  pendingIntroductionAcks: Map[UniqueAddress, IntroductionAck]
 ) {
 
   /**
@@ -166,16 +165,14 @@ final private[sbr] case class SBReachabilityReporterState private (
         }
     }
 
-    val pathToRemove = pathAtAddress(node.address, selfPath)
-
     copy(
       reachabilities = reachabilities ++ updatedReachabilities - node,
       // Subjects whose reachabilities have been updated are removed
       // as for all of them there is no disputed observer or all the
       // observers agree.
       contentions = updatedM -- updatedReachabilities.keySet,
-      pendingContentionAcks = pendingContentionAcks - pathToRemove,
-      pendingIntroductionAcks = pendingIntroductionAcks - pathToRemove
+      pendingContentionAcks = pendingContentionAcks - node,
+      pendingIntroductionAcks = pendingIntroductionAcks - node
     )
   }
 
