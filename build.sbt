@@ -29,22 +29,22 @@ scalacOptions ++=
   )
 
 val akkaVersion                = "2.5.23"
-val catsVersion                = "1.6.0"
-val catsEffectVersion          = "1.3.0"
+val catsVersion                = "1.6.1"
+val catsEffectVersion          = "1.3.1"
 val scalatestVersion           = "3.0.7"
 val monocleVersion             = "1.5.0"
 val shapelessVersion           = "2.3.3"
-val refinedVersion             = "0.9.5"
+val refinedVersion             = "0.9.7"
 val pureConfigVersion          = "0.11.0"
 val scalacheckShapelessVersion = "1.1.8"
-val refinedScalacheckVersion   = "0.9.5"
-val protobufJavaVersion        = "3.6.1"
+val refinedScalacheckVersion   = "0.9.7"
+val protobufJavaVersion        = "3.8.0"
 val scalaPBLensesVersion       = "0.8.4"
-val typesafeConfigVersion      = "1.3.3"
+val typesafeConfigVersion      = "1.3.4"
 val logbackVersion             = "1.2.3"
-val circeVersion               = "0.10.0"
+val circeVersion               = "0.11.1"
 val scalaLoggingVersion        = "3.9.2"
-val kindProjectorVersion       = "0.10.1"
+val kindProjectorVersion       = "0.10.2"
 
 resolvers += Resolver.sonatypeRepo("releases")
 
