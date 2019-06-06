@@ -4,7 +4,6 @@ import akka.actor.ActorPath
 import akka.cluster.UniqueAddress
 import cats.Monoid
 import cats.implicits._
-import com.swissborg.sbr.Util.pathAtAddress
 import com.swissborg.sbr.reachability.SBReachabilityReporter._
 import com.swissborg.sbr.reachability.SBReachabilityReporterState._
 
@@ -15,8 +14,8 @@ final private[sbr] case class SBReachabilityReporterState private (
   selfPath: ActorPath,
   reachabilities: Map[Subject, VersionedReachability],
   contentions: Map[Subject, Map[Observer, ContentionAggregator]],
-  waitingForContentionAck: Map[ActorPath, ContentionAck],
-  waitingForIntroductionAck: Map[ActorPath, IntroductionAck]
+  pendingContentionAcks: Map[UniqueAddress, Set[ContentionAck]],
+  pendingIntroductionAcks: Map[UniqueAddress, IntroductionAck]
 ) {
 
   /**
@@ -166,30 +165,39 @@ final private[sbr] case class SBReachabilityReporterState private (
         }
     }
 
-    val pathToRemove = pathAtAddress(node.address, selfPath)
-
     copy(
       reachabilities = reachabilities ++ updatedReachabilities - node,
       // Subjects whose reachabilities have been updated are removed
       // as for all of them there is no disputed observer or all the
       // observers agree.
       contentions = updatedM -- updatedReachabilities.keySet,
-      waitingForContentionAck = waitingForContentionAck - pathToRemove,
-      waitingForIntroductionAck = waitingForIntroductionAck - pathToRemove
+      pendingContentionAcks = pendingContentionAcks - node,
+      pendingIntroductionAcks = pendingIntroductionAcks - node
     )
   }
 
   def expectContentionAck(ack: ContentionAck): SBReachabilityReporterState =
-    copy(waitingForContentionAck = waitingForContentionAck + (ack.from -> ack))
+    copy(
+      pendingContentionAcks = pendingContentionAcks + (ack.from -> (pendingContentionAcks
+        .getOrElse(ack.from, Set.empty) + ack))
+    )
 
   def registerContentionAck(ack: ContentionAck): SBReachabilityReporterState =
-    copy(waitingForContentionAck = waitingForContentionAck - ack.from)
+    pendingContentionAcks.get(ack.from).fold(this) { pendingAcks =>
+      val newPendingAcks = pendingAcks - ack
+
+      val newPendingContentionAcks =
+        if (newPendingAcks.isEmpty) pendingContentionAcks - ack.from
+        else pendingContentionAcks + (ack.from -> newPendingAcks)
+
+      copy(pendingContentionAcks = newPendingContentionAcks)
+    }
 
   def expectIntroductionAck(ack: IntroductionAck): SBReachabilityReporterState =
-    copy(waitingForIntroductionAck = waitingForIntroductionAck + (ack.from -> ack))
+    copy(pendingIntroductionAcks = pendingIntroductionAcks + (ack.from -> ack))
 
   def registerIntroductionAck(ack: IntroductionAck): SBReachabilityReporterState =
-    copy(waitingForIntroductionAck = waitingForIntroductionAck - ack.from)
+    copy(pendingIntroductionAcks = pendingIntroductionAcks - ack.from)
 
   /**
    * Set the subject as indirectly connected.

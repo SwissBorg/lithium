@@ -9,9 +9,8 @@ import cats.data.StateT._
 import cats.data.{OptionT, StateT}
 import cats.effect.SyncIO
 import cats.implicits._
-import com.swissborg.sbr.Util.pathAtAddress
-import com.swissborg.sbr.reachability.SBReachabilityReporterState.{ContentionAggregator, Observer, Subject, Version}
 import com.swissborg.sbr.implicits._
+import com.swissborg.sbr.reachability.SBReachabilityReporterState.{ContentionAggregator, Observer, Subject, Version}
 import com.swissborg.sbr.splitbrain.SBSplitBrainReporter.IndirectlyConnectedMember
 import com.swissborg.sbr.{Converter, SBReachabilityChanged}
 import io.circe.Encoder
@@ -106,15 +105,15 @@ class SBReachabilityReporter(val sbReporter: ActorRef) extends Actor with ActorL
      * Send the contention to `to` expecting an ack. If an ack is not received in 1 second the actor
      * will retry.
      */
-    def sendContentionWithRetry(contention: Contention, to: ActorPath): Eval[Unit] =
-      sendWithRetry(contention, to, ContentionKey(to, contention.observer, contention.subject))
+    def sendContentionWithRetry(contention: Contention, to: UniqueAddress): Eval[Unit] =
+      sendWithRetry(contention,
+                    sbReachabilityReporterOnNode(to),
+                    ContentionKey(to, contention.observer, contention.subject))
 
     /**
      * All the instances of this actor living on the other cluster nodes.
      */
-    val sbFailureDetectors: Eval[List[ActorPath]] = liftF(SyncIO(cluster.state.members.toList.map { member =>
-      pathAtAddress(member.address, self.path)
-    }))
+    val sbFailureDetectors: Eval[List[UniqueAddress]] = liftF(SyncIO(cluster.state.members.toList.map(_.uniqueAddress)))
 
     /**
      * Broadcast with at-least-once delivery the contention to all the `SBFailureDetector`s
@@ -131,7 +130,7 @@ class SBReachabilityReporter(val sbReporter: ActorRef) extends Actor with ActorL
             // Cancel the timer for the previous observer, subject pair contention
             // as there is only one timer per such pair. There's no need to make sure
             // it was delivered, the new contention will override it.
-            _ <- cancelContentionResend(key)
+            _ <- liftF(cancelContentionResend(key))
             _ <- sendContentionWithRetry(contention, to)
             _ <- modify[SyncIO, SBReachabilityReporterState](_.expectContentionAck(ack))
           } yield ()
@@ -156,15 +155,11 @@ class SBReachabilityReporter(val sbReporter: ActorRef) extends Actor with ActorL
   /**
    * Send the current contentions to `node`.
    */
-  private def introduce(node: UniqueAddress): Eval[Unit] = {
-    def sendIntroductionWithRetry(introduction: Introduction, to: ActorPath): Eval[Unit] =
-      sendWithRetry(introduction, to, IntroductionAck(to))
-
+  private def introduce(node: UniqueAddress): Eval[Unit] =
     for {
       state <- get[SyncIO, SBReachabilityReporterState]
-      _     <- sendIntroductionWithRetry(Introduction(state.contentions), pathAtAddress(node.address, self.path))
+      _     <- sendWithRetry(Introduction(state.contentions), sbReachabilityReporterOnNode(node), IntroductionAck(node))
     } yield ()
-  }
 
   /**
    * Register the node as removed.
@@ -177,15 +172,17 @@ class SBReachabilityReporter(val sbReporter: ActorRef) extends Actor with ActorL
       // to stop any further updates.
       liftF(SyncIO(context.stop(self)))
     } else {
-      val path = pathAtAddress(node.address, self.path)
+      val cancelContentionResend0: Eval[Unit] = inspectF {
+        _.pendingContentionAcks
+          .getOrElse(node, Set.empty)
+          .foldLeft(SyncIO.unit) {
+            case (cancelContentionResends, ack) =>
+              cancelContentionResends >> cancelContentionResend(ContentionKey.fromAck(ack))
+          }
+      }
 
-      val cancelContentionResend0 =
-        inspect[SyncIO, SBReachabilityReporterState, Option[ContentionAck]](_.waitingForContentionAck.get(path))
-          .flatMap(_.fold[Eval[Unit]](liftF(SyncIO.unit))((ContentionKey.fromAck _).andThen(cancelContentionResend)))
-
-      val cancelIntroductionResend0 =
-        inspect[SyncIO, SBReachabilityReporterState, Option[IntroductionAck]](_.waitingForIntroductionAck.get(path))
-          .flatMap(_.fold[Eval[Unit]](liftF(SyncIO.unit))(cancelIntroductionResend))
+      val cancelIntroductionResend0: Eval[Unit] =
+        inspectF(_.pendingIntroductionAcks.get(node).fold(SyncIO.unit)(cancelIntroductionResend))
 
       for {
         _ <- cancelContentionResend0
@@ -242,7 +239,7 @@ class SBReachabilityReporter(val sbReporter: ActorRef) extends Actor with ActorL
     )
 
     def ackContention(sender: ActorRef, contention: Contention): Eval[Unit] = liftF(
-      SyncIO(sender ! ContentionAck.fromContention(contention, pathAtAddress(selfUniqueAddress.address, self.path)))
+      SyncIO(sender ! ContentionAck.fromContention(contention, selfUniqueAddress))
     )
 
     for {
@@ -254,13 +251,13 @@ class SBReachabilityReporter(val sbReporter: ActorRef) extends Actor with ActorL
 
   private def registerContentionAck(ack: ContentionAck): Eval[Unit] =
     for {
-      _ <- cancelContentionResend(ContentionKey.fromAck(ack))
+      _ <- liftF(cancelContentionResend(ContentionKey.fromAck(ack)))
       _ <- modify[SyncIO, SBReachabilityReporterState](_.registerContentionAck(ack))
     } yield ()
 
   private def registerIntroductionAck(ack: IntroductionAck): Eval[Unit] =
     for {
-      _ <- cancelIntroductionResend(ack)
+      _ <- liftF(cancelIntroductionResend(ack))
       _ <- modify[SyncIO, SBReachabilityReporterState](_.registerIntroductionAck(ack))
     } yield ()
 
@@ -272,9 +269,7 @@ class SBReachabilityReporter(val sbReporter: ActorRef) extends Actor with ActorL
     def withIntroduction(contentions: Map[Subject, Map[Observer, ContentionAggregator]]): Eval[Unit] =
       modify(_.withContentions(contentions))
 
-    val ackIntroduction: Eval[Unit] = liftF(
-      SyncIO(sender ! IntroductionAck(pathAtAddress(selfUniqueAddress.address, self.path)))
-    )
+    val ackIntroduction: Eval[Unit] = liftF(SyncIO(sender ! IntroductionAck(selfUniqueAddress)))
 
     val sendReachabilities: Eval[Unit] =
       for {
@@ -307,8 +302,11 @@ class SBReachabilityReporter(val sbReporter: ActorRef) extends Actor with ActorL
     )
   }
 
-  private def cancelContentionResend(key: ContentionKey): Eval[Unit]     = liftF(SyncIO(timers.cancel(key)))
-  private def cancelIntroductionResend(ack: IntroductionAck): Eval[Unit] = liftF(SyncIO(timers.cancel(ack)))
+  private def cancelContentionResend(key: ContentionKey): SyncIO[Unit]     = SyncIO(timers.cancel(key))
+  private def cancelIntroductionResend(ack: IntroductionAck): SyncIO[Unit] = SyncIO(timers.cancel(ack))
+
+  private def sbReachabilityReporterOnNode(node: UniqueAddress): ActorPath =
+    ActorPath.fromString(s"${node.address.toString}/${self.path.toStringWithoutAddress}")
 
   override def preStart(): Unit = {
     cluster.subscribe(self, classOf[MemberEvent], classOf[ReachabilityEvent])
@@ -342,7 +340,7 @@ object SBReachabilityReporter {
    *
    * Warning: `to` must containing the address!
    */
-  final case class ContentionKey(to: ActorPath, observer: Observer, subject: Subject)
+  final case class ContentionKey(to: UniqueAddress, observer: Observer, subject: Subject)
 
   object ContentionKey {
     def fromAck(ack: ContentionAck): ContentionKey = ContentionKey(ack.from, ack.observer, ack.subject)
@@ -360,10 +358,10 @@ object SBReachabilityReporter {
    *
    * Warning: `from` must containing the address!
    */
-  final case class ContentionAck(from: ActorPath, observer: Observer, subject: Subject, version: Version)
+  final case class ContentionAck(from: UniqueAddress, observer: Observer, subject: Subject, version: Version)
 
   object ContentionAck {
-    def fromContention(contention: Contention, from: ActorPath): ContentionAck =
+    def fromContention(contention: Contention, from: UniqueAddress): ContentionAck =
       ContentionAck(from, contention.observer, contention.subject, contention.version)
 
     implicit val contentionAckEq: Eq[ContentionAck] = (x: ContentionAck, y: ContentionAck) =>
@@ -379,5 +377,5 @@ object SBReachabilityReporter {
   final case class Introduction(contentions: Map[Subject, Map[Observer, ContentionAggregator]])
       extends IntroductionEvent
 
-  final case class IntroductionAck(from: ActorPath) extends IntroductionEvent
+  final case class IntroductionAck(from: UniqueAddress) extends IntroductionEvent
 }

@@ -1,6 +1,6 @@
 package com.swissborg.sbr
 
-import akka.actor.{ActorPath, Address}
+import akka.actor.Address
 import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus._
 import akka.cluster.swissborg.AkkaArbitraryInstances._
@@ -251,7 +251,7 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
 
   implicit val arbContentionAck: Arbitrary[ContentionAck] = Arbitrary(
     for {
-      from     <- arbitrary[ActorPath]
+      from     <- arbitrary[UniqueAddress]
       observer <- arbitrary[UniqueAddress]
       subject  <- arbitrary[UniqueAddress]
       version  <- arbitrary[Long]
@@ -275,7 +275,7 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
 //    } yield Introduction(subjects.map(s => s -> a)(collection.breakOut)))
 //  }
 
-  implicit val arbIntroductionAck: Arbitrary[IntroductionAck] = Arbitrary(arbActorPath0.arbitrary.map(IntroductionAck))
+  implicit val arbIntroductionAck: Arbitrary[IntroductionAck] = Arbitrary(arbitrary[UniqueAddress].map(IntroductionAck))
 }
 
 trait ArbitraryInstances0 {
