@@ -1,8 +1,8 @@
 package com.swissborg.sbr
 
+import cats.implicits._
 import cats.tests.StrictCatsEquality
 import cats.{Functor, Monoid}
-import cats.implicits._
 import com.swissborg.sbr.scenarios.Scenario
 import com.swissborg.sbr.strategy.Strategy
 import com.swissborg.sbr.utils.PostResolution
@@ -25,18 +25,19 @@ trait SBSpec
                                workers = PosInt(4))
 
   /**
-   * Checks that the strategy can handle the given scenario.
-   *
-   * @param name the name of the test.
-   * @param run run the effect to get assertion result.
-   * @tparam F the effect in which the simulation is run.
-   * @tparam Strat the strategy to use.
-   * @tparam S the scenario.
-   */
-  def simulate[F[_]: Functor, Strat[_[_]], S <: Scenario: Arbitrary](name: String)(run: F[Assertion] => Assertion)(
-    implicit strategy: ArbitraryStrategy[Strat[F]],
-    ev: Strat[F] <:< Strategy[F],
-    M: Monoid[F[PostResolution]]
+    * Checks that the strategy can handle the given scenario.
+    *
+    * @param name the name of the test.
+    * @param run run the effect to get assertion result.
+    * @tparam F the effect in which the simulation is run.
+    * @tparam Strat the strategy to use.
+    * @tparam S the scenario.
+    */
+  def simulate[F[_]: Functor, Strat[_[_]], S <: Scenario: Arbitrary](name: String)(
+      run: F[Assertion] => Assertion)(
+      implicit strategy: ArbitraryStrategy[Strat[F]],
+      ev: Strat[F] <:< Strategy[F],
+      M: Monoid[F[PostResolution]]
   ): Unit =
     name in {
       forAll { simulation: Simulation[F, Strat, S] =>

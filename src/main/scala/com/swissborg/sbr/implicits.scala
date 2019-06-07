@@ -14,6 +14,8 @@ trait implicits {
 
   implicit val uniqueAddressEq: Eq[UniqueAddress] = Eq.fromUniversalEquals
 
+  implicit val uniqueAdressOrder: Order[UniqueAddress] = Order.from((a1, a2) => a1.compare(a2))
+
   implicit val addressEq: Eq[Address] = Eq.fromUniversalEquals
 
   implicit val memberStatusEq: Eq[MemberStatus] = Eq.fromUniversalEquals
@@ -27,5 +29,4 @@ trait implicits {
   implicit val uniqueAddressEncoder: Encoder[UniqueAddress] = deriveEncoder[UniqueAddress]
 
   implicit val memberStatus: Encoder[MemberStatus] = deriveEncoder[MemberStatus]
-
 }
