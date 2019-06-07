@@ -45,6 +45,7 @@ val logbackVersion             = "1.2.3"
 val circeVersion               = "0.11.1"
 val scalaLoggingVersion        = "3.9.2"
 val kindProjectorVersion       = "0.10.2"
+val betterMonadicForVersion    = "0.3.0"
 
 resolvers += Resolver.sonatypeRepo("releases")
 
@@ -122,7 +123,8 @@ libraryDependencies ++= Seq(
   "eu.timepit"                 %% "refined-scalacheck"        % refinedScalacheckVersion   % Test
 )
 
-addCompilerPlugin("org.typelevel" %% "kind-projector" % kindProjectorVersion)
+addCompilerPlugin("org.typelevel" %% "kind-projector"     % kindProjectorVersion)
+addCompilerPlugin("com.olegpy"    %% "better-monadic-for" % betterMonadicForVersion)
 
 lazy val root = (project in file("."))
   .enablePlugins(MultiJvmPlugin)

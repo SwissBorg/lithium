@@ -2,7 +2,7 @@ package com.swissborg.sbr.splitbrain
 
 import akka.actor.Address
 import akka.cluster.ClusterEvent.CurrentClusterState
-import akka.cluster.MemberStatus.{Down, Exiting, Joining, Leaving, Removed, Up, WeaklyUp}
+import akka.cluster.MemberStatus._
 import akka.cluster.swissborg.TestMember
 import com.swissborg.sbr.WorldView
 import com.swissborg.sbr.splitbrain.SBSplitBrainReporter.DiffInfo
@@ -17,24 +17,21 @@ class DiffInfoSuite extends WordSpec with Matchers {
   val dd = TestMember(Address("akka.tcp", "sys", "d", 2552), Up)
   val ee = TestMember(Address("akka.tcp", "sys", "e", 2552), Up)
 
+  val joiningBB = TestMember(Address("akka.tcp", "sys", "b", 2552), Joining)
+  val weaklyUpBB = TestMember(Address("akka.tcp", "sys", "b", 2552), WeaklyUp)
   val leavingBB = TestMember(Address("akka.tcp", "sys", "b", 2552), Leaving)
   val exitingBB = TestMember(Address("akka.tcp", "sys", "b", 2552), Exiting)
-  val downBB    = TestMember(Address("akka.tcp", "sys", "b", 2552), Down)
+  val downBB = TestMember(Address("akka.tcp", "sys", "b", 2552), Down)
   val removedBB = TestMember(Address("akka.tcp", "sys", "b", 2552), Removed)
 
-  val joining  = TestMember(Address("akka.tcp", "sys", "joining", 2552), Joining)
+  val joining = TestMember(Address("akka.tcp", "sys", "joining", 2552), Joining)
   val weaklyUp = TestMember(Address("akka.tcp", "sys", "weaklyUp", 2552), WeaklyUp)
-  val up       = TestMember(Address("akka.tcp", "sys", "up", 2552), Up)
-  val leaving  = TestMember(Address("akka.tcp", "sys", "leaving", 2552), Leaving)
-  val exiting  = TestMember(Address("akka.tcp", "sys", "exiting", 2552), Exiting)
-  val down     = TestMember(Address("akka.tcp", "sys", "down", 2552), Down)
-  val removed  = TestMember(Address("akka.tcp", "sys", "removed", 2552), Removed)
 
   "DiffInfo" must {
     "detect no change" in {
       val w = WorldView.fromSnapshot(
         aa,
-        CurrentClusterState(SortedSet(aa, bb, cc, dd), Set(dd), seenBy = Set.empty)
+        CurrentClusterState(SortedSet(aa, bb, cc, dd), Set(dd))
       )
 
       val diff = DiffInfo(w, w)
@@ -46,10 +43,10 @@ class DiffInfoSuite extends WordSpec with Matchers {
     "detect a new indirectly connected node" in {
       val oldW = WorldView.fromSnapshot(
         aa,
-        CurrentClusterState(SortedSet(aa, bb, cc, dd), Set(dd), seenBy = Set.empty)
+        CurrentClusterState(SortedSet(aa, bb, cc, dd), Set(dd))
       )
 
-      val updatedW = oldW.withIndirectlyConnectedMember(cc)
+      val updatedW = oldW.withIndirectlyConnectedNode(cc.uniqueAddress)
 
       val diff = DiffInfo(oldW, updatedW)
 
@@ -60,10 +57,10 @@ class DiffInfoSuite extends WordSpec with Matchers {
     "detect a new unreachable node" in {
       val oldW = WorldView.fromSnapshot(
         aa,
-        CurrentClusterState(SortedSet(aa, bb, cc, dd), Set(dd), seenBy = Set.empty)
+        CurrentClusterState(SortedSet(aa, bb, cc, dd), Set(dd))
       )
 
-      val updatedW = oldW.withUnreachableMember(cc)
+      val updatedW = oldW.withUnreachableNode(cc.uniqueAddress)
 
       val diff = DiffInfo(oldW, updatedW)
 
@@ -74,10 +71,10 @@ class DiffInfoSuite extends WordSpec with Matchers {
     "detect a exiting member" in {
       val oldW = WorldView.fromSnapshot(
         aa,
-        CurrentClusterState(SortedSet(aa, bb, cc), seenBy = Set.empty)
+        CurrentClusterState(SortedSet(aa, bb, cc))
       )
 
-      val updatedW = oldW.updateMember(exitingBB, Set.empty)
+      val updatedW = oldW.addOrUpdate(exitingBB)
 
       val diff = DiffInfo(oldW, updatedW)
 
@@ -88,10 +85,10 @@ class DiffInfoSuite extends WordSpec with Matchers {
     "detect a downed member" in {
       val oldW = WorldView.fromSnapshot(
         aa,
-        CurrentClusterState(SortedSet(aa, bb, cc), seenBy = Set.empty)
+        CurrentClusterState(SortedSet(aa, bb, cc))
       )
 
-      val updatedW = oldW.updateMember(downBB, Set.empty)
+      val updatedW = oldW.addOrUpdate(downBB)
 
       val diff = DiffInfo(oldW, updatedW)
 
@@ -102,10 +99,10 @@ class DiffInfoSuite extends WordSpec with Matchers {
     "detect a leaving member" in {
       val oldW = WorldView.fromSnapshot(
         aa,
-        CurrentClusterState(SortedSet(aa, bb, cc), seenBy = Set.empty)
+        CurrentClusterState(SortedSet(aa, bb, cc))
       )
 
-      val updatedW = oldW.updateMember(leavingBB, Set.empty)
+      val updatedW = oldW.addOrUpdate(leavingBB)
 
       val diff = DiffInfo(oldW, updatedW)
 
@@ -117,11 +114,11 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val oldW = WorldView
         .fromSnapshot(
           aa,
-          CurrentClusterState(SortedSet(aa, bb, cc, dd), seenBy = Set.empty)
+          CurrentClusterState(SortedSet(aa, bb, cc, dd))
         )
-        .withIndirectlyConnectedMember(dd)
+        .withIndirectlyConnectedNode(dd.uniqueAddress)
 
-      val updatedW = oldW.withUnreachableMember(dd)
+      val updatedW = oldW.withUnreachableNode(dd.uniqueAddress)
 
       val diff = DiffInfo(oldW, updatedW)
 
@@ -133,11 +130,11 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val oldW = WorldView
         .fromSnapshot(
           aa,
-          CurrentClusterState(SortedSet(aa, bb, cc, dd), seenBy = Set.empty)
+          CurrentClusterState(SortedSet(aa, bb, cc, dd))
         )
-        .withUnreachableMember(dd)
+        .withUnreachableNode(dd.uniqueAddress)
 
-      val updatedW = oldW.withIndirectlyConnectedMember(dd)
+      val updatedW = oldW.withIndirectlyConnectedNode(dd.uniqueAddress)
 
       val diff = DiffInfo(oldW, updatedW)
 
@@ -149,10 +146,10 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val oldW = WorldView
         .fromSnapshot(
           aa,
-          CurrentClusterState(SortedSet(aa, bb, cc), seenBy = Set.empty)
+          CurrentClusterState(SortedSet(aa, bb, cc))
         )
 
-      val updatedW = oldW.withReachableMember(joining)
+      val updatedW = oldW.addOrUpdate(joining)
 
       val diff = DiffInfo(oldW, updatedW)
 
@@ -161,13 +158,9 @@ class DiffInfoSuite extends WordSpec with Matchers {
     }
 
     "ignore indirectly connected joining members" in {
-      val oldW = WorldView
-        .fromSnapshot(
-          aa,
-          CurrentClusterState(SortedSet(aa, bb, cc), seenBy = Set.empty)
-        )
+      val oldW = WorldView.fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb, cc)))
 
-      val updatedW = oldW.withIndirectlyConnectedMember(joining)
+      val updatedW = oldW.addOrUpdate(joining).withIndirectlyConnectedNode(joining.uniqueAddress)
 
       val diff = DiffInfo(oldW, updatedW)
 
@@ -179,10 +172,10 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val oldW = WorldView
         .fromSnapshot(
           aa,
-          CurrentClusterState(SortedSet(aa, bb, cc), seenBy = Set.empty)
+          CurrentClusterState(SortedSet(aa, bb, cc))
         )
 
-      val updatedW = oldW.withUnreachableMember(joining)
+      val updatedW = oldW.addOrUpdate(joining).withUnreachableNode(joining.uniqueAddress)
 
       val diff = DiffInfo(oldW, updatedW)
 
@@ -194,10 +187,10 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val oldW = WorldView
         .fromSnapshot(
           aa,
-          CurrentClusterState(SortedSet(aa, bb, cc), seenBy = Set.empty)
+          CurrentClusterState(SortedSet(aa, bb, cc))
         )
 
-      val updatedW = oldW.withReachableMember(weaklyUp)
+      val updatedW = oldW.addOrUpdate(weaklyUp).withReachableNode(weaklyUp.uniqueAddress)
 
       val diff = DiffInfo(oldW, updatedW)
 
@@ -209,10 +202,10 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val oldW = WorldView
         .fromSnapshot(
           aa,
-          CurrentClusterState(SortedSet(aa, bb, cc), seenBy = Set.empty)
+          CurrentClusterState(SortedSet(aa, bb, cc))
         )
 
-      val updatedW = oldW.withIndirectlyConnectedMember(weaklyUp)
+      val updatedW = oldW.addOrUpdate(weaklyUp).withIndirectlyConnectedNode(weaklyUp.uniqueAddress)
 
       val diff = DiffInfo(oldW, updatedW)
 
@@ -224,10 +217,10 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val oldW = WorldView
         .fromSnapshot(
           aa,
-          CurrentClusterState(SortedSet(aa, bb, cc), seenBy = Set.empty)
+          CurrentClusterState(SortedSet(aa, bb, cc))
         )
 
-      val updatedW = oldW.withUnreachableMember(weaklyUp)
+      val updatedW = oldW.addOrUpdate(weaklyUp).withUnreachableNode(weaklyUp.uniqueAddress)
 
       val diff = DiffInfo(oldW, updatedW)
 

@@ -11,10 +11,11 @@ import org.scalacheck.Gen._
 package object utils {
 
   /**
-   * Splits `as` in `parts` parts of arbitrary sizes.
-   * If `parts` is less than or more than the size of `as` it will return `NonEmptySet(as)`.
-   */
-  def splitIn[A](parts: Int Refined Positive, as: NonEmptySet[A]): Arbitrary[NonEmptyList[NonEmptySet[A]]] =
+    * Splits `as` in `parts` parts of arbitrary sizes.
+    * If `parts` is less than or more than the size of `as` it will return `NonEmptySet(as)`.
+    */
+  def splitIn[A](parts: Int Refined Positive,
+                 as: NonEmptySet[A]): Arbitrary[NonEmptyList[NonEmptySet[A]]] =
     Arbitrary {
       if (parts <= 1 || parts > as.length) const(NonEmptyList.of(as))
       else {

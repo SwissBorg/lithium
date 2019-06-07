@@ -7,7 +7,10 @@ object TestMember {
   def apply(address: Address, status: MemberStatus): Member =
     apply(address, status, Set.empty[String])
 
-  def apply(address: Address, status: MemberStatus, upNumber: Int, dc: ClusterSettings.DataCenter): Member =
+  def apply(address: Address,
+            status: MemberStatus,
+            upNumber: Int,
+            dc: ClusterSettings.DataCenter): Member =
     apply(address, status, Set.empty, dc, upNumber)
 
   def apply(address: Address,
