@@ -4,13 +4,13 @@ import akka.actor.ActorSystem
 import akka.serialization.SerializationExtension
 import akka.testkit.TestKit
 import com.swissborg.sbr.SBSpec
-import com.swissborg.sbr.reachability.SBReachabilityReporter.{Contention, ContentionAck, IntroductionAck}
+import com.swissborg.sbr.reachability.SBReachabilityReporter.{Contention, ContentionAck}
 
 class SBMessageSerializerSpec extends TestKit(ActorSystem("test")) with SBSpec {
-  private val contentionSerializer    = SerializationExtension(system).findSerializerFor(classOf[Contention])
-  private val contentionAckSerializer = SerializationExtension(system).findSerializerFor(classOf[ContentionAck])
-//  private val introductionSerializer    = SerializationExtension(system).findSerializerFor(classOf[Introduction])
-  private val introductionAckSerializer = SerializationExtension(system).findSerializerFor(classOf[IntroductionAck])
+  private val contentionSerializer =
+    SerializationExtension(system).findSerializerFor(classOf[Contention])
+  private val contentionAckSerializer =
+    SerializationExtension(system).findSerializerFor(classOf[ContentionAck])
 
   "SBMessageSerializer" must {
     "Contention round-trip" in {
@@ -27,21 +27,6 @@ class SBMessageSerializerSpec extends TestKit(ActorSystem("test")) with SBSpec {
           case ack: ContentionAck => ack should ===(contentionAck)
           case other              => fail(s"$other")
         }
-      }
-    }
-
-    // TODO arbitrary is super duper slow
-//    "Introduction round-trip" in {
-//      forAll { introduction: Introduction =>
-//        val bytes = introductionSerializer.toBinary(introduction)
-//        introductionSerializer.fromBinary(bytes) shouldBe introduction
-//      }
-//    }
-
-    "IntroductionAck round-trip" in {
-      forAll { introductionAck: IntroductionAck =>
-        val bytes = introductionAckSerializer.toBinary(introductionAck)
-        introductionAckSerializer.fromBinary(bytes) shouldBe introductionAck
       }
     }
   }

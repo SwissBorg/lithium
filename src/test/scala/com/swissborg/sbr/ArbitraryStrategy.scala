@@ -1,20 +1,20 @@
 package com.swissborg.sbr
 
-import cats.{Applicative, ApplicativeError}
 import cats.effect.Sync
+import cats.{Applicative, ApplicativeError}
 import com.swissborg.sbr.scenarios.Scenario
-import com.swissborg.sbr.strategies.downall.DownAll
-import com.swissborg.sbr.strategies.keepmajority.KeepMajority
-import com.swissborg.sbr.strategies.keepoldest.KeepOldest
-import com.swissborg.sbr.strategies.keepreferee.KeepReferee
-import com.swissborg.sbr.strategies.keepreferee.KeepReferee.Config.Address
-import com.swissborg.sbr.strategies.staticquorum.StaticQuorum
+import com.swissborg.sbr.strategy.downall.DownAll
+import com.swissborg.sbr.strategy.keepmajority.KeepMajority
+import com.swissborg.sbr.strategy.keepoldest.KeepOldest
+import com.swissborg.sbr.strategy.keepreferee.KeepReferee
+import com.swissborg.sbr.strategy.keepreferee.KeepReferee.Config.Address
+import com.swissborg.sbr.strategy.staticquorum.StaticQuorum
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
-import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen.chooseNum
+import org.scalacheck.{Arbitrary, Gen}
 
 trait ArbitraryStrategy[F] {
   def fromScenario(scenario: Scenario): Arbitrary[F]
@@ -46,7 +46,7 @@ object ArbitraryStrategy {
         val minQuorumSize = clusterSize / 2 + 1
         for {
           quorumSize <- chooseNum(minQuorumSize, clusterSize.value)
-          role       <- arbitrary[String]
+          role <- arbitrary[String]
         } yield new StaticQuorum(StaticQuorum.Config(role, refineV[Positive](quorumSize).right.get))
       }
     }
@@ -58,12 +58,13 @@ object ArbitraryStrategy {
         Arbitrary(arbitrary[String].map(role => new KeepMajority(KeepMajority.Config(role))))
     }
 
-  implicit def keepOldestStrategyBuilder[F[_]: ApplicativeError[?[_], Throwable]]: ArbitraryStrategy[KeepOldest[F]] =
+  implicit def keepOldestStrategyBuilder[F[_]: ApplicativeError[?[_], Throwable]]
+    : ArbitraryStrategy[KeepOldest[F]] =
     new ArbitraryStrategy[KeepOldest[F]] {
       override def fromScenario(scenario: Scenario): Arbitrary[KeepOldest[F]] = Arbitrary {
         for {
           downIfAlone <- arbitrary[Boolean]
-          role        <- arbitrary[String]
+          role <- arbitrary[String]
         } yield new KeepOldest(KeepOldest.Config(downIfAlone, role))
       }
 
@@ -71,6 +72,7 @@ object ArbitraryStrategy {
 
   implicit def downAllStrategyBuilder[F[_]: Applicative]: ArbitraryStrategy[DownAll[F]] =
     new ArbitraryStrategy[DownAll[F]] {
-      override def fromScenario(scenario: Scenario): Arbitrary[DownAll[F]] = Arbitrary(Gen.const(new DownAll[F]()))
+      override def fromScenario(scenario: Scenario): Arbitrary[DownAll[F]] =
+        Arbitrary(Gen.const(new DownAll[F]()))
     }
 }
