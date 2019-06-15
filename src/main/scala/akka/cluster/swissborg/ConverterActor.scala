@@ -5,13 +5,15 @@ import akka.cluster.ClusterEvent.{ReachabilityChanged, SeenChanged}
 import com.swissborg.sbr.{SBReachabilityChanged, SBSeenChanged}
 
 /**
- * Converts and publishes to the event-stream [[ReachabilityChanged]] and [[SeenChanged]]
- * into events that are visible outside Akka's namespace.
- */
+  * Converts and publishes to the event-stream [[ReachabilityChanged]] and [[SeenChanged]]
+  * into events that are visible outside Akka's namespace.
+  */
 class ConverterActor extends Actor {
   override def receive: Receive = {
-    case ReachabilityChanged(r)           => context.system.eventStream.publish(SBReachabilityChanged(SBReachability(r)))
-    case SeenChanged(convergence, seenBy) => context.system.eventStream.publish(SBSeenChanged(convergence, seenBy))
+    case ReachabilityChanged(r) =>
+      context.system.eventStream.publish(SBReachabilityChanged(SBReachability(r)))
+    case SeenChanged(convergence, seenBy) =>
+      context.system.eventStream.publish(SBSeenChanged(convergence, seenBy))
   }
 
   override def preStart(): Unit = {

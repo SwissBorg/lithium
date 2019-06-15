@@ -12,5 +12,5 @@ object SimpleMember {
   def fromMember(member: Member): SimpleMember = SimpleMember(member.uniqueAddress, member.status)
 
   implicit val simpleMemberEncoder: Encoder[SimpleMember] = deriveEncoder
-  implicit val simpleMemberEq: Eq[SimpleMember]           = Eq.fromUniversalEquals
+  implicit val simpleMemberEq: Eq[SimpleMember] = Eq.fromUniversalEquals
 }
