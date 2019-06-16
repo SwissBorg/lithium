@@ -221,12 +221,12 @@ private[sbr] object SBSplitBrainReporter {
     * @param hasNewUnreachableOrIndirectlyConnected true if the updated world view has more unreachable or indirectly
     *                                               connected nodes.
     */
-  private sealed abstract case class DiffInfo(
+  private[splitbrain] sealed abstract case class DiffInfo(
       changeIsStable: Boolean,
       hasNewUnreachableOrIndirectlyConnected: Boolean
   )
 
-  private object DiffInfo {
+  private[splitbrain] object DiffInfo {
     def apply(oldWorldView: WorldView, updatedWorldView: WorldView): DiffInfo = {
       // Remove members that are `Joining` or `WeaklyUp` as they
       // can appear during a split-brain.

@@ -35,7 +35,7 @@ trait SBSpec
     * @tparam Strat the strategy to use.
     * @tparam S the scenario.
     */
-  def simulate[F[_]: Functor, Strat[_[_]], S <: Scenario: Arbitrary](
+  final def simulate[F[_]: Functor, Strat[_[_]], S <: Scenario: Arbitrary](
       name: String
   )(run: F[Assertion] => Assertion)(
       implicit strategy: ArbitraryStrategy[Strat[F]],
