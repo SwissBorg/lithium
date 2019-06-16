@@ -6,21 +6,21 @@ import com.swissborg.sbr.strategy.keepoldest.KeepOldestSpecTenNodeConfig
 
 import scala.concurrent.duration._
 
-class KeepOldestSpec8MultiJvmNode1  extends KeepOldestSpec8
-class KeepOldestSpec8MultiJvmNode2  extends KeepOldestSpec8
-class KeepOldestSpec8MultiJvmNode3  extends KeepOldestSpec8
-class KeepOldestSpec8MultiJvmNode4  extends KeepOldestSpec8
-class KeepOldestSpec8MultiJvmNode5  extends KeepOldestSpec8
-class KeepOldestSpec8MultiJvmNode6  extends KeepOldestSpec8
-class KeepOldestSpec8MultiJvmNode7  extends KeepOldestSpec8
-class KeepOldestSpec8MultiJvmNode8  extends KeepOldestSpec8
-class KeepOldestSpec8MultiJvmNode9  extends KeepOldestSpec8
+class KeepOldestSpec8MultiJvmNode1 extends KeepOldestSpec8
+class KeepOldestSpec8MultiJvmNode2 extends KeepOldestSpec8
+class KeepOldestSpec8MultiJvmNode3 extends KeepOldestSpec8
+class KeepOldestSpec8MultiJvmNode4 extends KeepOldestSpec8
+class KeepOldestSpec8MultiJvmNode5 extends KeepOldestSpec8
+class KeepOldestSpec8MultiJvmNode6 extends KeepOldestSpec8
+class KeepOldestSpec8MultiJvmNode7 extends KeepOldestSpec8
+class KeepOldestSpec8MultiJvmNode8 extends KeepOldestSpec8
+class KeepOldestSpec8MultiJvmNode9 extends KeepOldestSpec8
 class KeepOldestSpec8MultiJvmNode10 extends KeepOldestSpec8
 
 /**
- * Node2 and node3 are indirectly connected in a ten node cluster
- * Node9 and node10 are indirectly connected in a ten node cluster
- */
+  * Node2 and node3 are indirectly connected in a ten node cluster
+  * Node9 and node10 are indirectly connected in a ten node cluster
+  */
 class KeepOldestSpec8 extends TenNodeSpec("KeepOldest", KeepOldestSpecTenNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 8" in within(120 seconds) {

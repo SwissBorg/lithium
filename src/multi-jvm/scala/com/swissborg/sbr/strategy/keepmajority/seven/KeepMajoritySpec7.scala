@@ -6,20 +6,20 @@ import com.swissborg.sbr.strategy.keepmajority.KeepMajoritySpecTenNodeConfig
 
 import scala.concurrent.duration._
 
-class KeepMajoritySpec7MultiJvmNode1  extends KeepMajority7
-class KeepMajoritySpec7MultiJvmNode2  extends KeepMajority7
-class KeepMajoritySpec7MultiJvmNode3  extends KeepMajority7
-class KeepMajoritySpec7MultiJvmNode4  extends KeepMajority7
-class KeepMajoritySpec7MultiJvmNode5  extends KeepMajority7
-class KeepMajoritySpec7MultiJvmNode6  extends KeepMajority7
-class KeepMajoritySpec7MultiJvmNode7  extends KeepMajority7
-class KeepMajoritySpec7MultiJvmNode8  extends KeepMajority7
-class KeepMajoritySpec7MultiJvmNode9  extends KeepMajority7
+class KeepMajoritySpec7MultiJvmNode1 extends KeepMajority7
+class KeepMajoritySpec7MultiJvmNode2 extends KeepMajority7
+class KeepMajoritySpec7MultiJvmNode3 extends KeepMajority7
+class KeepMajoritySpec7MultiJvmNode4 extends KeepMajority7
+class KeepMajoritySpec7MultiJvmNode5 extends KeepMajority7
+class KeepMajoritySpec7MultiJvmNode6 extends KeepMajority7
+class KeepMajoritySpec7MultiJvmNode7 extends KeepMajority7
+class KeepMajoritySpec7MultiJvmNode8 extends KeepMajority7
+class KeepMajoritySpec7MultiJvmNode9 extends KeepMajority7
 class KeepMajoritySpec7MultiJvmNode10 extends KeepMajority7
 
 /**
- * Node9 and node10 are indirectly connected in a ten node cluster
- */
+  * Node9 and node10 are indirectly connected in a ten node cluster
+  */
 class KeepMajority7 extends TenNodeSpec("KeepMajority", KeepMajoritySpecTenNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 7" in within(120 seconds) {

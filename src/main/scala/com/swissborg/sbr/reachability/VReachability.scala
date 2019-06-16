@@ -55,9 +55,11 @@ private[reachability] object VReachability {
 final case class VReachable private (hasBeenRetrieved: Boolean) extends VReachability {
   override lazy val tagAsRetrieved: VReachability = copy(hasBeenRetrieved = true)
 
-  override def withProtest(protester: Protester,
-                           observer: Observer,
-                           version: Version): VReachability =
+  override def withProtest(
+      protester: Protester,
+      observer: Observer,
+      version: Version
+  ): VReachability =
     VIndirectlyConnected.fromProtest(protester, observer, version)
 
   override def withUnreachableFrom(observer: Observer, version: Version): VReachability =
@@ -75,14 +77,17 @@ private object VReachable {
 /**
   * A member that is indirectly connected. At least one of the unreachability detections has been been contested.
   */
-final case class VIndirectlyConnected private (detections: NonEmptyMap[Observer, Detection],
-                                               hasBeenRetrieved: Boolean)
-    extends VReachability {
+final case class VIndirectlyConnected private (
+    detections: NonEmptyMap[Observer, Detection],
+    hasBeenRetrieved: Boolean
+) extends VReachability {
   override lazy val tagAsRetrieved: VReachability = copy(hasBeenRetrieved = true)
 
-  override def withProtest(protester: Protester,
-                           observer: Observer,
-                           version: Version): VReachability = {
+  override def withProtest(
+      protester: Protester,
+      observer: Observer,
+      version: Version
+  ): VReachability = {
     val updatedDetection =
       detections.lookup(observer).fold(Detection.protested(protester, version)) { currentProtest =>
         if (currentProtest.version < version) {
@@ -170,14 +175,17 @@ object VIndirectlyConnected {
 /**
   * An unreachable member.
   */
-final case class VUnreachable private (detections: NonEmptyMap[Observer, Detection.Unprotested],
-                                       hasBeenRetrieved: Boolean)
-    extends VReachability {
+final case class VUnreachable private (
+    detections: NonEmptyMap[Observer, Detection.Unprotested],
+    hasBeenRetrieved: Boolean
+) extends VReachability {
   override lazy val tagAsRetrieved: VReachability = copy(hasBeenRetrieved = true)
 
-  override def withProtest(protester: Protester,
-                           observer: Observer,
-                           version: Version): VReachability = {
+  override def withProtest(
+      protester: Protester,
+      observer: Observer,
+      version: Version
+  ): VReachability = {
     val maybeUpdatedProtested =
       detections.lookup(observer).fold(Option(Detection.Protested.one(protester, version))) {
         currentUnprotested =>
@@ -226,8 +234,10 @@ final case class VUnreachable private (detections: NonEmptyMap[Observer, Detecti
 
 object VUnreachable {
   def fromDetection(observer: Observer, version: Version): VUnreachable =
-    VUnreachable(NonEmptyMap.of(observer -> Detection.Unprotested(version)),
-                 hasBeenRetrieved = false)
+    VUnreachable(
+      NonEmptyMap.of(observer -> Detection.Unprotested(version)),
+      hasBeenRetrieved = false
+    )
 
   def apply(detections: NonEmptyMap[Observer, Detection.Unprotested]): VReachability =
     VUnreachable(detections, hasBeenRetrieved = false)

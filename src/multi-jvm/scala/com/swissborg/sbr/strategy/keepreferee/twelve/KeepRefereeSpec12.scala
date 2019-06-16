@@ -14,13 +14,14 @@ class KeepRefereeSpec12MultiJvmNode4 extends KeepRefereeSpec12
 class KeepRefereeSpec12MultiJvmNode5 extends KeepRefereeSpec12
 
 /**
- * (1) Partition containing node1 and node2, node3, and node4 (node3 and node4 are indirectly connected)
- * (2) Partition containing  node5
- *
- * (1) contains the referee but has less than down-all-if-less-than-nodes so downs itself.
- * (2) downs itself as it doesn't contain the referee.
- */
-class KeepRefereeSpec12 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNodeLessNodesConfig) {
+  * (1) Partition containing node1 and node2, node3, and node4 (node3 and node4 are indirectly connected)
+  * (2) Partition containing  node5
+  *
+  * (1) contains the referee but has less than down-all-if-less-than-nodes so downs itself.
+  * (2) downs itself as it doesn't contain the referee.
+  */
+class KeepRefereeSpec12
+    extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNodeLessNodesConfig) {
   override def assertions(): Unit =
     "handle scenario 12" in within(120 seconds) {
       runOn(node1) {

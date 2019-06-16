@@ -6,20 +6,20 @@ import com.swissborg.sbr.strategy.keepreferee.KeepRefereeSpecTenNodeConfig
 
 import scala.concurrent.duration._
 
-class KeepRefereeSpec7MultiJvmNode1  extends KeepRefereeSpec7
-class KeepRefereeSpec7MultiJvmNode2  extends KeepRefereeSpec7
-class KeepRefereeSpec7MultiJvmNode3  extends KeepRefereeSpec7
-class KeepRefereeSpec7MultiJvmNode4  extends KeepRefereeSpec7
-class KeepRefereeSpec7MultiJvmNode5  extends KeepRefereeSpec7
-class KeepRefereeSpec7MultiJvmNode6  extends KeepRefereeSpec7
-class KeepRefereeSpec7MultiJvmNode7  extends KeepRefereeSpec7
-class KeepRefereeSpec7MultiJvmNode8  extends KeepRefereeSpec7
-class KeepRefereeSpec7MultiJvmNode9  extends KeepRefereeSpec7
+class KeepRefereeSpec7MultiJvmNode1 extends KeepRefereeSpec7
+class KeepRefereeSpec7MultiJvmNode2 extends KeepRefereeSpec7
+class KeepRefereeSpec7MultiJvmNode3 extends KeepRefereeSpec7
+class KeepRefereeSpec7MultiJvmNode4 extends KeepRefereeSpec7
+class KeepRefereeSpec7MultiJvmNode5 extends KeepRefereeSpec7
+class KeepRefereeSpec7MultiJvmNode6 extends KeepRefereeSpec7
+class KeepRefereeSpec7MultiJvmNode7 extends KeepRefereeSpec7
+class KeepRefereeSpec7MultiJvmNode8 extends KeepRefereeSpec7
+class KeepRefereeSpec7MultiJvmNode9 extends KeepRefereeSpec7
 class KeepRefereeSpec7MultiJvmNode10 extends KeepRefereeSpec7
 
 /**
- * Node9 and node10 are indirectly connected in a ten node cluster
- */
+  * Node9 and node10 are indirectly connected in a ten node cluster
+  */
 class KeepRefereeSpec7 extends TenNodeSpec("KeepReferee", KeepRefereeSpecTenNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 7" in within(120 seconds) {

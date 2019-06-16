@@ -29,8 +29,8 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
     fromProto(rr.SBReachabilityReporterMsg.parseFrom(bytes))
 
   private def fromProto(msg: rr.SBReachabilityReporterMsg): AnyRef = msg match {
-    case rr.SBReachabilityReporterMsg(
-        rr.SBReachabilityReporterMsg.Payload.Contention(contention)) =>
+    case rr
+          .SBReachabilityReporterMsg(rr.SBReachabilityReporterMsg.Payload.Contention(contention)) =>
       contentionFromProto(contention)
 
     case rr.SBReachabilityReporterMsg(rr.SBReachabilityReporterMsg.Payload.ContentionAck(ack)) =>
@@ -82,10 +82,12 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
   private def contentionAckFromProto(contentionAck: rr.ContentionAck): ContentionAck =
     contentionAck match {
       case rr.ContentionAck(Some(to), Some(observer), Some(subject), Some(version)) =>
-        ContentionAck(toUniqueAddress(to),
-                      toUniqueAddress(observer),
-                      toUniqueAddress(subject),
-                      version)
+        ContentionAck(
+          toUniqueAddress(to),
+          toUniqueAddress(observer),
+          toUniqueAddress(subject),
+          version
+        )
 
       case _ => throw new SerializationException(s"Missing fields in $contentionAck")
     }
@@ -106,13 +108,17 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
   }
 
   private def toUniqueAddress(uniqueAddress: rr.AkkaInternal): UniqueAddress =
-    fromAkkaInternalProtoByteArray[UniqueAddress](uniqueAddress.serializerId,
-                                                  uniqueAddress.manifest,
-                                                  uniqueAddress.bytes.toByteArray)
+    fromAkkaInternalProtoByteArray[UniqueAddress](
+      uniqueAddress.serializerId,
+      uniqueAddress.manifest,
+      uniqueAddress.bytes.toByteArray
+    )
 
-  private def fromAkkaInternalProtoByteArray[A <: AnyRef](serializerId: Int,
-                                                          manifest: Option[String],
-                                                          bytes: Array[Byte]): A = {
+  private def fromAkkaInternalProtoByteArray[A <: AnyRef](
+      serializerId: Int,
+      manifest: Option[String],
+      bytes: Array[Byte]
+  ): A = {
     val serializer = SerializationExtension(system).serializerByIdentity(serializerId)
 
     val ref = manifest match {

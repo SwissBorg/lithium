@@ -3,7 +3,8 @@ package com.swissborg.sbr.strategy.keepreferee
 import com.swissborg.sbr.TenNodeSpecConfig
 import com.typesafe.config.ConfigFactory
 
-object KeepRefereeSpecTenNodeConfig extends TenNodeSpecConfig("keepreferee/keep_referee_spec_3.conf") {
+object KeepRefereeSpecTenNodeConfig
+    extends TenNodeSpecConfig("keepreferee/keep_referee_spec_3.conf") {
   nodeConfig(node1)(ConfigFactory.parseString("akka.remote.netty.tcp.port=9991"))
   nodeConfig(node2)(ConfigFactory.parseString("akka.remote.netty.tcp.port=9992"))
   nodeConfig(node3)(ConfigFactory.parseString("akka.remote.netty.tcp.port=9993"))

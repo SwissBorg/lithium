@@ -11,6 +11,7 @@ class KeepMajoritySpec extends SBSpec {
     simulate[Try, KeepMajority, SymmetricSplitScenario]("handle symmetric split scenarios")(_.get)
 
     simulate[Try, KeepMajority, OldestRemovedScenario](
-      "handle a split during the oldest-removed scenarios")(_.get)
+      "handle a split during the oldest-removed scenarios"
+    )(_.get)
   }
 }

@@ -4,7 +4,8 @@ import akka.cluster.Cluster
 
 import scala.concurrent.duration._
 
-abstract class ThreeNodeSpec(name: String, config: ThreeNodeSpecConfig) extends SBRMultiNodeSpec(config) {
+abstract class ThreeNodeSpec(name: String, config: ThreeNodeSpecConfig)
+    extends SBRMultiNodeSpec(config) {
 
   def assertions(): Unit
 

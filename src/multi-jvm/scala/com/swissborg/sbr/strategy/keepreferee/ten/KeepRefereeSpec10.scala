@@ -7,21 +7,21 @@ import com.swissborg.sbr.strategy.keepreferee.KeepRefereeSpecTenNodeConfig
 
 import scala.concurrent.duration._
 
-class KeepRefereeSpec10MultiJvmNode1  extends KeepRefereeSpec10
-class KeepRefereeSpec10MultiJvmNode2  extends KeepRefereeSpec10
-class KeepRefereeSpec10MultiJvmNode3  extends KeepRefereeSpec10
-class KeepRefereeSpec10MultiJvmNode4  extends KeepRefereeSpec10
-class KeepRefereeSpec10MultiJvmNode5  extends KeepRefereeSpec10
-class KeepRefereeSpec10MultiJvmNode6  extends KeepRefereeSpec10
-class KeepRefereeSpec10MultiJvmNode7  extends KeepRefereeSpec10
-class KeepRefereeSpec10MultiJvmNode8  extends KeepRefereeSpec10
-class KeepRefereeSpec10MultiJvmNode9  extends KeepRefereeSpec10
+class KeepRefereeSpec10MultiJvmNode1 extends KeepRefereeSpec10
+class KeepRefereeSpec10MultiJvmNode2 extends KeepRefereeSpec10
+class KeepRefereeSpec10MultiJvmNode3 extends KeepRefereeSpec10
+class KeepRefereeSpec10MultiJvmNode4 extends KeepRefereeSpec10
+class KeepRefereeSpec10MultiJvmNode5 extends KeepRefereeSpec10
+class KeepRefereeSpec10MultiJvmNode6 extends KeepRefereeSpec10
+class KeepRefereeSpec10MultiJvmNode7 extends KeepRefereeSpec10
+class KeepRefereeSpec10MultiJvmNode8 extends KeepRefereeSpec10
+class KeepRefereeSpec10MultiJvmNode9 extends KeepRefereeSpec10
 class KeepRefereeSpec10MultiJvmNode10 extends KeepRefereeSpec10
 
 /**
- * Network partition between node1 -...- node8 and node9 - node10.
- * Indirect connections between node7 and node8.
- */
+  * Network partition between node1 -...- node8 and node9 - node10.
+  * Indirect connections between node7 and node8.
+  */
 class KeepRefereeSpec10 extends TenNodeSpec("KeepReferee", KeepRefereeSpecTenNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 10" in within(120 seconds) {

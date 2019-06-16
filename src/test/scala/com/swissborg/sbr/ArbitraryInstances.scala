@@ -131,9 +131,12 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
 
   implicit val arbNode: Arbitrary[Node] =
     Arbitrary(
-      Gen.oneOf(arbReachableNode.arbitrary,
-                arbUnreachableNode.arbitrary,
-                arbIndirectlyConnectedNode.arbitrary))
+      Gen.oneOf(
+        arbReachableNode.arbitrary,
+        arbUnreachableNode.arbitrary,
+        arbIndirectlyConnectedNode.arbitrary
+      )
+    )
 
   implicit val arbReachableNode: Arbitrary[ReachableNode] =
     Arbitrary(arbMember.arbitrary.map(ReachableNode(_)))
@@ -216,7 +219,8 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
   )
 
   implicit val arbDownReachable: Arbitrary[DownReachable] = Arbitrary(
-    arbWorldView.arbitrary.map(DownReachable(_)))
+    arbWorldView.arbitrary.map(DownReachable(_))
+  )
 
   implicit val arbDownUnreachable: Arbitrary[DownUnreachable] = Arbitrary(
     arbWorldView.arbitrary.map(DownUnreachable(_))
@@ -228,17 +232,18 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
     for {
       decision1 <- Gen
         .oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary, arbDownSelf.arbitrary) // todo also gen downtheses?
-      decision2 <- Gen.oneOf(arbDownReachable.arbitrary,
-                             arbDownUnreachable.arbitrary,
-                             arbDownSelf.arbitrary)
+      decision2 <- Gen
+        .oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary, arbDownSelf.arbitrary)
     } yield DownThese(decision1, decision2)
   )
 
   implicit val arbStrategyDecision: Arbitrary[StrategyDecision] = Arbitrary(
-    Gen.oneOf(arbDownReachable.arbitrary,
-              arbDownUnreachable.arbitrary,
-              arbDownSelf.arbitrary,
-              arbDownThese.arbitrary)
+    Gen.oneOf(
+      arbDownReachable.arbitrary,
+      arbDownUnreachable.arbitrary,
+      arbDownSelf.arbitrary,
+      arbDownThese.arbitrary
+    )
   )
 
   implicit val arbSBRReachability: Arbitrary[SBReachabilityStatus] = Arbitrary(
@@ -270,15 +275,20 @@ trait ArbitraryInstances0 {
 
   implicit def arbSortedMap[K: Arbitrary: Order, V: Arbitrary]: Arbitrary[SortedMap[K, V]] =
     Arbitrary(
-      arbitrary[Map[K, V]].map(s => SortedMap.empty[K, V](implicitly[Order[K]].toOrdering) ++ s))
+      arbitrary[Map[K, V]].map(s => SortedMap.empty[K, V](implicitly[Order[K]].toOrdering) ++ s)
+    )
 
   implicit def arbNonEmptySet[A](implicit O: Order[A], A: Arbitrary[A]): Arbitrary[NonEmptySet[A]] =
-    Arbitrary(implicitly[Arbitrary[SortedSet[A]]].arbitrary.flatMap(fa =>
-      A.arbitrary.map(a => NonEmptySet(a, fa))))
+    Arbitrary(
+      implicitly[Arbitrary[SortedSet[A]]].arbitrary
+        .flatMap(fa => A.arbitrary.map(a => NonEmptySet(a, fa)))
+    )
 
-  implicit def arbNonEmptyMap[K, A](implicit O: Order[K],
-                                    A: Arbitrary[A],
-                                    K: Arbitrary[K]): Arbitrary[NonEmptyMap[K, A]] =
+  implicit def arbNonEmptyMap[K, A](
+      implicit O: Order[K],
+      A: Arbitrary[A],
+      K: Arbitrary[K]
+  ): Arbitrary[NonEmptyMap[K, A]] =
     Arbitrary(for {
       fa <- arbSortedMap[K, A].arbitrary
       k <- K.arbitrary

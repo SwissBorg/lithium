@@ -32,8 +32,10 @@ object ArbitraryStrategy {
           downIfLessThan <- chooseNum(1, nodes.length)
         } yield
           new KeepReferee[F](
-            KeepReferee.Config(refineV[Address](referee.member.address.toString).right.get,
-                               refineV[Positive](downIfLessThan).right.get)
+            KeepReferee.Config(
+              refineV[Address](referee.member.address.toString).right.get,
+              refineV[Positive](downIfLessThan).right.get
+            )
           )
       }
     }
@@ -52,14 +54,14 @@ object ArbitraryStrategy {
     }
 
   implicit def keepMajorityStrategyBuilder[F[_]: ApplicativeError[?[_], Throwable]]
-    : ArbitraryStrategy[KeepMajority[F]] =
+      : ArbitraryStrategy[KeepMajority[F]] =
     new ArbitraryStrategy[KeepMajority[F]] {
       override def fromScenario(scenario: Scenario): Arbitrary[KeepMajority[F]] =
         Arbitrary(arbitrary[String].map(role => new KeepMajority(KeepMajority.Config(role))))
     }
 
   implicit def keepOldestStrategyBuilder[F[_]: ApplicativeError[?[_], Throwable]]
-    : ArbitraryStrategy[KeepOldest[F]] =
+      : ArbitraryStrategy[KeepOldest[F]] =
     new ArbitraryStrategy[KeepOldest[F]] {
       override def fromScenario(scenario: Scenario): Arbitrary[KeepOldest[F]] = Arbitrary {
         for {

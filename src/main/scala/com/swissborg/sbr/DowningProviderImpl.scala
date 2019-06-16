@@ -55,9 +55,11 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
 }
 
 object DowningProviderImpl {
-  sealed abstract case class Config(activeStrategy: String,
-                                    stableAfter: FiniteDuration,
-                                    downAllWhenUnstable: Boolean)
+  sealed abstract case class Config(
+      activeStrategy: String,
+      stableAfter: FiniteDuration,
+      downAllWhenUnstable: Boolean
+  )
 
   object Config {
     // TODO handle errors
@@ -66,7 +68,8 @@ object DowningProviderImpl {
         system.settings.config.getString("com.swissborg.sbr.active-strategy"),
         FiniteDuration(
           system.settings.config.getDuration("com.swissborg.sbr.stable-after").toMillis,
-          TimeUnit.MILLISECONDS),
+          TimeUnit.MILLISECONDS
+        ),
         system.settings.config.getBoolean("com.swissborg.sbr.down-all-when-unstable")
       ) {}
   }

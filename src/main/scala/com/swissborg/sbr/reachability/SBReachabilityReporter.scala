@@ -9,10 +9,10 @@ import cats.data.StateT
 import cats.data.StateT._
 import cats.effect.SyncIO
 import cats.implicits._
+import com.swissborg.sbr.converter.Converter
 import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.reachability.SBReachabilityReporter.SBReachabilityStatus._
 import com.swissborg.sbr.splitbrain.SBSplitBrainReporter._
-import com.swissborg.sbr.{Converter, SBReachabilityChanged}
 
 import scala.concurrent.duration._
 
@@ -105,15 +105,18 @@ class SBReachabilityReporter(val sbSplitBrainReporter: ActorRef)
       * will retry.
       */
     def sendContentionWithRetry(contention: Contention, to: UniqueAddress): Eval[Unit] =
-      sendWithRetry(contention,
-                    sbReachabilityReporterOnNode(to),
-                    ContentionKey(to, contention.observer, contention.subject))
+      sendWithRetry(
+        contention,
+        sbReachabilityReporterOnNode(to),
+        ContentionKey(to, contention.observer, contention.subject)
+      )
 
     /**
       * All the instances of this actor living on the other cluster nodes.
       */
     val sbFailureDetectors: Eval[List[UniqueAddress]] = liftF(
-      SyncIO(cluster.state.members.toList.map(_.uniqueAddress)))
+      SyncIO(cluster.state.members.toList.map(_.uniqueAddress))
+    )
 
     /**
       * Broadcast with at-least-once delivery the contention to all the `SBFailureDetector`s
@@ -136,11 +139,12 @@ class SBReachabilityReporter(val sbSplitBrainReporter: ActorRef)
             } else if (to === selfUniqueAddress) {
               // Shortcut
               modify(
-                _.withContention(contention.protester,
-                                 contention.observer,
-                                 contention.subject,
-                                 contention.version)
-                  .registerContentionAck(ack) // so it won't be done again in subsequently
+                _.withContention(
+                  contention.protester,
+                  contention.observer,
+                  contention.subject,
+                  contention.version
+                ).registerContentionAck(ack) // so it won't be done again in subsequently
               )
             } else {
               for {
@@ -255,10 +259,12 @@ class SBReachabilityReporter(val sbSplitBrainReporter: ActorRef)
     */
   private def withContentionFrom(sender: ActorRef, contention: Contention): Eval[Unit] = {
     def withContention(contention: Contention): Eval[Unit] = modify(
-      _.withContention(contention.protester,
-                       contention.observer,
-                       contention.subject,
-                       contention.version)
+      _.withContention(
+        contention.protester,
+        contention.observer,
+        contention.subject,
+        contention.version
+      )
     )
 
     def ackContention(sender: ActorRef, contention: Contention): Eval[Unit] = liftF(
@@ -284,7 +290,8 @@ class SBReachabilityReporter(val sbSplitBrainReporter: ActorRef)
   private def sendWithRetry(message: Any, to: ActorPath, cancellationKey: Any): Eval[Unit] = {
     def retryAfter(timeout: FiniteDuration): SyncIO[Unit] =
       SyncIO(
-        timers.startSingleTimer(cancellationKey, RetrySend(message, to, cancellationKey), timeout))
+        timers.startSingleTimer(cancellationKey, RetrySend(message, to, cancellationKey), timeout)
+      )
 
     liftF(
       for {
@@ -355,10 +362,12 @@ object SBReachabilityReporter {
     *
     * Warning: `from` must containing the address!
     */
-  final case class ContentionAck(from: UniqueAddress,
-                                 observer: Observer,
-                                 subject: Subject,
-                                 version: Version)
+  final case class ContentionAck(
+      from: UniqueAddress,
+      observer: Observer,
+      subject: Subject,
+      version: Version
+  )
 
   object ContentionAck {
     def fromContention(contention: Contention, from: UniqueAddress): ContentionAck =
@@ -368,13 +377,19 @@ object SBReachabilityReporter {
       x.from === y.from && x.observer === y.observer && x.subject === y.subject && x.version === y.version
   }
 
-  final case class Contention(protester: UniqueAddress,
-                              observer: Observer,
-                              subject: Subject,
-                              version: Version)
+  final case class SBReachabilityChanged(reachability: SBReachability)
 
-  final case class RevertContention(protester: UniqueAddress,
-                                    observer: Observer,
-                                    subject: Subject,
-                                    version: Version)
+  final case class Contention(
+      protester: UniqueAddress,
+      observer: Observer,
+      subject: Subject,
+      version: Version
+  )
+
+  final case class RevertContention(
+      protester: UniqueAddress,
+      observer: Observer,
+      subject: Subject,
+      version: Version
+  )
 }

@@ -11,11 +11,13 @@ class StaticQuorumSpec extends SBSpec {
     )(_.unsafeRunSync())
 
     simulate[SyncIO, StaticQuorum, OldestRemovedScenario](
-      "handle a split during the oldest-removed scenarios")(
+      "handle a split during the oldest-removed scenarios"
+    )(
       _.unsafeRunSync()
     )
 
     simulate[SyncIO, StaticQuorum, UpDisseminationScenario]("handle split during up-dissemination")(
-      _.unsafeRunSync())
+      _.unsafeRunSync()
+    )
   }
 }

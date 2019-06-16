@@ -5,18 +5,19 @@ import akka.remote.testconductor.RoleName
 
 import scala.concurrent.duration._
 
-abstract class TenNodeSpec(name: String, config: TenNodeSpecConfig) extends SBRMultiNodeSpec(config) {
+abstract class TenNodeSpec(name: String, config: TenNodeSpecConfig)
+    extends SBRMultiNodeSpec(config) {
   def assertions(): Unit
 
-  protected val node1: RoleName  = config.node1
-  protected val node2: RoleName  = config.node2
-  protected val node3: RoleName  = config.node3
-  protected val node4: RoleName  = config.node4
-  protected val node5: RoleName  = config.node5
-  protected val node6: RoleName  = config.node6
-  protected val node7: RoleName  = config.node7
-  protected val node8: RoleName  = config.node8
-  protected val node9: RoleName  = config.node9
+  protected val node1: RoleName = config.node1
+  protected val node2: RoleName = config.node2
+  protected val node3: RoleName = config.node3
+  protected val node4: RoleName = config.node4
+  protected val node5: RoleName = config.node5
+  protected val node6: RoleName = config.node6
+  protected val node7: RoleName = config.node7
+  protected val node8: RoleName = config.node8
+  protected val node9: RoleName = config.node9
   protected val node10: RoleName = config.node10
 
   override def initialParticipants: Int = roles.size

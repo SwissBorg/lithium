@@ -9,9 +9,11 @@ class KeepRefereeSpec extends SBSpec {
     simulate[Id, KeepReferee, SymmetricSplitScenario]("handle symmetric split scenarios")(identity)
 
     simulate[Id, KeepReferee, UpDisseminationScenario]("handle split during up-dissemination")(
-      identity)
+      identity
+    )
 
     simulate[Id, KeepReferee, OldestRemovedScenario](
-      "handle a split during the oldest-removed scenarios")(identity)
+      "handle a split during the oldest-removed scenarios"
+    )(identity)
   }
 }

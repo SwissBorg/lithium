@@ -137,7 +137,8 @@ class SBReachabilityReporterStateSuite extends WordSpec with Matchers {
         .expectContentionAck(contentionAck2)
 
       s.pendingContentionAcks.get(bb) should ===(
-        Some(Set(contentionAck0, contentionAck1, contentionAck2)))
+        Some(Set(contentionAck0, contentionAck1, contentionAck2))
+      )
     }
 
     "remove the contention ack" in {

@@ -13,15 +13,15 @@ class StaticQuorumSpec2MultiJvmNode4 extends StaticQuorumSpec2
 class StaticQuorumSpec2MultiJvmNode5 extends StaticQuorumSpec2
 
 /**
- * Creates the partitions:
- *   (1) node1, node2, node3
- *   (2) node4
- *   (3) node5
- *
- * (1) should survive as it is a quorum.
- * (2) should down itself as it is not a quorum.
- * (3) should down itself as it is not a quorum.
- */
+  * Creates the partitions:
+  *   (1) node1, node2, node3
+  *   (2) node4
+  *   (3) node5
+  *
+  * (1) should survive as it is a quorum.
+  * (2) should down itself as it is not a quorum.
+  * (3) should down itself as it is not a quorum.
+  */
 class StaticQuorumSpec2 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Config) {
   override def assertions(): Unit =
     "handle scenario 2" in within(60 seconds) {

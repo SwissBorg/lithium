@@ -28,9 +28,11 @@ class KeepOldestSuite extends WordSpec with Matchers {
       )
 
       new KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(
-        DownUnreachable(w))
+        DownUnreachable(w)
+      )
       new KeepOldest[Try](Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(
-        DownUnreachable(w))
+        DownUnreachable(w)
+      )
     }
 
     "down the other partition when being the oldest and alone" in {
@@ -40,7 +42,8 @@ class KeepOldestSuite extends WordSpec with Matchers {
       )
 
       new KeepOldest[Try](Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(
-        DownUnreachable(w))
+        DownUnreachable(w)
+      )
     }
 
     "down itself when being the oldest node and alone" in {
@@ -50,7 +53,8 @@ class KeepOldestSuite extends WordSpec with Matchers {
       )
 
       new KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(
-        DownReachable(w))
+        DownReachable(w)
+      )
     }
 
     "down the reachable nodes when the oldest is unreachable and not alone" in {
@@ -60,9 +64,11 @@ class KeepOldestSuite extends WordSpec with Matchers {
       )
 
       new KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(
-        DownReachable(w))
+        DownReachable(w)
+      )
       new KeepOldest[Try](Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(
-        DownReachable(w))
+        DownReachable(w)
+      )
     }
 
     "down the correct nodes when the oldest is unreachable and alone" in {
@@ -72,9 +78,11 @@ class KeepOldestSuite extends WordSpec with Matchers {
       )
 
       new KeepOldest[Try](Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(
-        DownReachable(w))
+        DownReachable(w)
+      )
       new KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(
-        DownUnreachable(w))
+        DownUnreachable(w)
+      )
     }
 
     "down the unreachable nodes when the oldest is reachable and not alone" in {
@@ -84,9 +92,11 @@ class KeepOldestSuite extends WordSpec with Matchers {
       )
 
       new KeepOldest[Try](Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(
-        DownUnreachable(w))
+        DownUnreachable(w)
+      )
       new KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(
-        DownUnreachable(w))
+        DownUnreachable(w)
+      )
     }
 
     // ---
@@ -127,7 +137,8 @@ class KeepOldestSuite extends WordSpec with Matchers {
       )
 
       new KeepOldest[Try](Config(downIfAlone = true, role = "role")).takeDecision(w).get should ===(
-        DownReachable(w))
+        DownReachable(w)
+      )
     }
 
     "down the reachable nodes when the oldest is unreachable and not alone (with role)" in {
@@ -137,7 +148,8 @@ class KeepOldestSuite extends WordSpec with Matchers {
       )
 
       new KeepOldest[Try](Config(downIfAlone = true, role = "role")).takeDecision(w).get should ===(
-        DownReachable(w))
+        DownReachable(w)
+      )
       new KeepOldest[Try](Config(downIfAlone = false, role = "role"))
         .takeDecision(w)
         .get should ===(

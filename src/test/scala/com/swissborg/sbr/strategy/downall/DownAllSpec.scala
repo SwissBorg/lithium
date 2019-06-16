@@ -22,9 +22,11 @@ class DownAllSpec extends SBSpec {
     simulate[Id, DownAll, SymmetricSplitScenario]("handle symmetric split scenarios")(identity)
 
     simulate[Id, DownAll, UpDisseminationScenario](
-      "handle a split during up-dissemination scenarios")(identity)
+      "handle a split during up-dissemination scenarios"
+    )(identity)
 
     simulate[Id, DownAll, OldestRemovedScenario](
-      "handle a split during the oldest-removed scenarios")(identity)
+      "handle a split during the oldest-removed scenarios"
+    )(identity)
   }
 }

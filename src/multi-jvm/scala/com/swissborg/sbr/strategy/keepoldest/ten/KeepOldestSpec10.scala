@@ -7,21 +7,21 @@ import com.swissborg.sbr.strategy.keepoldest.KeepOldestSpecTenNodeConfig
 
 import scala.concurrent.duration._
 
-class KeepOldestSpec10MultiJvmNode1  extends KeepOldestSpec10
-class KeepOldestSpec10MultiJvmNode2  extends KeepOldestSpec10
-class KeepOldestSpec10MultiJvmNode3  extends KeepOldestSpec10
-class KeepOldestSpec10MultiJvmNode4  extends KeepOldestSpec10
-class KeepOldestSpec10MultiJvmNode5  extends KeepOldestSpec10
-class KeepOldestSpec10MultiJvmNode6  extends KeepOldestSpec10
-class KeepOldestSpec10MultiJvmNode7  extends KeepOldestSpec10
-class KeepOldestSpec10MultiJvmNode8  extends KeepOldestSpec10
-class KeepOldestSpec10MultiJvmNode9  extends KeepOldestSpec10
+class KeepOldestSpec10MultiJvmNode1 extends KeepOldestSpec10
+class KeepOldestSpec10MultiJvmNode2 extends KeepOldestSpec10
+class KeepOldestSpec10MultiJvmNode3 extends KeepOldestSpec10
+class KeepOldestSpec10MultiJvmNode4 extends KeepOldestSpec10
+class KeepOldestSpec10MultiJvmNode5 extends KeepOldestSpec10
+class KeepOldestSpec10MultiJvmNode6 extends KeepOldestSpec10
+class KeepOldestSpec10MultiJvmNode7 extends KeepOldestSpec10
+class KeepOldestSpec10MultiJvmNode8 extends KeepOldestSpec10
+class KeepOldestSpec10MultiJvmNode9 extends KeepOldestSpec10
 class KeepOldestSpec10MultiJvmNode10 extends KeepOldestSpec10
 
 /**
- * Network partition between node1 -...- node8 and node9 - node10.
- * Indirect connections between node7 and node8.
- */
+  * Network partition between node1 -...- node8 and node9 - node10.
+  * Indirect connections between node7 and node8.
+  */
 class KeepOldestSpec10 extends TenNodeSpec("KeepOldest", KeepOldestSpecTenNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 10" in within(120 seconds) {
