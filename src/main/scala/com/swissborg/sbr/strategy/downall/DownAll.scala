@@ -9,12 +9,12 @@ import com.swissborg.sbr.strategy.{Strategy, StrategyDecision}
 /**
   * Split-brain resolver strategy that will down all the nodes in the cluster when a node is detected as unreachable.
   */
-class DownAll[F[_]: Applicative] extends Strategy[F] {
+private[sbr] class DownAll[F[_]: Applicative] extends Strategy[F] {
   override def takeDecision(worldView: WorldView): F[StrategyDecision] =
     // When self is indirectly connected it is not reachable.
     downThese(downSelf(worldView), downReachable(worldView)).pure[F]
 }
 
-object DownAll {
+private[sbr] object DownAll {
   val name: String = "down-all"
 }

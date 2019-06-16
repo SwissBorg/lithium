@@ -9,10 +9,10 @@ import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.sbr.WorldView.SimpleWorldView
 import com.swissborg.sbr.implicits._
-import com.swissborg.sbr.resolver.SBResolver.HandleSplitBrain.SimpleHandleSplitBrain
+import com.swissborg.sbr.resolver.SBResolver.HandleSplitBrain.Simple
 import com.swissborg.sbr.splitbrain.SBSplitBrainReporter
 import com.swissborg.sbr.strategy.indirectlyconnected.IndirectlyConnected
-import com.swissborg.sbr.strategy.{Strategy, StrategyDecision, Union}
+import com.swissborg.sbr.strategy.{Strategy, StrategyDecision, Union, downall}
 import com.swissborg.sbr.{Node, WorldView}
 import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder
@@ -27,10 +27,10 @@ import scala.concurrent.duration._
   * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
   * @param downAllWhenUnstable down the partition if the cluster has been unstable for longer than `stableAfter + 3/4 * stableAfter`.
   */
-class SBResolver(
-    _strategy: Strategy[SyncIO],
-    stableAfter: FiniteDuration,
-    downAllWhenUnstable: Boolean
+private[sbr] class SBResolver(
+    private val _strategy: Strategy[SyncIO],
+    private val stableAfter: FiniteDuration,
+    private val downAllWhenUnstable: Boolean
 ) extends Actor
     with ActorLogging {
 
@@ -41,8 +41,7 @@ class SBResolver(
   private val cluster: Cluster = Cluster(context.system)
   private val selfAddress: Address = cluster.selfMember.address
   private val defaultStrategy: Union[SyncIO] = new Union(_strategy, new IndirectlyConnected)
-  private val downAll: com.swissborg.sbr.strategy.downall.DownAll[SyncIO] =
-    new com.swissborg.sbr.strategy.downall.DownAll()
+  private val downAll: downall.DownAll[SyncIO] = new downall.DownAll()
 
   override def receive: Receive = {
     case e @ HandleSplitBrain(worldView) =>
@@ -104,21 +103,21 @@ object SBResolver {
   ): Props =
     Props(new SBResolver(strategy, stableAfter, downAllWhenUnstable))
 
-  sealed trait Event {
+  private[sbr] sealed trait Event {
     def worldView: WorldView
   }
 
-  final case class HandleSplitBrain(worldView: WorldView) extends Event {
-    lazy val simple: SimpleHandleSplitBrain = SimpleHandleSplitBrain(worldView.simple)
+  private[sbr] final case class HandleSplitBrain(worldView: WorldView) extends Event {
+    lazy val simple: HandleSplitBrain.Simple = Simple(worldView.simple)
   }
 
-  object HandleSplitBrain {
-    final case class SimpleHandleSplitBrain(worldView: SimpleWorldView)
+  private[sbr] object HandleSplitBrain {
+    final case class Simple(worldView: SimpleWorldView)
 
-    object SimpleHandleSplitBrain {
-      implicit val simpleHandleSplitBrainEncoder: Encoder[SimpleHandleSplitBrain] = deriveEncoder
+    object Simple {
+      implicit val simpleHandleSplitBrainEncoder: Encoder[Simple] = deriveEncoder
     }
   }
 
-  final case class DownAll(worldView: WorldView) extends Event
+  private[sbr] final case class DownAll(worldView: WorldView) extends Event
 }

@@ -3,8 +3,8 @@ package com.swissborg.sbr
 import akka.cluster.UniqueAddress
 
 package object reachability {
-  type Observer = UniqueAddress
-  type Subject = UniqueAddress
-  type Protester = UniqueAddress
-  type Version = Long
+  private[reachability] type Observer = UniqueAddress
+  private[reachability] type Subject = UniqueAddress
+  private[reachability] type Protester = UniqueAddress
+  private[reachability] type Version = Long
 }

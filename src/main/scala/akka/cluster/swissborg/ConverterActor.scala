@@ -2,7 +2,7 @@ package akka.cluster.swissborg
 
 import akka.actor.{Actor, Props}
 import akka.cluster.ClusterEvent.ReachabilityChanged
-import com.swissborg.sbr.reachability.SBReachabilityReporter.SBReachabilityChanged
+import com.swissborg.sbr.reachability.SBReachabilityChanged
 
 /**
   * Converts [[ReachabilityChanged]] to [[SBReachabilityChanged]] events

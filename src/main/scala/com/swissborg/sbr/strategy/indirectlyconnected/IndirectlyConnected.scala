@@ -12,7 +12,7 @@ import com.swissborg.sbr.strategy.{Strategy, StrategyDecision}
   * Indirectly connected nodes are nodes that can only communicate with a subset
   * of all the nodes in the cluster.
   */
-class IndirectlyConnected[F[_]: Applicative] extends Strategy[F] {
+private[sbr] class IndirectlyConnected[F[_]: Applicative] extends Strategy[F] {
   override def takeDecision(worldView: WorldView): F[StrategyDecision] =
     downIndirectlyConnected(worldView).pure[F]
 }

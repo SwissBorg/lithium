@@ -1,13 +1,13 @@
 package com.swissborg.sbr.reachability
 
 import akka.cluster.UniqueAddress
+import cats.data.State
 import com.swissborg.sbr.reachability.SBReachabilityReporter._
-import com.swissborg.sbr.reachability.SBReachabilityReporterState._
 
 /**
   * State of the SBRFailureDetector.
   */
-final private[sbr] case class SBReachabilityReporterState private (
+final private[reachability] case class SBReachabilityReporterState private (
     selfUniqueAddress: UniqueAddress,
     reachabilities: Map[Subject, VReachability],
     pendingContentionAcks: Map[UniqueAddress, Set[ContentionAck]],
@@ -15,30 +15,9 @@ final private[sbr] case class SBReachabilityReporterState private (
 ) {
 
   /**
-    * Return the `subject`'s status if it has changed since the last time
-    * this method was called.
-    *
-    * The status is `None` when it has not changed since the last status retrieval.
-    */
-  def updatedStatus(subject: Subject): (Option[SBReachabilityStatus], SBReachabilityReporterState) =
-    reachabilities
-      .get(subject)
-      .map {
-        case r @ UpdatedReachability(reachability) =>
-          (
-            Some(reachability),
-            copy(reachabilities = reachabilities + (subject -> r.tagAsRetrieved))
-          )
-        case _ => (None, this)
-      }
-      .getOrElse(
-        (Some(SBReachabilityStatus.Reachable), withReachable(subject, tagAsRetrieved = true))
-      )
-
-  /**
     * Set the `subject` as reachable.
     */
-  def withReachable(
+  private[reachability] def withReachable(
       subject: Subject,
       tagAsRetrieved: Boolean = false
   ): SBReachabilityReporterState = {
@@ -53,7 +32,7 @@ final private[sbr] case class SBReachabilityReporterState private (
     * Set the `subject` as unreachable from the `observer`.
     * The version must be non-decreasing for each `observer`-`subject` pair.
     */
-  def withUnreachableFrom(
+  private[reachability] def withUnreachableFrom(
       observer: Observer,
       subject: Subject,
       version: Version
@@ -71,7 +50,7 @@ final private[sbr] case class SBReachabilityReporterState private (
     * Update the contention of the observation of `subject` by `observer`
     * by the cluster node `node`.
     */
-  def withContention(
+  private[reachability] def withContention(
       protester: Protester,
       observer: Observer,
       subject: Subject,
@@ -86,7 +65,7 @@ final private[sbr] case class SBReachabilityReporterState private (
     )
 
   // TODO need version?
-  def withoutContention(
+  private[reachability] def withoutContention(
       protester: Protester,
       observer: Observer,
       subject: Subject
@@ -101,7 +80,7 @@ final private[sbr] case class SBReachabilityReporterState private (
   /**
     * Remove the node.
     */
-  def remove(node: UniqueAddress): SBReachabilityReporterState =
+  private[reachability] def remove(node: UniqueAddress): SBReachabilityReporterState =
     copy(
       reachabilities = (reachabilities - node).map {
         case (subject, reachability) => subject -> reachability.remove(node)
@@ -110,13 +89,13 @@ final private[sbr] case class SBReachabilityReporterState private (
       receivedAcks = receivedAcks - node
     )
 
-  def expectContentionAck(ack: ContentionAck): SBReachabilityReporterState =
+  private[reachability] def expectContentionAck(ack: ContentionAck): SBReachabilityReporterState =
     copy(
       pendingContentionAcks = pendingContentionAcks + (ack.from -> (pendingContentionAcks
         .getOrElse(ack.from, Set.empty) + ack))
     )
 
-  def registerContentionAck(ack: ContentionAck): SBReachabilityReporterState =
+  private[reachability] def registerContentionAck(ack: ContentionAck): SBReachabilityReporterState =
     pendingContentionAcks.get(ack.from).fold(this) { pendingAcks =>
       val newPendingAcks = pendingAcks - ack
 
@@ -131,20 +110,38 @@ final private[sbr] case class SBReachabilityReporterState private (
     }
 }
 
-object SBReachabilityReporterState {
+private[reachability] object SBReachabilityReporterState {
   def apply(selfUniqueAddress: UniqueAddress): SBReachabilityReporterState =
     SBReachabilityReporterState(selfUniqueAddress, Map.empty, Map.empty, Map.empty)
 
-  object UpdatedReachability {
-    def unapply(arg: VReachability): Option[SBReachabilityStatus] =
-      if (!arg.hasBeenRetrieved) {
-        Some(arg match {
-          case _: VReachable           => SBReachabilityStatus.Reachable
-          case _: VIndirectlyConnected => SBReachabilityStatus.IndirectlyConnected
-          case _: VUnreachable         => SBReachabilityStatus.Unreachable
-        })
-      } else {
-        None
+  /**
+    * Return the `subject`'s status if it has changed since the last time
+    * this method was called.
+    *
+    * The status is `None` when it has not changed since the last status retrieval.
+    */
+  private[reachability] def updatedStatus(
+      subject: Subject
+  ): State[SBReachabilityReporterState, Option[SBReachabilityStatus]] = State { s =>
+    s.reachabilities
+      .get(subject)
+      .fold[(SBReachabilityReporterState, Option[SBReachabilityStatus])](
+        (s.withReachable(subject, tagAsRetrieved = true), Some(SBReachabilityStatus.Reachable))
+      ) { reachability =>
+        if (reachability.hasBeenRetrieved) {
+          (s, None)
+        } else {
+          val sbReachabilityStatus: SBReachabilityStatus = reachability match {
+            case _: VReachable           => SBReachabilityStatus.Reachable
+            case _: VIndirectlyConnected => SBReachabilityStatus.IndirectlyConnected
+            case _: VUnreachable         => SBReachabilityStatus.Unreachable
+          }
+
+          (
+            s.copy(reachabilities = s.reachabilities + (subject -> reachability.tagAsRetrieved)),
+            Some(sbReachabilityStatus)
+          )
+        }
       }
   }
 }

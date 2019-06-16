@@ -22,7 +22,7 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
   override def toBinary(o: AnyRef): Array[Byte] = o match {
     case contention: Contention       => contentionToProtoByteArray(contention)
     case contentionAck: ContentionAck => contentionAckToProtoByteArray(contentionAck)
-    case other                        => throw new SerializationException(s"Cannot serialize $other")
+    case other                        => throw SerializationException(s"Cannot serialize $other")
   }
 
   override def fromBinary(bytes: Array[Byte], manifest: Option[Class[_]]): AnyRef =
@@ -36,7 +36,7 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
     case rr.SBReachabilityReporterMsg(rr.SBReachabilityReporterMsg.Payload.ContentionAck(ack)) =>
       contentionAckFromProto(ack)
 
-    case other => throw new SerializationException(s"Cannot decode $other")
+    case other => throw SerializationException(s"Cannot decode $other")
   }
 
   private def contentionToProtoByteArray(contention: Contention): Array[Byte] = {
@@ -61,7 +61,7 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
         version
       )
 
-    case _ => throw new SerializationException(s"Missing fields in $contention")
+    case _ => throw SerializationException(s"Missing fields in $contention")
   }
 
   private def contentionAckToProtoByteArray(contentionAck: ContentionAck): Array[Byte] = {
@@ -89,7 +89,7 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
           version
         )
 
-      case _ => throw new SerializationException(s"Missing fields in $contentionAck")
+      case _ => throw SerializationException(s"Missing fields in $contentionAck")
     }
 
   private def toAkkaInternalProto[A <: AnyRef](a: A): rr.AkkaInternal = {
@@ -137,5 +137,5 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
 }
 
 object SBMessageSerializer {
-  class SerializationException(msg: String) extends RuntimeException(msg)
+  final case class SerializationException(msg: String) extends RuntimeException(msg)
 }

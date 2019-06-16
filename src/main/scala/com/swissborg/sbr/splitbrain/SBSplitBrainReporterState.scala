@@ -9,7 +9,7 @@ import com.swissborg.sbr.WorldView
   *
   * @param worldView the view of the cluster from the current cluster node.
   */
-final case class SBSplitBrainReporterState(worldView: WorldView) {
+private[splitbrain] final case class SBSplitBrainReporterState(worldView: WorldView) {
   def updatedMember(m: Member): SBSplitBrainReporterState =
     m.status match {
 //      case MemberStatus.Down    => copy(worldView = worldView.removeMember(m))
@@ -36,7 +36,7 @@ final case class SBSplitBrainReporterState(worldView: WorldView) {
     copy(worldView = worldView.withIndirectlyConnectedNode(node))
 }
 
-object SBSplitBrainReporterState {
+private[splitbrain] object SBSplitBrainReporterState {
   def fromSnapshot(selfMember: Member, snapshot: CurrentClusterState): SBSplitBrainReporterState =
     SBSplitBrainReporterState(WorldView.fromSnapshot(selfMember, snapshot))
 }

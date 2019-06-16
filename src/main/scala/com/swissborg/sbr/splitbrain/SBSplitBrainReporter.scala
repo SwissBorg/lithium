@@ -21,10 +21,10 @@ import scala.concurrent.duration._
   * @param splitBrainResolver the actor that resolves the split-brain scenarios.
   * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
   */
-class SBSplitBrainReporter(
-    splitBrainResolver: ActorRef,
-    stableAfter: FiniteDuration,
-    downAllWhenUnstable: Boolean
+private[sbr] class SBSplitBrainReporter(
+    private val splitBrainResolver: ActorRef,
+    private val stableAfter: FiniteDuration,
+    private val downAllWhenUnstable: Boolean
 ) extends Actor
     with Stash
     with ActorLogging
@@ -72,7 +72,7 @@ class SBSplitBrainReporter(
   /**
     * Modify the state using `f` and TODO
     */
-  private def modifyS(f: SBSplitBrainReporterState => SBSplitBrainReporterState): Eval[Unit] =
+  private def modifyS(f: SBSplitBrainReporterState => SBSplitBrainReporterState): Res[Unit] =
     modifyF { state =>
       val updatedState = f(state)
 
@@ -112,20 +112,20 @@ class SBSplitBrainReporter(
       } yield updatedState
     }
 
-  private def updateMember(e: MemberEvent): Eval[Unit] =
+  private def updateMember(e: MemberEvent): Res[Unit] =
     modifyS(_.updatedMember(e.member)) >> liftF(SyncIO(log.debug("Member event: {}", e)))
 
-  private def withReachableNode(node: UniqueAddress): Eval[Unit] =
+  private def withReachableNode(node: UniqueAddress): Res[Unit] =
     modifyS(_.withReachableNode(node)) >> liftF(
       SyncIO(log.debug("Node became reachable: {}", node))
     )
 
-  private def withUnreachableNode(node: UniqueAddress): Eval[Unit] =
+  private def withUnreachableNode(node: UniqueAddress): Res[Unit] =
     modifyS(_.withUnreachableNode(node)) >> liftF(
       SyncIO(log.debug("Node became unreachable: {}", node))
     )
 
-  private def withIndirectlyConnectedNode(node: UniqueAddress): Eval[Unit] =
+  private def withIndirectlyConnectedNode(node: UniqueAddress): Res[Unit] =
     modifyS(_.withIndirectlyConnectedNode(node)) >> liftF(
       SyncIO(log.debug("Node became indirectly-connected: {}", node))
     )
@@ -158,19 +158,19 @@ class SBSplitBrainReporter(
     *
     * If there's not split-brain, does nothing.
     */
-  private val handleSplitBrain: Eval[Unit] =
+  private val handleSplitBrain: Res[Unit] =
     for {
       _ <- liftF[SyncIO, SBSplitBrainReporterState, Unit](cancelClusterIsUnstable)
       _ <- ifSplitBrain(SBResolver.HandleSplitBrain(_))
       _ <- liftF(scheduleClusterIsStable)
     } yield ()
 
-  private val downAll: Eval[Unit] = for {
+  private val downAll: Res[Unit] = for {
     _ <- liftF[SyncIO, SBSplitBrainReporterState, Unit](cancelClusterIsStable)
     _ <- ifSplitBrain(SBResolver.DownAll)
   } yield ()
 
-  private def ifSplitBrain(event: WorldView => SBResolver.Event): Eval[Unit] =
+  private def ifSplitBrain(event: WorldView => SBResolver.Event): Res[Unit] =
     inspectF { state =>
       if (hasSplitBrain(state.worldView)) {
         SyncIO(splitBrainResolver ! event(state.worldView))
@@ -194,8 +194,8 @@ class SBSplitBrainReporter(
   }
 }
 
-object SBSplitBrainReporter {
-  private type Eval[A] = StateT[SyncIO, SBSplitBrainReporterState, A]
+private[sbr] object SBSplitBrainReporter {
+  private type Res[A] = StateT[SyncIO, SBSplitBrainReporterState, A]
 
   def props(downer: ActorRef, stableAfter: FiniteDuration, downAllWhenUnstable: Boolean): Props =
     Props(new SBSplitBrainReporter(downer, stableAfter, downAllWhenUnstable))
@@ -203,13 +203,16 @@ object SBSplitBrainReporter {
   final private case object ClusterIsStable
   final private case object ClusterIsUnstable
 
-  sealed abstract class NodeReachabilityEvent {
+  private[sbr] sealed abstract class NodeReachabilityEvent {
     def node: UniqueAddress
   }
 
-  final case class NodeReachable(node: UniqueAddress) extends NodeReachabilityEvent
-  final case class NodeIndirectlyConnected(node: UniqueAddress) extends NodeReachabilityEvent
-  final case class NodeUnreachable(node: UniqueAddress) extends NodeReachabilityEvent
+  private[sbr] final case class NodeReachable(node: UniqueAddress) extends NodeReachabilityEvent
+
+  private[sbr] final case class NodeIndirectlyConnected(node: UniqueAddress)
+      extends NodeReachabilityEvent
+
+  private[sbr] final case class NodeUnreachable(node: UniqueAddress) extends NodeReachabilityEvent
 
   /**
     * Information on the difference between two world views.
@@ -218,12 +221,12 @@ object SBSplitBrainReporter {
     * @param hasNewUnreachableOrIndirectlyConnected true if the updated world view has more unreachable or indirectly
     *                                               connected nodes.
     */
-  sealed abstract case class DiffInfo(
+  private sealed abstract case class DiffInfo(
       changeIsStable: Boolean,
       hasNewUnreachableOrIndirectlyConnected: Boolean
   )
 
-  private[sbr] object DiffInfo {
+  private object DiffInfo {
     def apply(oldWorldView: WorldView, updatedWorldView: WorldView): DiffInfo = {
       // Remove members that are `Joining` or `WeaklyUp` as they
       // can appear during a split-brain.
