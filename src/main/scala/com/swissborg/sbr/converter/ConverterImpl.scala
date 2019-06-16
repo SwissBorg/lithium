@@ -1,11 +1,9 @@
-package com.swissborg.sbr
+package com.swissborg.sbr.converter
 
 import akka.actor.{ActorRef, ActorSystem, Extension}
+import com.swissborg.sbr.reachability.SBReachabilityReporter.SBReachabilityChanged
 
-class ConverterImpl(system: ActorSystem) extends Extension {
-  def subscribeToSeenChanged(actor: ActorRef): Boolean =
-    system.eventStream.subscribe(actor, classOf[SBSeenChanged])
-
+private[sbr] class ConverterImpl(system: ActorSystem) extends Extension {
   def subscribeToReachabilityChanged(actor: ActorRef): Boolean =
     system.eventStream.subscribe(actor, classOf[SBReachabilityChanged])
 

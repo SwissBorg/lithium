@@ -4,7 +4,10 @@ import akka.remote.testconductor.RoleName
 
 object TestUtil {
   def linksToKillForPartitions(partitions: List[List[RoleName]]): List[(RoleName, RoleName)] = {
-    def go(partitions: List[List[RoleName]], links: List[(RoleName, RoleName)]): List[(RoleName, RoleName)] =
+    def go(
+        partitions: List[List[RoleName]],
+        links: List[(RoleName, RoleName)]
+    ): List[(RoleName, RoleName)] =
       partitions match {
         case Nil      => links
         case _ :: Nil => links

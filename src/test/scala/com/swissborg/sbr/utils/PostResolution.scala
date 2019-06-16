@@ -42,7 +42,8 @@ object PostResolution {
 
       case decision =>
         PostResolution(
-          List(worldView.nodes.map(_.member).toSortedSet -- decision.nodesToDown.map(_.member)))
+          List(worldView.nodes.map(_.member).toSortedSet -- decision.nodesToDown.map(_.member))
+        )
     }
 
   implicit val remainingPartitionsMonoid: Monoid[PostResolution] = new Monoid[PostResolution] {

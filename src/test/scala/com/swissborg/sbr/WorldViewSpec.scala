@@ -89,7 +89,8 @@ class WorldViewSpec extends SBSpec {
           assert(
             worldView
               .consideredCleanNodesWithRole(role)
-              .forall(worldView.consideredCleanNodes.contains))
+              .forall(worldView.consideredCleanNodes.contains)
+          )
 
         worldView.consideredCleanNodesWithRole(role) should ===(
           worldView.consideredReachableNodesWithRole(role) ++ worldView

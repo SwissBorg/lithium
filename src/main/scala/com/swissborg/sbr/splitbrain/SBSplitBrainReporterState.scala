@@ -15,7 +15,6 @@ final case class SBSplitBrainReporterState(worldView: WorldView) {
 //      case MemberStatus.Down    => copy(worldView = worldView.removeMember(m))
       case MemberStatus.Removed => copy(worldView = worldView.removeMember(m))
       case _                    => copy(worldView = worldView.addOrUpdate(m))
-
     }
 
   /**

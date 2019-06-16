@@ -44,12 +44,15 @@ object KeepReferee {
     * @param downAllIfLessThanNodes the minimum number of nodes that should be remaining in the cluster.
     *                                 Else the cluster gets downed.
     */
-  final case class Config(address: String Refined Address,
-                          downAllIfLessThanNodes: Int Refined Positive)
+  final case class Config(
+      address: String Refined Address,
+      downAllIfLessThanNodes: Int Refined Positive
+  )
 
   object Config extends StrategyReader[Config] {
     override val name: String = "keep-referee"
     type Address = MatchesRegex[
-      W.`"([0-9A-Za-z]+.)*[0-9A-Za-z]+://[0-9A-Za-z]+@([0-9A-Za-z]+.)*[0-9A-Za-z]+:[0-9]+"`.T]
+      W.`"([0-9A-Za-z]+.)*[0-9A-Za-z]+://[0-9A-Za-z]+@([0-9A-Za-z]+.)*[0-9A-Za-z]+:[0-9]+"`.T
+    ]
   }
 }

@@ -26,15 +26,18 @@ sealed abstract class Scenario {
   def clusterSize: Int Refined Positive
 }
 
-final case class OldestRemovedScenario(worldViews: NonEmptyList[WorldView],
-                                       clusterSize: Int Refined Positive)
-    extends Scenario
+final case class OldestRemovedScenario(
+    worldViews: NonEmptyList[WorldView],
+    clusterSize: Int Refined Positive
+) extends Scenario
 
 object OldestRemovedScenario {
   implicit val arbOldestRemovedScenario: Arbitrary[OldestRemovedScenario] = Arbitrary {
-    def divergeWorldView(worldView: WorldView,
-                         allNodes: NonEmptySet[Node],
-                         partition: NonEmptySet[Node]): Arbitrary[WorldView] =
+    def divergeWorldView(
+        worldView: WorldView,
+        allNodes: NonEmptySet[Node],
+        partition: NonEmptySet[Node]
+    ): Arbitrary[WorldView] =
       Arbitrary {
         val otherNodes = allNodes -- partition
 
@@ -73,9 +76,10 @@ object OldestRemovedScenario {
   }
 }
 
-final case class SymmetricSplitScenario(worldViews: NonEmptyList[WorldView],
-                                        clusterSize: Int Refined Positive)
-    extends Scenario
+final case class SymmetricSplitScenario(
+    worldViews: NonEmptyList[WorldView],
+    clusterSize: Int Refined Positive
+) extends Scenario
 
 object SymmetricSplitScenario {
 
@@ -86,8 +90,9 @@ object SymmetricSplitScenario {
     */
   implicit val arbSplitScenario: Arbitrary[SymmetricSplitScenario] = Arbitrary {
 
-    def partitionedWorldView[N <: Node](nodes: NonEmptySet[N])(
-        partition: NonEmptySet[N]): WorldView = {
+    def partitionedWorldView[N <: Node](
+        nodes: NonEmptySet[N]
+    )(partition: NonEmptySet[N]): WorldView = {
       val otherNodes = nodes -- partition
 
       val worldView0 =
@@ -115,9 +120,10 @@ object SymmetricSplitScenario {
 
 }
 
-final case class UpDisseminationScenario(worldViews: NonEmptyList[WorldView],
-                                         clusterSize: Int Refined Positive)
-    extends Scenario
+final case class UpDisseminationScenario(
+    worldViews: NonEmptyList[WorldView],
+    clusterSize: Int Refined Positive
+) extends Scenario
 
 object UpDisseminationScenario {
   implicit val arbUpDisseminationScenario: Arbitrary[UpDisseminationScenario] = Arbitrary {
@@ -128,15 +134,19 @@ object UpDisseminationScenario {
       * as unreachable and sees some members up that others
       * do not see.
       */
-    def divergeWorldView(worldView: WorldView,
-                         allNodes: NonEmptySet[Node],
-                         partition: NonEmptySet[Node]): Arbitrary[WorldView] =
+    def divergeWorldView(
+        worldView: WorldView,
+        allNodes: NonEmptySet[Node],
+        partition: NonEmptySet[Node]
+    ): Arbitrary[WorldView] =
       pickStrictSubset(partition)
-        .map(_.filter(e => e.member.status === Joining || e.member.status === WeaklyUp)
-          .foldLeft(worldView) {
-            case (worldView, upEvent) =>
-              worldView.addOrUpdate(upEvent.member.copyUp(Integer.MAX_VALUE))
-          })
+        .map(
+          _.filter(e => e.member.status === Joining || e.member.status === WeaklyUp)
+            .foldLeft(worldView) {
+              case (worldView, upEvent) =>
+                worldView.addOrUpdate(upEvent.member.copyUp(Integer.MAX_VALUE))
+            }
+        )
         .map { worldView =>
           val otherNodes = allNodes -- partition
 

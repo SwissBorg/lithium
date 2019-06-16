@@ -11,6 +11,7 @@ class KeepOldestSpec extends SBSpec {
     simulate[Try, KeepOldest, SymmetricSplitScenario]("handle symmetric split scenarios")(_.get)
 
     simulate[Try, KeepOldest, UpDisseminationScenario]("handle split during up-dissemination")(
-      _.get)
+      _.get
+    )
   }
 }

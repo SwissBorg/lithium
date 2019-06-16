@@ -13,12 +13,12 @@ class StaticQuorumSpec6MultiJvmNode4 extends StaticQuorumSpec6
 class StaticQuorumSpec6MultiJvmNode5 extends StaticQuorumSpec6
 
 /**
- * The link between node1 and node4 fails.
- * The link between node3 and node5 fails.
- *
- * All nodes but node2 downs itself because they are indirectly connected.
- * Node2 downs itself as it does not form a quorum.
- */
+  * The link between node1 and node4 fails.
+  * The link between node3 and node5 fails.
+  *
+  * All nodes but node2 downs itself because they are indirectly connected.
+  * Node2 downs itself as it does not form a quorum.
+  */
 class StaticQuorumSpec6 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Config) {
   override def assertions(): Unit =
     "handle scenario 6" in within(120 seconds) {

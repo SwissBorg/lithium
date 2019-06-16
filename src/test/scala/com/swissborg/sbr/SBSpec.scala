@@ -18,11 +18,13 @@ trait SBSpec
     with StrictCatsEquality
     with ArbitraryInstances {
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
-    PropertyCheckConfiguration(minSuccessful = PosInt(1000),
-                               maxDiscardedFactor = PosZDouble(5),
-                               minSize = PosZInt(0),
-                               sizeRange = PosZInt(100),
-                               workers = PosInt(4))
+    PropertyCheckConfiguration(
+      minSuccessful = PosInt(1000),
+      maxDiscardedFactor = PosZDouble(5),
+      minSize = PosZInt(0),
+      sizeRange = PosZInt(100),
+      workers = PosInt(4)
+    )
 
   /**
     * Checks that the strategy can handle the given scenario.
@@ -33,8 +35,9 @@ trait SBSpec
     * @tparam Strat the strategy to use.
     * @tparam S the scenario.
     */
-  def simulate[F[_]: Functor, Strat[_[_]], S <: Scenario: Arbitrary](name: String)(
-      run: F[Assertion] => Assertion)(
+  def simulate[F[_]: Functor, Strat[_[_]], S <: Scenario: Arbitrary](
+      name: String
+  )(run: F[Assertion] => Assertion)(
       implicit strategy: ArbitraryStrategy[Strat[F]],
       ev: Strat[F] <:< Strategy[F],
       M: Monoid[F[PostResolution]]

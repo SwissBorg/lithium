@@ -38,8 +38,10 @@ final case class WorldView private (
 ) {
   import WorldView._
 
-  assert(!otherMembersStatus.contains(selfUniqueAddress),
-         s"$otherMembersStatus <- $selfUniqueAddress")
+  assert(
+    !otherMembersStatus.contains(selfUniqueAddress),
+    s"$otherMembersStatus <- $selfUniqueAddress"
+  )
 
   lazy val selfNode: Node = toNode(selfStatus.member, selfStatus.reachability)
 
@@ -143,14 +145,17 @@ final case class WorldView private (
         .fold(
           // Assumes the member is reachable if seen for the 1st time.
           copy(
-            otherMembersStatus = otherMembersStatus + (member.uniqueAddress -> Status(member,
-                                                                                      Reachable)))
+            otherMembersStatus = otherMembersStatus + (member.uniqueAddress -> Status(
+              member,
+              Reachable
+            ))
+          )
         )(
           s =>
             copy(
               otherMembersStatus = otherMembersStatus - member.uniqueAddress + (member.uniqueAddress -> s
                 .withMember(member))
-          )
+            )
         )
     }
 
@@ -213,8 +218,10 @@ final case class WorldView private (
   /**
     * Change the reachability of `member` with `reachability`.
     */
-  private def changeReachability(node: UniqueAddress,
-                                 reachability: SBReachabilityStatus): WorldView =
+  private def changeReachability(
+      node: UniqueAddress,
+      reachability: SBReachabilityStatus
+  ): WorldView =
     if (node === selfUniqueAddress) {
       copy(selfUniqueAddress, selfStatus = selfStatus.withReachability(reachability))
     } else {
@@ -222,8 +229,9 @@ final case class WorldView private (
         .get(node)
         .fold(this) { s =>
           copy(
-            otherMembersStatus = otherMembersStatus - node + (node -> s.withReachability(
-              reachability)))
+            otherMembersStatus = otherMembersStatus - node + (node -> s
+              .withReachability(reachability))
+          )
         }
     }
 
@@ -256,14 +264,16 @@ object WorldView {
       selfUniqueAddress: UniqueAddress,
       reachableMembers: List[SimpleMember],
       indirectlyConnectedMembers: List[SimpleMember],
-      unreachableMembers: List[SimpleMember],
+      unreachableMembers: List[SimpleMember]
   )
 
   object SimpleWorldView {
     implicit val simpleWorldViewEncoder: Encoder[SimpleWorldView] = deriveEncoder
     implicit val simpleWorldEq: Eq[SimpleWorldView] = Eq.and(
-      Eq.and(Eq.and(Eq.by(_.reachableMembers), Eq.by(_.unreachableMembers)),
-             Eq.by(_.indirectlyConnectedMembers)),
+      Eq.and(
+        Eq.and(Eq.by(_.reachableMembers), Eq.by(_.unreachableMembers)),
+        Eq.by(_.indirectlyConnectedMembers)
+      ),
       Eq.by(_.selfUniqueAddress)
     )
   }

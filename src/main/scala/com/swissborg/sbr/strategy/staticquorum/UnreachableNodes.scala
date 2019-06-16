@@ -8,9 +8,11 @@ import eu.timepit.refined.numeric._
 sealed abstract private[staticquorum] class UnreachableNodes
 
 private[staticquorum] object UnreachableNodes {
-  def apply(worldView: WorldView,
-            quorumSize: Int Refined Positive,
-            role: String): UnreachableNodes = {
+  def apply(
+      worldView: WorldView,
+      quorumSize: Int Refined Positive,
+      role: String
+  ): UnreachableNodes = {
     val unreachableNodes = worldView.consideredUnreachableNodesWithRole(role)
 
     if (unreachableNodes.isEmpty) EmptyUnreachable

@@ -28,7 +28,8 @@ class VReachabilitySuite extends WordSpec with Matchers {
 
     "become unreachable from reachable" in {
       VReachable.notRetrieved.withUnreachableFrom(aa, 0) should ===(
-        VUnreachable.fromDetection(aa, 0))
+        VUnreachable.fromDetection(aa, 0)
+      )
     }
 
     "become unreachable from indirectly-connected" in {
@@ -39,49 +40,60 @@ class VReachabilitySuite extends WordSpec with Matchers {
 
     "become indirectly-connected from reachable" in {
       VReachable.notRetrieved.withProtest(aa, bb, 0) should ===(
-        VIndirectlyConnected.fromProtest(aa, bb, 0))
+        VIndirectlyConnected.fromProtest(aa, bb, 0)
+      )
     }
 
     "become indirectly-connected from unreachable" in {
       VUnreachable.fromDetection(aa, 0).withProtest(bb, aa, 0) should ===(
-        VIndirectlyConnected.fromProtest(bb, aa, 0))
+        VIndirectlyConnected.fromProtest(bb, aa, 0)
+      )
 
       VUnreachable.fromDetection(aa, 0).withProtest(bb, cc, 0) should ===(
-        VIndirectlyConnected.fromProtest(bb, cc, 0))
+        VIndirectlyConnected.fromProtest(bb, cc, 0)
+      )
     }
 
     "override the older detection when there is a protest with a newer version" in {
       VUnreachable.fromDetection(aa, 0).withProtest(bb, aa, 1) should ===(
-        VIndirectlyConnected.fromProtest(bb, aa, 1))
+        VIndirectlyConnected.fromProtest(bb, aa, 1)
+      )
     }
 
     "override with a newer detection" in {
       VUnreachable.fromDetection(aa, 0).withUnreachableFrom(aa, 1) should ===(
-        VUnreachable.fromDetection(aa, 1))
+        VUnreachable.fromDetection(aa, 1)
+      )
     }
 
     "override with a newer protest" in {
       VIndirectlyConnected.fromProtest(aa, bb, 0).withProtest(aa, bb, 1) should ===(
-        VIndirectlyConnected.fromProtest(aa, bb, 1))
+        VIndirectlyConnected.fromProtest(aa, bb, 1)
+      )
 
       VIndirectlyConnected.fromProtest(aa, bb, 0).withProtest(cc, bb, 1) should ===(
-        VIndirectlyConnected.fromProtest(cc, bb, 1))
+        VIndirectlyConnected.fromProtest(cc, bb, 1)
+      )
     }
 
     "ignore an older detection" in {
       VUnreachable.fromDetection(aa, 1).withUnreachableFrom(aa, 0) should ===(
-        VUnreachable.fromDetection(aa, 1))
+        VUnreachable.fromDetection(aa, 1)
+      )
     }
 
     "ignore an older protest" in {
       VIndirectlyConnected.fromProtest(aa, bb, 1).withProtest(aa, bb, 0) should ===(
-        VIndirectlyConnected.fromProtest(aa, bb, 1))
+        VIndirectlyConnected.fromProtest(aa, bb, 1)
+      )
     }
 
     "add a new protester" in {
       VIndirectlyConnected.fromProtest(aa, bb, 0).withProtest(cc, bb, 0) should ===(
         VIndirectlyConnected(
-          NonEmptyMap.fromMapUnsafe(SortedMap(bb -> Detection.protested(aa, 0).addProtester(cc)))))
+          NonEmptyMap.fromMapUnsafe(SortedMap(bb -> Detection.protested(aa, 0).addProtester(cc)))
+        )
+      )
     }
 
     "be indirectly-connected after removing part of the protests" in {

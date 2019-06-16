@@ -13,13 +13,13 @@ class KeepOldestSpec11MultiJvmNode4 extends KeepOldestSpec11
 class KeepOldestSpec11MultiJvmNode5 extends KeepOldestSpec11
 
 /**
- * Creates the partitions:
- *   (1) node1, node2
- *   (2) node3, node4, node5
- *
- * (1) should down itself because the oldest node (node2) is alone (with the given role).
- * (2) should survive as the oldest node is alone.
- */
+  * Creates the partitions:
+  *   (1) node1, node2
+  *   (2) node3, node4, node5
+  *
+  * (1) should down itself because the oldest node (node2) is alone (with the given role).
+  * (2) should survive as the oldest node is alone.
+  */
 class KeepOldestSpec11 extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecDownAloneConfig) {
   override def assertions(): Unit =
     "handle scenario 11" in within(60 seconds) {

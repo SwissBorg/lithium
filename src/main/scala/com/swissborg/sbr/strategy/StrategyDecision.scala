@@ -57,9 +57,11 @@ object StrategyDecision {
     */
   case object Idle extends StrategyDecision
 
-  final case class SimpleStrategyDecision(downReachable: List[SimpleMember],
-                                          downIndirectlyConnected: List[SimpleMember],
-                                          downUnreachable: List[SimpleMember])
+  final case class SimpleStrategyDecision(
+      downReachable: List[SimpleMember],
+      downIndirectlyConnected: List[SimpleMember],
+      downUnreachable: List[SimpleMember]
+  )
 
   object SimpleStrategyDecision {
     val empty: SimpleStrategyDecision = SimpleStrategyDecision(List.empty, List.empty, List.empty)
@@ -107,7 +109,8 @@ object StrategyDecision {
           node match {
             case ReachableNode(member) =>
               decision.copy(
-                downReachable = SimpleMember.fromMember(member) :: decision.downReachable)
+                downReachable = SimpleMember.fromMember(member) :: decision.downReachable
+              )
 
             case IndirectlyConnectedNode(member) =>
               decision.copy(
@@ -117,7 +120,8 @@ object StrategyDecision {
 
             case UnreachableNode(member) =>
               decision.copy(
-                downUnreachable = SimpleMember.fromMember(member) :: decision.downUnreachable)
+                downUnreachable = SimpleMember.fromMember(member) :: decision.downUnreachable
+              )
           }
       }
   }

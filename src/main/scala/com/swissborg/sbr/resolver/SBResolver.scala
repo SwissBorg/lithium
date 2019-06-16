@@ -2,8 +2,9 @@ package com.swissborg.sbr.resolver
 
 import akka.actor.{Actor, ActorLogging, Address, Props}
 import akka.cluster.Cluster
+import akka.cluster.MemberStatus.{Joining, WeaklyUp}
 import cats.data.OptionT
-import cats.data.OptionT.liftF
+import cats.data.OptionT._
 import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.sbr.WorldView.SimpleWorldView
@@ -26,10 +27,11 @@ import scala.concurrent.duration._
   * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
   * @param downAllWhenUnstable down the partition if the cluster has been unstable for longer than `stableAfter + 3/4 * stableAfter`.
   */
-class SBResolver(_strategy: Strategy[SyncIO],
-                 stableAfter: FiniteDuration,
-                 downAllWhenUnstable: Boolean)
-    extends Actor
+class SBResolver(
+    _strategy: Strategy[SyncIO],
+    stableAfter: FiniteDuration,
+    downAllWhenUnstable: Boolean
+) extends Actor
     with ActorLogging {
 
   import SBResolver._
@@ -44,7 +46,7 @@ class SBResolver(_strategy: Strategy[SyncIO],
 
   override def receive: Receive = {
     case e @ HandleSplitBrain(worldView) =>
-      log.info("Receive split-brain to resolve...")
+      log.info("Received split-brain to resolve...")
       log.info(e.simple.asJson.noSpaces)
 
       runStrategy(defaultStrategy, worldView).unsafeRunSync()
@@ -66,7 +68,22 @@ class SBResolver(_strategy: Strategy[SyncIO],
       val leader: OptionT[SyncIO, Address] = OptionT(SyncIO(cluster.state.leader))
 
       leader
-        .map(_ === selfAddress)
+        .flatMap(
+          leader =>
+            if (leader === selfAddress && (cluster.selfMember.status === Joining || cluster.selfMember.status === WeaklyUp)) {
+              // A leader that joined during a split-brain might not be aware of all the
+              // indirectly-connected nodes and so should not take a decision.
+              liftF(
+                SyncIO(
+                  log.warning(
+                    "SPLIT-BRAIN MUST BE MANUALLY RESOLVED. The leader is joining the cluster and misses information."
+                  )
+                )
+              ).as(true)
+            } else {
+              pure(leader === selfAddress)
+            }
+        )
         .ifM(
           down(decision.nodesToDown) >> liftF(SyncIO(log.info(decision.simple.asJson.noSpaces))),
           liftF(SyncIO(log.info("Cannot take a decision. Not the leader.")))
@@ -80,9 +97,11 @@ class SBResolver(_strategy: Strategy[SyncIO],
 }
 
 object SBResolver {
-  def props(strategy: Strategy[SyncIO],
-            stableAfter: FiniteDuration,
-            downAllWhenUnstable: Boolean): Props =
+  def props(
+      strategy: Strategy[SyncIO],
+      stableAfter: FiniteDuration,
+      downAllWhenUnstable: Boolean
+  ): Props =
     Props(new SBResolver(strategy, stableAfter, downAllWhenUnstable))
 
   sealed trait Event {

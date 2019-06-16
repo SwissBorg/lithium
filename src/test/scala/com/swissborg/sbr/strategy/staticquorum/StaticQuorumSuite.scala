@@ -28,7 +28,8 @@ class StaticQuorumSuite extends WordSpec with Matchers {
       )
 
       new StaticQuorum[SyncIO](Config("", 2)).takeDecision(w).unsafeRunSync() should ===(
-        DownUnreachable(w))
+        DownUnreachable(w)
+      )
     }
 
     "down the unreachable nodes when part of a quorum (with role)" in {
@@ -38,7 +39,8 @@ class StaticQuorumSuite extends WordSpec with Matchers {
       )
 
       new StaticQuorum[SyncIO](Config("role", 2)).takeDecision(w).unsafeRunSync() should ===(
-        DownUnreachable(w))
+        DownUnreachable(w)
+      )
     }
 
     "down the reachable nodes when not part of a quorum" in {
@@ -48,7 +50,8 @@ class StaticQuorumSuite extends WordSpec with Matchers {
       )
 
       new StaticQuorum[SyncIO](Config("", 2)).takeDecision(w).unsafeRunSync() should ===(
-        DownReachable(w))
+        DownReachable(w)
+      )
     }
 
     "down the reachable nodes when not part of a quorum (with role)" in {
@@ -58,7 +61,8 @@ class StaticQuorumSuite extends WordSpec with Matchers {
       )
 
       new StaticQuorum[SyncIO](Config("role", 2)).takeDecision(w).unsafeRunSync() should ===(
-        DownReachable(w))
+        DownReachable(w)
+      )
     }
 
     "down the reachable nodes when there is an unreachable quorum" in {
@@ -68,7 +72,8 @@ class StaticQuorumSuite extends WordSpec with Matchers {
       )
 
       new StaticQuorum[SyncIO](Config("", 2)).takeDecision(w).unsafeRunSync() should ===(
-        DownReachable(w))
+        DownReachable(w)
+      )
 
       val w1 = WorldView.fromSnapshot(
         cc,
@@ -76,7 +81,8 @@ class StaticQuorumSuite extends WordSpec with Matchers {
       )
 
       new StaticQuorum[SyncIO](Config("", 2)).takeDecision(w1).unsafeRunSync() should ===(
-        DownReachable(w1))
+        DownReachable(w1)
+      )
     }
 
     "do nothing when the reachable nodes form a quorum and there are no unreachable nodes" in {
@@ -104,7 +110,8 @@ class StaticQuorumSuite extends WordSpec with Matchers {
       )
 
       new StaticQuorum[SyncIO](Config("", 2)).takeDecision(w).unsafeRunSync() should ===(
-        DownReachable(w))
+        DownReachable(w)
+      )
     }
 
     "down the reachable nodes do not form quorum and there are no unreachable nodes (with role)" in {
@@ -114,7 +121,8 @@ class StaticQuorumSuite extends WordSpec with Matchers {
       )
 
       new StaticQuorum[SyncIO](Config("role", 2)).takeDecision(w).unsafeRunSync() should ===(
-        DownReachable(w))
+        DownReachable(w)
+      )
     }
 
     "down the cluster when the quorum size is less than the majority of considered nodes" in {
@@ -124,7 +132,8 @@ class StaticQuorumSuite extends WordSpec with Matchers {
       )
 
       new StaticQuorum[SyncIO](Config("", 1)).takeDecision(w).unsafeRunSync() should ===(
-        DownReachable(w))
+        DownReachable(w)
+      )
 
       val w1 = WorldView.fromSnapshot(
         aa,
@@ -132,7 +141,8 @@ class StaticQuorumSuite extends WordSpec with Matchers {
       )
 
       new StaticQuorum[SyncIO](Config("", 2)).takeDecision(w1).unsafeRunSync() should ===(
-        DownReachable(w1))
+        DownReachable(w1)
+      )
     }
   }
 }

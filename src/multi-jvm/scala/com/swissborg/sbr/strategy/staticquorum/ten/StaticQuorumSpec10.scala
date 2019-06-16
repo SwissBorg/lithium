@@ -7,21 +7,21 @@ import com.swissborg.sbr.strategy.staticquorum.StaticQuorumSpec3Config
 
 import scala.concurrent.duration._
 
-class StaticQuorumSpec10MultiJvmNode1  extends StaticQuorumSpec10
-class StaticQuorumSpec10MultiJvmNode2  extends StaticQuorumSpec10
-class StaticQuorumSpec10MultiJvmNode3  extends StaticQuorumSpec10
-class StaticQuorumSpec10MultiJvmNode4  extends StaticQuorumSpec10
-class StaticQuorumSpec10MultiJvmNode5  extends StaticQuorumSpec10
-class StaticQuorumSpec10MultiJvmNode6  extends StaticQuorumSpec10
-class StaticQuorumSpec10MultiJvmNode7  extends StaticQuorumSpec10
-class StaticQuorumSpec10MultiJvmNode8  extends StaticQuorumSpec10
-class StaticQuorumSpec10MultiJvmNode9  extends StaticQuorumSpec10
+class StaticQuorumSpec10MultiJvmNode1 extends StaticQuorumSpec10
+class StaticQuorumSpec10MultiJvmNode2 extends StaticQuorumSpec10
+class StaticQuorumSpec10MultiJvmNode3 extends StaticQuorumSpec10
+class StaticQuorumSpec10MultiJvmNode4 extends StaticQuorumSpec10
+class StaticQuorumSpec10MultiJvmNode5 extends StaticQuorumSpec10
+class StaticQuorumSpec10MultiJvmNode6 extends StaticQuorumSpec10
+class StaticQuorumSpec10MultiJvmNode7 extends StaticQuorumSpec10
+class StaticQuorumSpec10MultiJvmNode8 extends StaticQuorumSpec10
+class StaticQuorumSpec10MultiJvmNode9 extends StaticQuorumSpec10
 class StaticQuorumSpec10MultiJvmNode10 extends StaticQuorumSpec10
 
 /**
- * Network partition between node1 -...- node8 and node9 - node10.
- * Indirect connections between node7 and node8.
- */
+  * Network partition between node1 -...- node8 and node9 - node10.
+  * Indirect connections between node7 and node8.
+  */
 class StaticQuorumSpec10 extends TenNodeSpec("StaticQuorum", StaticQuorumSpec3Config) {
   override def assertions(): Unit =
     "handle scenario 10" in within(120 seconds) {

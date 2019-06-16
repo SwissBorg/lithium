@@ -105,7 +105,8 @@ class KeepMajoritySuite extends WordSpec with Matchers {
       )
 
       new KeepMajority[Try](Config("role")).takeDecision(w).map(_.simplify).get should ===(
-        DownUnreachable(w))
+        DownUnreachable(w)
+      )
     }
   }
 }

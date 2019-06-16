@@ -11,11 +11,11 @@ class StaticQuorumSpec4MultiJvmNode2 extends StaticQuorumSpec4
 class StaticQuorumSpec4MultiJvmNode3 extends StaticQuorumSpec4
 
 /**
- * Node2 and node3 are indirectly connected in a three node cluster.
- *
- * Node2 and node3 should down themselves as they are indirectly connected.
- * Node1 should down itself since its not a quorum.
- */
+  * Node2 and node3 are indirectly connected in a three node cluster.
+  *
+  * Node2 and node3 should down themselves as they are indirectly connected.
+  * Node1 should down itself since its not a quorum.
+  */
 class StaticQuorumSpec4 extends ThreeNodeSpec("StaticQuorum", StaticQuorumSpecConfig) {
   override def assertions(): Unit =
     "handle scenario 4" in within(120 seconds) {
