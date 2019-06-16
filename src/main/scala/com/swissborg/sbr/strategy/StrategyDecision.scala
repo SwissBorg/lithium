@@ -10,9 +10,9 @@ import monocle.Getter
   * Represents the strategy that needs to be taken
   * to resolve a potential split-brain issue.
   */
-sealed abstract class StrategyDecision extends Product with Serializable
+private[sbr] sealed abstract class StrategyDecision extends Product with Serializable
 
-object StrategyDecision {
+private[sbr] object StrategyDecision {
 
   /**
     * The reachable nodes that should be downed.

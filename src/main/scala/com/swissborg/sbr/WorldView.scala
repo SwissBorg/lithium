@@ -21,9 +21,9 @@ import io.circe.generic.semiauto.deriveEncoder
   * Represents the view of the cluster from the point of view of the
   * `selfNode`.
   */
-final case class WorldView private (
-    private[sbr] val selfUniqueAddress: UniqueAddress,
-    private[sbr] val selfStatus: Status,
+private[sbr] final case class WorldView private (
+    val selfUniqueAddress: UniqueAddress,
+    val selfStatus: Status,
     /**
       * The ordering on nodes is defined on their unique address,
       * ignoring for instance the status.
@@ -34,7 +34,7 @@ final case class WorldView private (
       * then added. Only adding it will not override the value as they
       * are equal given the ordering.
       */
-    private[sbr] val otherMembersStatus: Map[UniqueAddress, Status]
+    val otherMembersStatus: Map[UniqueAddress, Status]
 ) {
   import WorldView._
 
@@ -259,7 +259,7 @@ final case class WorldView private (
   )
 }
 
-object WorldView {
+private[sbr] object WorldView {
   final case class SimpleWorldView(
       selfUniqueAddress: UniqueAddress,
       reachableMembers: List[SimpleMember],

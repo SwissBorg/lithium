@@ -7,7 +7,7 @@ import cats.Order
   * Wrapper around a member adding the reachability information
   * on top of it.
   */
-sealed abstract class Node extends Product with Serializable {
+private[sbr] sealed abstract class Node extends Product with Serializable {
   val member: Member
 
   /**
@@ -31,14 +31,14 @@ sealed abstract class Node extends Product with Serializable {
   }
 }
 
-object Node {
+private[sbr] object Node {
   implicit val nodeOrdering: Ordering[Node] = Ordering.by(_.member)
   implicit val nodeOrder: Order[Node] = Order.fromOrdering
 }
 
-sealed trait CleanNode extends Node
+private[sbr] sealed trait CleanNode extends Node
 
-object CleanNode {
+private[sbr] object CleanNode {
   implicit val consideredNodeOrdering: Ordering[CleanNode] = Ordering.by(_.member)
   implicit val consideredNodeOrder: Order[CleanNode] = Order.fromOrdering
 }
@@ -46,11 +46,11 @@ object CleanNode {
 /**
   * A cluster node that cannot be reached from any of its observers.
   */
-final case class UnreachableNode(member: Member) extends CleanNode {
+private[sbr] final case class UnreachableNode(member: Member) extends CleanNode {
   override def copyMember(member: Member): Node = copy(member = member)
 }
 
-object UnreachableNode {
+private[sbr] object UnreachableNode {
   implicit val unreachableNodeOrdering: Ordering[UnreachableNode] = Ordering.by(_.member)
   implicit val unreachableNodeOrder: Order[UnreachableNode] = Order.fromOrdering
 }
@@ -58,11 +58,11 @@ object UnreachableNode {
 /**
   * A cluster nodes that can be reached by all its observers.
   */
-final case class ReachableNode(member: Member) extends CleanNode {
+private[sbr] final case class ReachableNode(member: Member) extends CleanNode {
   override def copyMember(member: Member): Node = copy(member = member)
 }
 
-object ReachableNode {
+private[sbr] object ReachableNode {
   implicit val reachableNodeOrdering: Ordering[ReachableNode] = Ordering.by(_.member)
   implicit val reachableNodeOrder: Order[ReachableNode] = Order.fromOrdering
 }
@@ -70,11 +70,11 @@ object ReachableNode {
 /**
   * A cluster node that can be reached by only a part of its observers.
   */
-final case class IndirectlyConnectedNode(member: Member) extends Node {
+private[sbr] final case class IndirectlyConnectedNode(member: Member) extends Node {
   override def copyMember(member: Member): Node = copy(member = member)
 }
 
-object IndirectlyConnectedNode {
+private[sbr] object IndirectlyConnectedNode {
   implicit val indirectlyConnectedNodeOrdering: Ordering[IndirectlyConnectedNode] =
     Ordering.by(_.member)
   implicit val indirectlyConnectedNodeOrder: Order[IndirectlyConnectedNode] = Order.fromOrdering

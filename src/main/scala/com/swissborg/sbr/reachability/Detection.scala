@@ -36,11 +36,11 @@ private[reachability] object Detection {
   def protested(protester: Protester, version: Version): Detection =
     Protested.one(protester, version)
 
+  def unprotested(version: Version): Detection = Unprotested(version)
+
   def allUnprotested(detections: NonEmptyMap[Observer, Detection]): Boolean =
     detections.forall {
       case _: Unprotested => true
       case _              => false
     }
-
-  def unprotested(version: Version): Detection = Unprotested(version)
 }

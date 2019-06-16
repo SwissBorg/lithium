@@ -18,7 +18,7 @@ import eu.timepit.refined.numeric._
   *
   * This strategy is useful when the cluster has a fixed size.
   */
-class StaticQuorum[F[_]](config: Config)(implicit val F: Sync[F])
+private[sbr] class StaticQuorum[F[_]](config: Config)(implicit val F: Sync[F])
     extends Strategy[F]
     with StrictLogging {
   import config._
@@ -70,7 +70,7 @@ class StaticQuorum[F[_]](config: Config)(implicit val F: Sync[F])
     }
 }
 
-object StaticQuorum {
+private[sbr] object StaticQuorum {
 
   /**
     * [[StaticQuorum]] config.

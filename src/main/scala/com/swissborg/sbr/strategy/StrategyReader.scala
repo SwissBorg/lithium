@@ -9,7 +9,7 @@ import pureconfig.{ConfigReader, Derivation}
   *
   * @tparam A the type of the strategy to load.
   */
-trait StrategyReader[A] {
+private[sbr] trait StrategyReader[A] {
   import StrategyReader._
 
   /**
@@ -28,7 +28,7 @@ trait StrategyReader[A] {
       .leftMap(ConfigReaderError)
 }
 
-object StrategyReader {
+private[sbr] object StrategyReader {
   sealed abstract class StrategyError(message: String) extends Throwable(message)
   final case class ConfigReaderError(f: ConfigReaderFailures) extends StrategyError(s"$f")
   final case class UnknownStrategy(strategy: String) extends StrategyError(strategy)

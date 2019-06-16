@@ -4,7 +4,7 @@ import akka.cluster.swissborg.implicits._
 import akka.cluster.{Reachability, UniqueAddress}
 import cats.implicits._
 
-final case class SBReachability(private val r: Reachability) {
+final case class SBReachability(private val r: Reachability) extends AnyVal {
   def findUnreachableRecord(
       observer: UniqueAddress,
       subject: UniqueAddress

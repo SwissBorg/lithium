@@ -5,7 +5,7 @@ import com.swissborg.sbr.WorldView
 /**
   * Interface for split-brain resolution strategies.
   */
-trait Strategy[F[_]] {
+private[sbr] trait Strategy[F[_]] {
 
   /**
     * The strategy decision given the world view.
