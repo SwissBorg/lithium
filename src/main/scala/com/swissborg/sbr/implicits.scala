@@ -1,8 +1,7 @@
 package com.swissborg.sbr
 
-import akka.actor.{ActorPath, Address}
+import akka.actor.Address
 import akka.cluster.{Member, MemberStatus, UniqueAddress}
-import cats.implicits._
 import cats.{Eq, Order}
 import io.circe.Encoder
 import io.circe.generic.semiauto._
@@ -19,10 +18,6 @@ trait implicits {
   implicit val addressEq: Eq[Address] = Eq.fromUniversalEquals
 
   implicit val memberStatusEq: Eq[MemberStatus] = Eq.fromUniversalEquals
-
-  implicit val actorPathEq: Eq[ActorPath] = (x: ActorPath, y: ActorPath) => {
-    x.address === y.address && x.elements == y.elements
-  }
 
   implicit val addressEncoder: Encoder[Address] = deriveEncoder[Address]
 

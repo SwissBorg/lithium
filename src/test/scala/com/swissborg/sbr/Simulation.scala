@@ -30,6 +30,8 @@ class Simulation[F[_]: Functor, Strat[_[_]], S <: Scenario](val strategy: Strat[
       }
       .map(_.noSplitBrain)
   }
+
+  override def toString: String = s"Simulation($strategy, $scenario)"
 }
 object Simulation {
   implicit def arbSimulation[F[_]: Functor, Strat[_[_]], S <: Scenario: Arbitrary](

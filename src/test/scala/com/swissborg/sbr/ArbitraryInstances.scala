@@ -24,6 +24,9 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
   sealed trait WeaklyUpTag
   type WeaklyUpMember = Member @@ WeaklyUpTag
 
+  sealed trait JoiningOrWeaklyUpTag
+  type JoiningOrWeaklyUpMember = Member @@ JoiningOrWeaklyUpTag
+
   sealed trait UpTag
   type UpMember = Member @@ UpTag
 
@@ -42,11 +45,11 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
   sealed trait HealthyTag
   type HealthyWorldView = WorldView @@ HealthyTag
 
-  sealed trait NonRemovedTag
-  type NonRemovedWorldView = WorldView @@ NonRemovedTag
+  sealed trait AllUpTag
+  type AllUpWorldView = WorldView @@ AllUpTag
 
-  sealed trait UpNumberConsistentTag
-  type UpNumberConsistentWorldView = WorldView @@ UpNumberConsistentTag
+  sealed trait JoiningOrWeaklyUpOnlyTag
+  type JoiningOrWeaklyUpOnlyWorldView = WorldView @@ JoiningOrWeaklyUpOnlyTag
 
   sealed trait NonRemovedMemberTag
   type NonRemovedMember = Member @@ NonRemovedMemberTag
@@ -56,6 +59,13 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
 
   implicit val arbWeaklyUpMember: Arbitrary[WeaklyUpMember] = Arbitrary(
     arbJoiningMember.arbitrary.map(m => tag[WeaklyUpTag][Member](m.copy(WeaklyUp)))
+  )
+
+  implicit val arbJoiningOrWeaklyUpMember: Arbitrary[JoiningOrWeaklyUpMember] = Arbitrary(
+    Gen.oneOf(
+      arbJoiningMember.arbitrary.map(tag[JoiningOrWeaklyUpTag][Member]),
+      arbWeaklyUpMember.arbitrary.map(tag[JoiningOrWeaklyUpTag][Member])
+    )
   )
 
   implicit val arbUpMember: Arbitrary[UpMember] = Arbitrary(
@@ -107,27 +117,29 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
     } yield tag[HealthyTag][WorldView](worldView)
   )
 
-  implicit val arbNonRemovedWorldView: Arbitrary[NonRemovedWorldView] = Arbitrary(for {
-    selfNode <- arbLeavingMember.arbitrary.map(ReachableNode(_))
+  implicit val arbAllUpWorldView: Arbitrary[AllUpWorldView] = Arbitrary(for {
+    selfNode <- arbUpMember.arbitrary.map(ReachableNode(_))
     nodes <- arbitrary[Set[LeavingMember]].map(_.map(ReachableNode(_)))
     nodes0 = nodes - selfNode
     worldView = WorldView.fromNodes(selfNode, nodes0.map(identity))
-  } yield tag[NonRemovedTag][WorldView](worldView))
+  } yield tag[AllUpTag][WorldView](worldView))
 
-  implicit val arbUpNumberConsistentWorldView: Arbitrary[UpNumberConsistentWorldView] = Arbitrary(
-    for {
-      selfNode <- arbitrary[WeaklyUpMember]
-      nodes <- arbitrary[Set[WeaklyUpMember]]
-      nodes0 = nodes - selfNode
+  implicit val arbJoiningOrWeaklyUpOnlyWorldView: Arbitrary[JoiningOrWeaklyUpOnlyWorldView] =
+    Arbitrary(
+      for {
+        selfNode <- arbitrary[JoiningOrWeaklyUpMember]
+        nodes <- arbitrary[Set[JoiningOrWeaklyUpMember]]
+        nodes0 = nodes - selfNode
 
-      selfNodeStatuses = selfNode.copyUp(0)
-      nodes0Statuses = nodes0.toList.zipWithIndex.map {
-        case (weaklyUpMember, ix) => ReachableNode(weaklyUpMember.copyUp(ix + 1))
-      }.toSet
+        selfNodeStatuses = selfNode.copyUp(0)
+        nodes0Statuses = nodes0.toList.zipWithIndex.map {
+          case (weaklyUpMember, ix) => ReachableNode(weaklyUpMember.copyUp(ix + 1))
+        }.toSet
 
-      worldView = WorldView.fromNodes(ReachableNode(selfNodeStatuses), nodes0Statuses.map(identity))
-    } yield tag[UpNumberConsistentTag][WorldView](worldView)
-  )
+        worldView = WorldView
+          .fromNodes(ReachableNode(selfNodeStatuses), nodes0Statuses.map(identity))
+      } yield tag[JoiningOrWeaklyUpOnlyTag][WorldView](worldView)
+    )
 
   implicit val arbNode: Arbitrary[Node] =
     Arbitrary(
@@ -226,14 +238,12 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
     arbWorldView.arbitrary.map(DownUnreachable(_))
   )
 
-  implicit val arbDownSelf: Arbitrary[DownSelf] = Arbitrary(arbWorldView.arbitrary.map(DownSelf(_)))
-
   implicit val arbDownThese: Arbitrary[DownThese] = Arbitrary(
     for {
       decision1 <- Gen
-        .oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary, arbDownSelf.arbitrary) // todo also gen downtheses?
+        .oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary) // todo also gen downtheses?
       decision2 <- Gen
-        .oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary, arbDownSelf.arbitrary)
+        .oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary)
     } yield DownThese(decision1, decision2)
   )
 
@@ -241,7 +251,6 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
     Gen.oneOf(
       arbDownReachable.arbitrary,
       arbDownUnreachable.arbitrary,
-      arbDownSelf.arbitrary,
       arbDownThese.arbitrary
     )
   )

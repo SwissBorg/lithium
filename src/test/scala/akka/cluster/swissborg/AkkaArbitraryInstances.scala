@@ -8,6 +8,9 @@ import org.scalacheck.{Arbitrary, Gen}
 import shapeless.tag
 import shapeless.tag.@@
 
+/**
+  * Arbitrary instances that can only be generated from within the `akka.cluster` namespace.
+  */
 object AkkaArbitraryInstances {
   sealed trait JoiningTag
   type JoiningMember = Member @@ JoiningTag

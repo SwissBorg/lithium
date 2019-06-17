@@ -2,11 +2,8 @@ package com.swissborg.sbr.strategy
 
 import cats.Monoid
 import cats.implicits._
-import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.strategy.StrategyDecision._
 import com.swissborg.sbr.{SBSpec, WorldView}
-
-import scala.collection.immutable.SortedSet
 
 class StrategyDecisionSpec extends SBSpec {
   "StrategyDecision" must {
@@ -15,7 +12,6 @@ class StrategyDecisionSpec extends SBSpec {
         DownReachable(worldView).nodesToDown.map(_.member) should ===(
           worldView.reachableNodes.map(_.member)
         )
-        DownSelf(worldView).nodesToDown should ===(SortedSet(worldView.selfNode))
         DownUnreachable(worldView).nodesToDown.map(_.member) should ===(
           worldView.unreachableNodes.map(_.member)
         )
@@ -25,27 +21,26 @@ class StrategyDecisionSpec extends SBSpec {
     "extract the correct nodes from the decision" in {
       forAll { strategyDecision: StrategyDecision =>
         strategyDecision match {
-          case DownReachable(nodeGroup) =>
-            strategyDecision.nodesToDown.map(_.member) should ===(nodeGroup.map(_.member))
+          case DownReachable(nodesToDown, selfNode) =>
+            strategyDecision.nodesToDown.map(_.member) should ===(
+              nodesToDown.map(_.member) + selfNode.member
+            )
 
-          case DownSelf(node) =>
-            strategyDecision.nodesToDown.map(_.member) should ===(SortedSet(node.member))
-
-          case DownUnreachable(nodeGroup) =>
-            strategyDecision.nodesToDown.map(_.member) should ===(nodeGroup.map(_.member))
+          case DownUnreachable(nodesToDown) =>
+            strategyDecision.nodesToDown.map(_.member) should ===(nodesToDown.map(_.member))
 
           case DownThese(decision1, decision2) =>
             strategyDecision.nodesToDown should ===(decision1.nodesToDown ++ decision2.nodesToDown)
 
-          case DownIndirectlyConnected(nodeGroup) =>
-            strategyDecision.nodesToDown.map(_.member) should ===(nodeGroup.map(_.member))
+          case DownIndirectlyConnected(nodesToDown) =>
+            strategyDecision.nodesToDown.map(_.member) should ===(nodesToDown.map(_.member))
 
           case Idle => strategyDecision.nodesToDown.isEmpty shouldBe true
         }
       }
     }
 
-    "3 - correctly combine decisions" in {
+    "correctly combine decisions" in {
       forAll { decisions: List[StrategyDecision] =>
         (decisions.flatMap(_.nodesToDown).toSet should contain).theSameElementsAs(
           decisions

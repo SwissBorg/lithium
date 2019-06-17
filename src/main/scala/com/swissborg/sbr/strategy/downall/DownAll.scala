@@ -11,8 +11,7 @@ import com.swissborg.sbr.strategy.{Strategy, StrategyDecision}
   */
 private[sbr] class DownAll[F[_]: Applicative] extends Strategy[F] {
   override def takeDecision(worldView: WorldView): F[StrategyDecision] =
-    // When self is indirectly connected it is not reachable.
-    downThese(downSelf(worldView), downReachable(worldView)).pure[F]
+    downReachable(worldView).pure[F]
 }
 
 private[sbr] object DownAll {
