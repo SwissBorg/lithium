@@ -13,8 +13,8 @@ class DownAllSpec extends SBSpec {
     "always down nodes" in {
       forAll { worldView: WorldView =>
         downAll.takeDecision(worldView).map {
-          case DownThese(DownSelf(_), DownReachable(_)) => succeed
-          case _                                        => fail
+          case _: DownReachable => succeed
+          case _                => fail
         }
       }
     }

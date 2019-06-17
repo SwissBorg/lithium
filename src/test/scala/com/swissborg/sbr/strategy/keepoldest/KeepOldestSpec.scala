@@ -8,7 +8,7 @@ import scala.util.Try
 
 class KeepOldestSpec extends SBSpec {
   "KeepOldest" must {
-    simulate[Try, KeepOldest, SymmetricSplitScenario]("handle symmetric split scenarios")(_.get)
+//    simulate[Try, KeepOldest, SymmetricSplitScenario]("handle symmetric split scenarios")(_.get)
 
     simulate[Try, KeepOldest, UpDisseminationScenario]("handle split during up-dissemination")(
       _.get

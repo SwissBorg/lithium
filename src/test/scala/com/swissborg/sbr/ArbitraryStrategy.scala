@@ -9,6 +9,7 @@ import com.swissborg.sbr.strategy.keepoldest.KeepOldest
 import com.swissborg.sbr.strategy.keepreferee.KeepReferee
 import com.swissborg.sbr.strategy.keepreferee.KeepReferee.Config.Address
 import com.swissborg.sbr.strategy.staticquorum.StaticQuorum
+import com.swissborg.sbr.ArbitraryInstances._
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
@@ -27,8 +28,11 @@ object ArbitraryStrategy {
         val nodes = scenario.worldViews.head.nodes
 
         for {
-          pick <- chooseNum(0, nodes.length - 1)
-          referee = nodes.toNonEmptyList.toList.apply(pick)
+          referee <- Gen.oneOf(
+            chooseNum(0, nodes.length - 1).map(nodes.toNonEmptyList.toList.apply),
+            Arbitrary.arbitrary[Node]
+          )
+
           downIfLessThan <- chooseNum(1, nodes.length)
         } yield
           new KeepReferee[F](
