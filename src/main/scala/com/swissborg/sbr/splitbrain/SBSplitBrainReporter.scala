@@ -34,7 +34,7 @@ private[sbr] class SBSplitBrainReporter(
   private val cluster = Cluster(context.system)
   private val selfMember = cluster.selfMember
 
-  context.actorOf(SBReachabilityReporter.props(self), "sbr-fd")
+  context.actorOf(SBReachabilityReporter.props(self), "sb-reachability-reporter")
 
   override def receive: Receive = initializing
 
