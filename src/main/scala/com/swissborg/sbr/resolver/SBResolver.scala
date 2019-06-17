@@ -30,7 +30,7 @@ import scala.concurrent.duration._
 private[sbr] class SBResolver(
     private val _strategy: Strategy[SyncIO],
     private val stableAfter: FiniteDuration,
-    private val downAllWhenUnstable: Boolean
+    private val downAllWhenUnstable: Option[FiniteDuration]
 ) extends Actor
     with ActorLogging {
 
@@ -99,7 +99,7 @@ object SBResolver {
   def props(
       strategy: Strategy[SyncIO],
       stableAfter: FiniteDuration,
-      downAllWhenUnstable: Boolean
+      downAllWhenUnstable: Option[FiniteDuration]
   ): Props =
     Props(new SBResolver(strategy, stableAfter, downAllWhenUnstable))
 
