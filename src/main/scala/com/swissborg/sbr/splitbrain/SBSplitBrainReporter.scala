@@ -24,7 +24,7 @@ import scala.concurrent.duration._
 private[sbr] class SBSplitBrainReporter(
     private val splitBrainResolver: ActorRef,
     private val stableAfter: FiniteDuration,
-    private val downAllWhenUnstable: Boolean
+    private val downAllWhenUnstable: Option[FiniteDuration]
 ) extends Actor
     with Stash
     with ActorLogging
@@ -101,7 +101,7 @@ private[sbr] class SBSplitBrainReporter(
         // Run `ClusterIsUnstable` timer only when needed. If the timer is running
         // while deactivated it will interfere with the `ClusterIsStable` and
         // cancel it gets triggered.
-        _ <- if (downAllWhenUnstable)
+        _ <- if (downAllWhenUnstable.isDefined)
           clusterIsUnstableIsActive.ifM(
             cancelClusterIsUnstableIfSplitBrainResolved,
             scheduleClusterIsUnstableIfSplitBrainWorsened
@@ -138,13 +138,8 @@ private[sbr] class SBSplitBrainReporter(
   private val resetClusterIsStable: SyncIO[Unit] = cancelClusterIsStable >> scheduleClusterIsStable
 
   private val scheduleClusterIsUnstable: SyncIO[Unit] =
-    SyncIO(
-      timers
-        .startSingleTimer(
-          ClusterIsUnstable,
-          ClusterIsUnstable,
-          stableAfter + ((stableAfter.toMillis * 0.75) millis)
-        )
+    downAllWhenUnstable.traverse_(
+      d => SyncIO(timers.startSingleTimer(ClusterIsUnstable, ClusterIsUnstable, d))
     )
 
   private val cancelClusterIsUnstable: SyncIO[Unit] = SyncIO(timers.cancel(ClusterIsUnstable))
@@ -197,7 +192,11 @@ private[sbr] class SBSplitBrainReporter(
 private[sbr] object SBSplitBrainReporter {
   private type Res[A] = StateT[SyncIO, SBSplitBrainReporterState, A]
 
-  def props(downer: ActorRef, stableAfter: FiniteDuration, downAllWhenUnstable: Boolean): Props =
+  def props(
+      downer: ActorRef,
+      stableAfter: FiniteDuration,
+      downAllWhenUnstable: Option[FiniteDuration]
+  ): Props =
     Props(new SBSplitBrainReporter(downer, stableAfter, downAllWhenUnstable))
 
   final private case object ClusterIsStable

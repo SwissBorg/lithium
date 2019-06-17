@@ -21,12 +21,13 @@ communicate together, the duration should be large enough so that persistent
 actor have the time to stop in one partition before being instantiated on
 the surviving partition.
 
-The `down-all-when-unstable` flag when enabled will down the partition 
+The `down-all-when-unstable` flag different from `off` will down the partition 
 if the cluster has been unstable for longer than `stable-after + 3/4 * stable-after`.
 This stops the situation where a persistent actor is started in the surviving 
 partition before being stopped in its original partition because the `stable-after`
-timeout in the original is never hit. It is recommended to leave this setting enabled.
-
+timeout in the original is never hit. The duration can be overriden and should be
+chosen as less than `2 * stable-after`. It can also be disabled by setting it
+to `off` but this is not recommended.
 
 ```hocon
 akka.cluster {
@@ -48,7 +49,10 @@ com.swissborg.sbr {
   # wait too long before downing itself persistent actors might already be
   # restarted on another partition, leading to two instances of the same
   # persistent actor.
-  down-all-when-unstable = on
+  # It is by default derived from 'stable-after' to be 'stable-after' + 3/4 'stable-after'.
+  # If overriden, it must be less than 2 * 'stable-after'. To disable the downing, set 
+  # it to 'off', however this is not recommended.
+  #down-all-when-unstable = on
 }
 ```
 
