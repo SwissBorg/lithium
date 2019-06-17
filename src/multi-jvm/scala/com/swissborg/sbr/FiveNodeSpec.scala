@@ -5,7 +5,8 @@ import akka.remote.testconductor.RoleName
 
 import scala.concurrent.duration._
 
-abstract class FiveNodeSpec(name: String, config: FiveNodeSpecConfig) extends SBRMultiNodeSpec(config) {
+abstract class FiveNodeSpec(name: String, config: FiveNodeSpecConfig)
+    extends SBRMultiNodeSpec(config) {
   def assertions(): Unit
 
   protected val node1: RoleName = config.node1
