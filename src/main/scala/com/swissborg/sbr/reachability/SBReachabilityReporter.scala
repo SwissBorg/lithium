@@ -53,21 +53,20 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
       context.become(active(updateReachabilities(r).runS(state).unsafeRunSync()))
 
     case MemberRemoved(m, _) =>
-      log.debug("REMOVED {}", m)
       context.become(active(remove(m.uniqueAddress).runS(state).unsafeRunSync()))
 
     case MemberDowned(m) =>
-      log.debug("DOWNED {}", m)
       context.become(active(remove(m.uniqueAddress).runS(state).unsafeRunSync()))
 
     case ReachableMember(m) =>
       context.become(active(withReachable(m.uniqueAddress).runS(state).unsafeRunSync()))
 
     case c: Contention =>
-      log.debug("CONTENTION {}", c)
+      log.debug("Received contention: {}", c)
       context.become(active(withContentionFrom(sender(), c).runS(state).unsafeRunSync()))
 
     case ack: ContentionAck =>
+      log.debug("Received contention ack: {}", ack)
       context.become(active(registerContentionAck(ack).runS(state).unsafeRunSync()))
 
     case SendWithRetry(message, to, key, timeout) =>
