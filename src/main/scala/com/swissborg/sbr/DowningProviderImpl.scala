@@ -17,7 +17,8 @@ import com.swissborg.sbr.strategy.staticquorum.StaticQuorum
 import eu.timepit.refined.pureconfig._
 import pureconfig.generic.auto._
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
+import scala.util.{Failure, Success, Try}
 
 /**
   * Implementation of a DowningProvider building a [[SBResolver]].
@@ -58,19 +59,56 @@ object DowningProviderImpl {
   sealed abstract case class Config(
       activeStrategy: String,
       stableAfter: FiniteDuration,
-      downAllWhenUnstable: Boolean
+      downAllWhenUnstable: Option[FiniteDuration]
   )
 
   object Config {
+    private final val activeStrategyPath: String = "com.swissborg.sbr.active-strategy"
+    private final val stableAfterPath: String = "com.swissborg.sbr.stable-after"
+    private final val downAllWhenUnstablePath: String = "com.swissborg.sbr.down-all-when-unstable"
+
     // TODO handle errors
-    def apply(system: ActorSystem): Config =
-      new Config(
-        system.settings.config.getString("com.swissborg.sbr.active-strategy"),
-        FiniteDuration(
-          system.settings.config.getDuration("com.swissborg.sbr.stable-after").toMillis,
-          TimeUnit.MILLISECONDS
-        ),
-        system.settings.config.getBoolean("com.swissborg.sbr.down-all-when-unstable")
-      ) {}
+    def apply(system: ActorSystem): Config = {
+      val activeStrategy = system.settings.config.getString(activeStrategyPath)
+
+      val stableAfter = FiniteDuration(
+        system.settings.config.getDuration(stableAfterPath).toMillis,
+        TimeUnit.MILLISECONDS
+      )
+
+      // 'down-all-when-unstable' config when undefined is derived from 'stable-after'.
+      // Otherwise it must be a duration or set to 'off'.
+      val downAllWhenUnstable =
+        if (system.settings.config.hasPath(downAllWhenUnstablePath)) {
+          val readAsDuration = Try(
+            Some(
+              FiniteDuration(
+                system.settings.config.getDuration(downAllWhenUnstablePath).toMillis,
+                TimeUnit.MILLISECONDS
+              )
+            )
+          )
+
+          val readAsBoolean =
+            Try(system.settings.config.getBoolean(downAllWhenUnstablePath)).flatMap { b =>
+              if (b) {
+                Failure(
+                  new IllegalArgumentException(
+                    "'down-all-when-unstable' must be a duration or set to 'off'."
+                  )
+                )
+              } else {
+                Success(None)
+              }
+            }
+
+          readAsDuration.orElse(readAsBoolean).get
+        } else {
+          // Default
+          Some(stableAfter + (stableAfter.toMillis * 0.75).millis)
+        }
+
+      new Config(activeStrategy, stableAfter, downAllWhenUnstable) {}
+    }
   }
 }

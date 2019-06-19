@@ -24,7 +24,7 @@ import scala.concurrent.duration._
 private[sbr] class SBSplitBrainReporter(
     private val splitBrainResolver: ActorRef,
     private val stableAfter: FiniteDuration,
-    private val downAllWhenUnstable: Boolean
+    private val downAllWhenUnstable: Option[FiniteDuration]
 ) extends Actor
     with Stash
     with ActorLogging
@@ -34,7 +34,7 @@ private[sbr] class SBSplitBrainReporter(
   private val cluster = Cluster(context.system)
   private val selfMember = cluster.selfMember
 
-  context.actorOf(SBReachabilityReporter.props(self), "sbr-fd")
+  context.actorOf(SBReachabilityReporter.props(self), "sb-reachability-reporter")
 
   override def receive: Receive = initializing
 
@@ -78,35 +78,36 @@ private[sbr] class SBSplitBrainReporter(
 
       val diff = DiffInfo(state.worldView, updatedState.worldView)
 
-      // Cancel the `ClusterIsUnstable` event when
-      // the split-brain has worsened.
       def cancelClusterIsUnstableIfSplitBrainResolved: SyncIO[Unit] =
         if (hasSplitBrain(state.worldView)) SyncIO.unit
         else cancelClusterIsUnstable
 
-      // Schedule the `ClusterIsUnstable` event if
-      // a split-brain has appeared. This way
-      // it doesn't get rescheduled for problematic
-      // nodes that are being downed.
       def scheduleClusterIsUnstableIfSplitBrainWorsened: SyncIO[Unit] =
         if (diff.hasNewUnreachableOrIndirectlyConnected) scheduleClusterIsUnstable
         else SyncIO.unit
 
-      // Reset `ClusterIsStable` if the modification is not stable.
       val resetClusterIsStableIfUnstable: SyncIO[Unit] =
         if (diff.changeIsStable) SyncIO.unit
         else resetClusterIsStable
 
       for {
-        // Run `ClusterIsUnstable` timer only when needed. If the timer is running
-        // while deactivated it will interfere with the `ClusterIsStable` and
-        // cancel it gets triggered.
-        _ <- if (downAllWhenUnstable)
+        _ <- if (downAllWhenUnstable.isDefined)
           clusterIsUnstableIsActive.ifM(
+            // When the timer is running it should not be interfered
+            // with as it is started when the first non-reachable node
+            // is detected. It is stopped when the split-brain has resolved.
+            // In this case it healed itself as the `clusterIsUnstable` timer
+            // is stopped before a resolution is requested.
             cancelClusterIsUnstableIfSplitBrainResolved,
+            // When the timer is not running it means that all the nodes
+            // were reachable up to this point or that a resolution has
+            // been requested. It is started when new non-reachable nodes
+            // appear. That could the 1st non-reachable node or an additional
+            // one after a resolution has been requested.
             scheduleClusterIsUnstableIfSplitBrainWorsened
           )
-        else SyncIO.unit
+        else
+          SyncIO.unit // not downing the partition if it is unstable for too long
 
         _ <- resetClusterIsStableIfUnstable
       } yield updatedState
@@ -138,13 +139,8 @@ private[sbr] class SBSplitBrainReporter(
   private val resetClusterIsStable: SyncIO[Unit] = cancelClusterIsStable >> scheduleClusterIsStable
 
   private val scheduleClusterIsUnstable: SyncIO[Unit] =
-    SyncIO(
-      timers
-        .startSingleTimer(
-          ClusterIsUnstable,
-          ClusterIsUnstable,
-          stableAfter + ((stableAfter.toMillis * 0.75) millis)
-        )
+    downAllWhenUnstable.traverse_(
+      d => SyncIO(timers.startSingleTimer(ClusterIsUnstable, ClusterIsUnstable, d))
     )
 
   private val cancelClusterIsUnstable: SyncIO[Unit] = SyncIO(timers.cancel(ClusterIsUnstable))
@@ -160,6 +156,8 @@ private[sbr] class SBSplitBrainReporter(
     */
   private val handleSplitBrain: Res[Unit] =
     for {
+      // Cancel else the partition will be downed if it takes too long for
+      // the split-brain to be resolved after `SBResolver` downs the nodes.
       _ <- liftF[SyncIO, SBSplitBrainReporterState, Unit](cancelClusterIsUnstable)
       _ <- ifSplitBrain(SBResolver.HandleSplitBrain(_))
       _ <- liftF(scheduleClusterIsStable)
@@ -168,6 +166,7 @@ private[sbr] class SBSplitBrainReporter(
   private val downAll: Res[Unit] = for {
     _ <- liftF[SyncIO, SBSplitBrainReporterState, Unit](cancelClusterIsStable)
     _ <- ifSplitBrain(SBResolver.DownAll)
+    _ <- liftF(scheduleClusterIsStable)
   } yield ()
 
   private def ifSplitBrain(event: WorldView => SBResolver.Event): Res[Unit] =
@@ -197,7 +196,11 @@ private[sbr] class SBSplitBrainReporter(
 private[sbr] object SBSplitBrainReporter {
   private type Res[A] = StateT[SyncIO, SBSplitBrainReporterState, A]
 
-  def props(downer: ActorRef, stableAfter: FiniteDuration, downAllWhenUnstable: Boolean): Props =
+  def props(
+      downer: ActorRef,
+      stableAfter: FiniteDuration,
+      downAllWhenUnstable: Option[FiniteDuration]
+  ): Props =
     Props(new SBSplitBrainReporter(downer, stableAfter, downAllWhenUnstable))
 
   final private case object ClusterIsStable

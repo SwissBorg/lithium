@@ -9,7 +9,7 @@ class IndirectlyConnectedSpec extends SBSpec {
   private val indirectlyConnected: IndirectlyConnected[Id] = new IndirectlyConnected[Id]
 
   "IndirectlyConnected" must {
-    "down self if unreachable" in {
+    "down all the indirectly-connected nodes" in {
       forAll { worldView: WorldView =>
         indirectlyConnected.takeDecision(worldView).map {
           case DownIndirectlyConnected(nodes) =>

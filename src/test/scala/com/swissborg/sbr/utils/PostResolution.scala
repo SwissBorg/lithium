@@ -1,53 +1,70 @@
 package com.swissborg.sbr.utils
 
-import akka.cluster.Member
 import cats.Monoid
-import cats.implicits._
 import com.swissborg.sbr._
-import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.strategy.StrategyDecision
 import com.swissborg.sbr.strategy.StrategyDecision._
 
 import scala.collection.SortedSet
 
 /**
-  * Represents the partitions after running the decision.
+  * Represents the cluster after applying a strategy's decision.
   */
-final case class PostResolution(partitions: List[SortedSet[Member]]) {
+final case class PostResolution(
+    /**
+      * The nodes in each partition.
+      */
+    partitions: List[SortedSet[Node]]
+) {
 
   /**
-    * True if there are not enough partitions for a split-brain
-    * or that all the partitions have the same members.
+    * True if there are no non-reachable nodes in the cluster and
+    * that all the partitions have the same elements, aka the
+    * resolution did not create multiple clusters.
     */
-  lazy val noSplitBrain: Boolean = {
+  lazy val isResolved: Boolean = {
     val nonEmptyPartitions = partitions.filter(_.nonEmpty)
-    nonEmptyPartitions.size <= 1 || nonEmptyPartitions.tail
-      .foldLeft((true, nonEmptyPartitions.head)) {
-        case ((b, expectedPartition), partition) =>
-          (expectedPartition.sameElements(partition) && b, expectedPartition)
-      }
-      ._1
+
+    val allReachableNodes = nonEmptyPartitions.forall(_.forall {
+      case _: ReachableNode => true
+      case _                => false
+    })
+
+    lazy val noSplitBrain = if (nonEmptyPartitions.lengthCompare(1) > 0) {
+      nonEmptyPartitions.tail
+        .foldLeft((true, nonEmptyPartitions.head)) {
+          case ((noSplitBrain, expectedPartition), partition) =>
+            (noSplitBrain && expectedPartition.sameElements(partition), expectedPartition)
+        }
+        ._1
+    } else {
+      // 1 or less non-empty partitions
+      true
+    }
+
+    allReachableNodes && noSplitBrain
   }
 }
 
 object PostResolution {
+  val empty: PostResolution = PostResolution(List.empty)
+
+  def one(nodes: SortedSet[Node]): PostResolution = PostResolution(List(nodes))
+
   def fromDecision(worldView: WorldView)(decision: StrategyDecision): PostResolution =
     decision match {
-      case DownReachable(_) => PostResolution(List(SortedSet.empty))
-      case DownSelf(_)      => PostResolution(List(SortedSet.empty))
+      // In all these cases the entire partition will down itself.
+      case _: DownReachable               => PostResolution.empty
+      case DownThese(_: DownReachable, _) => PostResolution.empty
+      case DownThese(_, _: DownReachable) => PostResolution.empty
 
-      case DownThese(decision1, decision2) =>
-        val v = fromDecision(worldView)(decision1) |+| fromDecision(worldView)(decision2)
-        v.copy(partitions = List(v.partitions.head.union(v.partitions.last)))
-
-      case decision =>
-        PostResolution(
-          List(worldView.nodes.map(_.member).toSortedSet -- decision.nodesToDown.map(_.member))
-        )
+      case _ =>
+        val nodesAfterDowning = worldView.nodes.toSortedSet -- decision.nodesToDown
+        PostResolution.one(nodesAfterDowning)
     }
 
   implicit val remainingPartitionsMonoid: Monoid[PostResolution] = new Monoid[PostResolution] {
-    override def empty: PostResolution = PostResolution(List.empty)
+    override def empty: PostResolution = PostResolution.empty
 
     override def combine(x: PostResolution, y: PostResolution): PostResolution =
       PostResolution(x.partitions ++ y.partitions)

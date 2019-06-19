@@ -40,7 +40,7 @@ private[sbr] final case class WorldView private (
 
   assert(
     !otherMembersStatus.contains(selfUniqueAddress),
-    s"$otherMembersStatus <- $selfUniqueAddress"
+    s"The current member  shoud not appear in the other members! $otherMembersStatus <- $selfUniqueAddress"
   )
 
   lazy val selfNode: Node = toNode(selfStatus.member, selfStatus.reachability)
@@ -58,44 +58,26 @@ private[sbr] final case class WorldView private (
 
   lazy val members: NonEmptySet[Member] = nodes.map(_.member)
 
-  lazy val consideredNodes: Set[Node] = nodes.filter(shouldBeConsidered)
+  lazy val nonJoiningNodes: Set[Node] = nodes.filter(isNonJoining)
 
-  def consideredNodesWithRole(role: String): Set[Node] =
-    if (role.nonEmpty) consideredNodes.filter(_.member.roles.contains(role)) else consideredNodes
+  def nonJoiningNodesWithRole(role: String): Set[Node] =
+    if (role.nonEmpty) nonJoiningNodes.filter(_.member.roles.contains(role)) else nonJoiningNodes
 
-  /**
-    * The nodes that need to be considered in split-brain resolutions.
-    *
-    * A node is to be considered when it isn't in the "Joining" or "WeaklyUp"
-    * states. These status are ignored since a node can join and become
-    * weakly-up during a network-partition.
-    */
-  lazy val consideredCleanNodes: Set[CleanNode] = nodes.collect {
-    case node: CleanNode if shouldBeConsidered(node) => node
+  lazy val nonJoiningNonICNodes: Set[NonIndirectlyConnectedNode] = nodes.collect {
+    case node: NonIndirectlyConnectedNode if isNonJoining(node) => node
   }
 
-  /**
-    * The nodes with the given role, that need to be considered in
-    * split-brain resolutions.
-    */
-  def consideredCleanNodesWithRole(role: String): Set[CleanNode] =
-    if (role.nonEmpty) consideredCleanNodes.filter(_.member.roles.contains(role))
-    else consideredCleanNodes
+  def nonJoiningNonICNodesWithRole(role: String): Set[NonIndirectlyConnectedNode] =
+    if (role.nonEmpty) nonJoiningNonICNodes.filter(_.member.roles.contains(role))
+    else nonJoiningNonICNodes
 
-  /**
-    * The reachable nodes that need to be considered in split-brain resolutions.
-    */
-  lazy val consideredReachableNodes: Set[ReachableNode] = reachableNodes.collect {
-    case n if shouldBeConsidered(n) => n
+  lazy val nonJoiningReachableNodes: Set[ReachableNode] = reachableNodes.collect {
+    case n if isNonJoining(n) => n
   }
 
-  /**
-    * The reachable nodes with the given role, that need to be
-    * considered in split-brain resolutions.
-    */
-  def consideredReachableNodesWithRole(role: String): Set[ReachableNode] =
-    if (role.nonEmpty) consideredReachableNodes.filter(_.member.roles.contains(role))
-    else consideredReachableNodes
+  def nonJoiningReachableNodesWithRole(role: String): Set[ReachableNode] =
+    if (role.nonEmpty) nonJoiningReachableNodes.filter(_.member.roles.contains(role))
+    else nonJoiningReachableNodes
 
   /**
     * All the reachable nodes.
@@ -121,20 +103,17 @@ private[sbr] final case class WorldView private (
     case r: IndirectlyConnectedNode => r
   }
 
-  /**
-    * The unreachable nodes that need to be considered in split-brain resolutions.
-    */
-  lazy val consideredUnreachableNodes: Set[UnreachableNode] = unreachableNodes.collect {
-    case n if shouldBeConsidered(n) => n
+  lazy val nonJoiningUnreachableNodes: Set[UnreachableNode] = unreachableNodes.collect {
+    case n if isNonJoining(n) => n
   }
 
-  /**
-    * The unreachable nodes with the given role, that need to be
-    * considered in split-brain resolutions.
-    */
-  def consideredUnreachableNodesWithRole(role: String): Set[UnreachableNode] =
-    if (role.nonEmpty) consideredUnreachableNodes.filter(_.member.roles.contains(role))
-    else consideredUnreachableNodes
+  def unreachableNodesWithRole(role: String): Set[UnreachableNode] =
+    if (role.nonEmpty) unreachableNodes.filter(_.member.roles.contains(role))
+    else unreachableNodes
+
+  def nonJoiningUnreachableNodesWithRole(role: String): Set[UnreachableNode] =
+    if (role.nonEmpty) nonJoiningUnreachableNodes.filter(_.member.roles.contains(role))
+    else nonJoiningUnreachableNodes
 
   def addOrUpdate(member: Member): WorldView =
     if (member.uniqueAddress === selfUniqueAddress) {
@@ -191,29 +170,38 @@ private[sbr] final case class WorldView private (
     *
     * Used in tests.
     */
-  private[sbr] def changeSelf(member: Member): WorldView =
-    if (member.uniqueAddress === selfUniqueAddress) this
-    else {
-      val newSelfStatus = otherMembersStatus
-        .getOrElse(member.uniqueAddress, Status(member, Reachable))
-        .withReachability(Reachable)
-
-      selfStatus.member.status match {
-        case Removed =>
-          copy(
-            selfUniqueAddress = member.uniqueAddress,
-            selfStatus = newSelfStatus,
-            otherMembersStatus = otherMembersStatus - member.uniqueAddress
-          )
-
-        case _ =>
-          copy(
-            selfUniqueAddress = member.uniqueAddress,
-            selfStatus = newSelfStatus,
-            otherMembersStatus = otherMembersStatus - member.uniqueAddress + (selfUniqueAddress -> selfStatus)
-          )
+  private[sbr] def changeSelf(member: Member): WorldView = {
+    val newSelfStatus = otherMembersStatus
+      .get(member.uniqueAddress)
+      .fold(Status(member, Reachable)) { m =>
+        m.withMember(member)
       }
+      .withReachability(Reachable)
+
+    selfStatus.member.status match {
+      case Removed =>
+        copy(
+          selfUniqueAddress = member.uniqueAddress,
+          selfStatus = newSelfStatus,
+          otherMembersStatus = otherMembersStatus - member.uniqueAddress
+        )
+
+      case _ =>
+        val maybeOldSelf = if (selfUniqueAddress === member.uniqueAddress) {
+          Map.empty
+        } else {
+          Map(selfUniqueAddress -> selfStatus)
+        }
+
+        val updatedOtherMembersStatus = otherMembersStatus - member.uniqueAddress ++ maybeOldSelf
+
+        copy(
+          selfUniqueAddress = member.uniqueAddress,
+          selfStatus = newSelfStatus,
+          otherMembersStatus = updatedOtherMembersStatus
+        )
     }
+  }
 
   /**
     * Change the reachability of `member` with `reachability`.
@@ -236,20 +224,10 @@ private[sbr] final case class WorldView private (
     }
 
   /**
-    * True when `node` needs to be considered in split-brain resolution strategies. Otherwise, false.
+    * True when the node is non-joining.
     */
-  private def shouldBeConsidered(node: Node): Boolean =
+  private def isNonJoining(node: Node): Boolean =
     node.member.status != Joining && node.member.status != WeaklyUp
-//
-//  match {
-//    case UnreachableNode(member) => member.status != Joining && member.status != WeaklyUp
-//    case ReachableNode(member)   => member.status != Joining && member.status != WeaklyUp
-//
-//    // When indirectly connected nodes are tracked they do not
-//    // appear in the considered nodes as they will be downed
-//    // in parallel.
-//    case _: IndirectlyConnectedNode => false
-//  }
 
   lazy val simple: SimpleWorldView = SimpleWorldView(
     selfUniqueAddress,

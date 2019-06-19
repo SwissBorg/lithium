@@ -21,12 +21,12 @@ private[sbr] class KeepMajority[F[_]: ApplicativeError[?[_], Throwable]](config:
   import config._
 
   override def takeDecision(worldView: WorldView): F[StrategyDecision] = {
-    val totalNodes = worldView.consideredCleanNodesWithRole(role).size
+    val totalNodes = worldView.nonJoiningNonICNodesWithRole(role).size
 
     val majority = Math.max(totalNodes / 2 + 1, 1)
 
-    val reachableConsideredNodes = worldView.consideredReachableNodesWithRole(role)
-    val unreachableConsideredNodes = worldView.consideredUnreachableNodesWithRole(role)
+    val reachableConsideredNodes = worldView.nonJoiningReachableNodesWithRole(role)
+    val unreachableConsideredNodes = worldView.nonJoiningUnreachableNodesWithRole(role)
 
     if (reachableConsideredNodes.size >= majority) {
       downUnreachable(worldView).pure[F]
@@ -35,7 +35,7 @@ private[sbr] class KeepMajority[F[_]: ApplicativeError[?[_], Throwable]](config:
     else if (totalNodes > 0 && reachableConsideredNodes.size === unreachableConsideredNodes.size) {
       // check if the node with the lowest address is in this partition
       worldView
-        .consideredCleanNodesWithRole(role)
+        .nonJoiningNonICNodesWithRole(role)
         .toList
         .sortBy(_.member.address)(Member.addressOrdering)
         .headOption
@@ -53,6 +53,8 @@ private[sbr] class KeepMajority[F[_]: ApplicativeError[?[_], Throwable]](config:
       downReachable(worldView).pure[F]
     }
   }
+
+  override def toString: String = s"KeepMajority($config)"
 }
 
 private[sbr] object KeepMajority {

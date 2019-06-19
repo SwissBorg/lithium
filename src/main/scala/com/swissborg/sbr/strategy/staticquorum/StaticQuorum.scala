@@ -24,7 +24,7 @@ private[sbr] class StaticQuorum[F[_]](config: Config)(implicit val F: Sync[F])
   import config._
 
   override def takeDecision(worldView: WorldView): F[StrategyDecision] =
-    if (worldView.consideredCleanNodesWithRole(role).size > quorumSize * 2 - 1) {
+    if (worldView.nonJoiningNonICNodesWithRole(role).size > quorumSize * 2 - 1) {
       // The quorumSize is too small for the cluster size,
       // more than one side might be a quorum and create
       // a split-brain. In this case we down the cluster.
@@ -34,7 +34,10 @@ private[sbr] class StaticQuorum[F[_]](config: Config)(implicit val F: Sync[F])
         )
         .as(downReachable(worldView))
     } else {
-      ((ReachableNodes(worldView, quorumSize, role), UnreachableNodes(worldView, quorumSize, role)) match {
+      (
+        ReachableQuorum(worldView, quorumSize, role),
+        UnreachableQuorum(worldView, quorumSize, role)
+      ) match {
 
         /**
           * If we decide DownReachable the entire cluster will shutdown. Always?
@@ -42,32 +45,40 @@ private[sbr] class StaticQuorum[F[_]](config: Config)(implicit val F: Sync[F])
           *
           * Either way this happens when `quorumSize` is less than half of the cluster. That SHOULD be logged! TODO
           */
-        case (ReachableQuorum, UnreachablePotentialQuorum) => downReachable(worldView)
+        case (ReachableQuorum.Quorum, UnreachableQuorum.PotentialQuorum) =>
+          downReachable(worldView)
 
         /**
           * This side is the quorum, the other side should be downed.
           */
-        case (ReachableQuorum, UnreachableSubQuorum) => downUnreachable(worldView)
+        case (ReachableQuorum.Quorum, UnreachableQuorum.SubQuorum) =>
+          downUnreachable(worldView)
 
         /**
-          * This side is a quorum and there are no unreachable nodes, nothing needs to be done.
+          * This side is a quorum and there are no unreachable nodes,
+          * still downing the unreachable nodes as they might be joining
+          * so not counted.
           */
-        case (ReachableQuorum, EmptyUnreachable) => Idle
+        case (ReachableQuorum.Quorum, UnreachableQuorum.None) =>
+          downUnreachable(worldView)
 
         /**
           * Potentially shuts down the cluster if there's
           * no quorum on the other side of the split.
           */
-        case (ReachableSubQuorum, UnreachablePotentialQuorum) => downReachable(worldView)
+        case (ReachableQuorum.NoQuorum, UnreachableQuorum.PotentialQuorum) =>
+          downReachable(worldView)
 
         /**
           * Both sides are not a quorum.
           *
           * Happens when to many nodes crash at the same time. The cluster will shutdown.
           */
-        case (ReachableSubQuorum, _) => downReachable(worldView)
-      }).pure[F]
-    }
+        case (ReachableQuorum.NoQuorum, _) => downReachable(worldView)
+      }
+    }.pure[F]
+
+  override def toString: String = s"StaticQuorum($config)"
 }
 
 private[sbr] object StaticQuorum {

@@ -30,7 +30,7 @@ import scala.concurrent.duration._
 private[sbr] class SBResolver(
     private val _strategy: Strategy[SyncIO],
     private val stableAfter: FiniteDuration,
-    private val downAllWhenUnstable: Boolean
+    private val downAllWhenUnstable: Option[FiniteDuration]
 ) extends Actor
     with ActorLogging {
 
@@ -39,8 +39,12 @@ private[sbr] class SBResolver(
   context.actorOf(SBSplitBrainReporter.props(self, stableAfter, downAllWhenUnstable))
 
   private val cluster: Cluster = Cluster(context.system)
+
   private val selfAddress: Address = cluster.selfMember.address
-  private val defaultStrategy: Union[SyncIO] = new Union(_strategy, new IndirectlyConnected)
+
+  private val defaultStrategy: Union[SyncIO, Strategy, IndirectlyConnected] =
+    new Union(_strategy, new IndirectlyConnected)
+
   private val downAll: downall.DownAll[SyncIO] = new downall.DownAll()
 
   override def receive: Receive = {
@@ -99,7 +103,7 @@ object SBResolver {
   def props(
       strategy: Strategy[SyncIO],
       stableAfter: FiniteDuration,
-      downAllWhenUnstable: Boolean
+      downAllWhenUnstable: Option[FiniteDuration]
   ): Props =
     Props(new SBResolver(strategy, stableAfter, downAllWhenUnstable))
 
