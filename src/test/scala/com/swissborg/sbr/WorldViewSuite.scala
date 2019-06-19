@@ -282,7 +282,7 @@ class WorldViewSuite extends WordSpec with Matchers {
             seenBy = Set.empty
           )
         )
-      w.consideredNodes.map(_.member) should ===(Set(up, leaving, exiting, down))
+      w.nonJoiningNodes.map(_.member) should ===(Set(up, leaving, exiting, down))
     }
 
     "update self" in {

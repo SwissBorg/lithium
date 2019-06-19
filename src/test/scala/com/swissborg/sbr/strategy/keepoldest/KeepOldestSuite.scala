@@ -2,7 +2,7 @@ package com.swissborg.sbr.strategy.keepoldest
 
 import akka.actor.Address
 import akka.cluster.ClusterEvent.CurrentClusterState
-import akka.cluster.MemberStatus.Up
+import akka.cluster.MemberStatus._
 import akka.cluster.swissborg.TestMember
 import cats.implicits._
 import com.swissborg.sbr.WorldView
@@ -19,6 +19,8 @@ class KeepOldestSuite extends WordSpec with Matchers {
   val cc = TestMember(Address("akka.tcp", "sys", "c", 2552), Up, Set("role"))
   val dd = TestMember(Address("akka.tcp", "sys", "d", 2552), Up, Set("role"))
   val ee = TestMember(Address("akka.tcp", "sys", "e", 2552), Up, Set("role"))
+
+  val weaklyUpBB = TestMember(Address("akka.tcp", "sys", "b", 2552), WeaklyUp)
 
   "KeepOldest" must {
     "down the unreachable nodes when being the oldest node and not alone" in {
@@ -191,7 +193,7 @@ class KeepOldestSuite extends WordSpec with Matchers {
       )
     }
 
-    "not down the oldest nodes when alone in the cluster" in {
+    "not down the oldest node when alone in the cluster" in {
       val w = WorldView.fromSnapshot(
         aa,
         CurrentClusterState(SortedSet(aa), seenBy = Set.empty)
@@ -200,14 +202,19 @@ class KeepOldestSuite extends WordSpec with Matchers {
       new KeepOldest[Try](Config(downIfAlone = false, role = ""))
         .takeDecision(w)
         .map(_.simplify)
-        .get should ===(
-        Idle
+        .get should ===(Idle)
+    }
+
+    "down the oldest node when alone in the cluster" in {
+      val w = WorldView.fromSnapshot(
+        aa,
+        CurrentClusterState(SortedSet(aa), seenBy = Set.empty)
       )
 
       new KeepOldest[Try](Config(downIfAlone = true, role = ""))
         .takeDecision(w)
         .map(_.simplify)
-        .get should ===(Idle)
+        .get should ===(DownReachable(w))
     }
 
     "down the cluster when uncertain if alone" in {
@@ -228,6 +235,17 @@ class KeepOldestSuite extends WordSpec with Matchers {
       )
 
       keepOldest.takeDecision(w1).get should ===(DownReachable(w1))
+    }
+
+    "take in account joining nodes when checking if the unreachable oldest node is alone" in {
+      val w = WorldView.fromSnapshot(
+        cc,
+        CurrentClusterState(SortedSet(aa, weaklyUpBB, cc), Set(aa, weaklyUpBB), seenBy = Set.empty)
+      )
+
+      new KeepOldest[Try](Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(
+        DownReachable(w)
+      )
     }
   }
 }

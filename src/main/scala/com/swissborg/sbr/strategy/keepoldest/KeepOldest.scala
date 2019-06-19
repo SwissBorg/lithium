@@ -21,68 +21,49 @@ private[sbr] class KeepOldest[F[_]: ApplicativeError[?[_], Throwable]](config: C
   import config._
 
   override def takeDecision(worldView: WorldView): F[StrategyDecision] = {
-    val consideredNodes = worldView.consideredNodesWithRole(role)
-    val allNodesSortedByAge = consideredNodes.toList.sortBy(_.member)(Member.ageOrdering)
-
-    lazy val consideredCleanNodes = worldView.consideredCleanNodesWithRole(role)
+    val consideredNonICNodes = worldView.nonJoiningNonICNodesWithRole(role)
+    val allNodesSortedByAge = consideredNonICNodes.toList.sortBy(_.member)(Member.ageOrdering)
 
     // If there are no nodes in the cluster with the given role the current partition is downed.
-    allNodesSortedByAge.headOption.fold(downReachable(worldView).pure[F]) {
-      case _: ReachableNode =>
-        val decision = if (downIfAlone) {
-          if (consideredCleanNodes.size === 1) {
-            // The oldest is the only node in the cluster.
-            // Ignoring indirectly-connected nodes as they will downed.
-            // In this case we make the decision to not down
-            // the cluster even if the oldest is alone.
-            idle
-          } else if (worldView.consideredReachableNodesWithRole(role).size === 1 &&
-                     worldView.indirectlyConnectedNodesWithRole(role).isEmpty) {
-            // The oldest node is seen as cut off from the rest of the cluster
-            // from the partitions. The other partitions cannot see the indirectly
-            // connected nodes in this partition and think they exist so they have
-            // to be counted.
-            DownReachable(worldView)
+    allNodesSortedByAge.headOption
+      .fold(downReachable(worldView)) {
+        case _: ReachableNode =>
+          if (downIfAlone) {
+            if (worldView.nonJoiningReachableNodesWithRole(role).size > 1) {
+              // The indirectly-connected nodes are also taken in account
+              // as they are seen as unreachable from the other partitions.
+              downUnreachable(worldView)
+            } else {
+              downReachable(worldView)
+            }
           } else {
-            // The oldest node is not alone from the point of view of the other
-            // partitions.
             downUnreachable(worldView)
           }
-        } else {
-          downUnreachable(worldView)
-        }
 
-        decision.pure[F]
-
-      case _: UnreachableNode =>
-        val decision = if (downIfAlone) {
-          if (consideredCleanNodes.size === 1) {
-            // The oldest is the only node in the cluster.
-            // Ignoring indirectly-connected nodes as they will downed.
-            // This decision should never be triggered but
-            // it is left here just in case. Else the cluster
-            // could down itself unnecessarily.
-            downReachable(worldView)
-          } else if (worldView.consideredUnreachableNodesWithRole(role).size === 1) {
-            // The oldest node is cut off from the rest of the cluster.
-            DownUnreachable(worldView)
+        case _: UnreachableNode =>
+          if (downIfAlone) {
+            if (worldView.unreachableNodesWithRole(role).size > 1) {
+              // The oldest node is not alone.
+              //
+              // Also looks at joining nodes. If one of the unreachable
+              // nodes moved to up during the partition and the change
+              // was not seen by this partition the strategy might create
+              // a split-brain. By assuming it was the problem is solved.
+              // However, this can lead to the cluster being downed
+              // unnecessarily if the unreachable joining nodes did
+              // not move to up.
+              downReachable(worldView)
+            } else {
+              downUnreachable(worldView)
+            }
           } else {
-            // We cannot safely say that the oldest node is alone.
-            // There might be more than two partitions but this cannot
-            // be known within a partition.
             downReachable(worldView)
           }
-        } else {
-          downReachable(worldView)
-        }
-
-        decision.pure[F]
-
-      case _: IndirectlyConnectedNode =>
-        // Will be downed by the indirectly connected strategy.
-        idle.pure[F]
-    }
+      }
+      .pure[F]
   }
+
+  override def toString: String = s"KeepOldest($config)"
 }
 
 private[sbr] object KeepOldest {

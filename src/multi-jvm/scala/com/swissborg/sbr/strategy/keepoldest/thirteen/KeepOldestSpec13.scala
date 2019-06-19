@@ -21,8 +21,7 @@ class KeepOldestSpec13MultiJvmNode5 extends KeepOldestSpec13
   * Node5 is not aware of the fact that node3 and node4 are indirectly connected so doesn't
   * see the oldest node (node2) alone. On the other hand, node2, from his point of view, is alone
   * (based on the role and the fact that node3 and node4 are IC). Partition (2) will down itself and
-  * partition (1) will to not down itself (even if the oldest is alone) so that the cluster doesn't
-  * go down.
+  * partition (1) will also down itself.
   */
 class KeepOldestSpec13 extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecDownAloneConfig) {
   override def assertions(): Unit =
@@ -38,11 +37,7 @@ class KeepOldestSpec13 extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecDown
 
       enterBarrier("links-failed")
 
-      runOn(node1, node2) {
-        waitForDownOrGone(node3, node4, node5)
-      }
-
-      runOn(node3, node4, node5) {
+      runOn(node1, node2, node3, node4, node5) {
         waitForSelfDowning
       }
 

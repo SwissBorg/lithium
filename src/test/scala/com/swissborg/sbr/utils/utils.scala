@@ -1,12 +1,15 @@
 package com.swissborg.sbr
 
 import cats.data.{NonEmptyList, NonEmptySet}
+import cats.implicits._
 import eu.timepit.refined._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import org.scalacheck.Arbitrary
 import org.scalacheck.Gen._
+
+import scala.collection.immutable.SortedSet
 
 package object utils {
 
@@ -31,4 +34,8 @@ package object utils {
         } yield NonEmptySet.fromSetUnsafe(newSet) :: newSets
       }
     }
+
+  def pickNonEmptySubset[A: Ordering](as: NonEmptySet[A]): Arbitrary[NonEmptySet[A]] = Arbitrary {
+    atLeastOne(as.toSortedSet).map(seq => NonEmptySet.fromSetUnsafe(SortedSet(seq: _*)))
+  }
 }

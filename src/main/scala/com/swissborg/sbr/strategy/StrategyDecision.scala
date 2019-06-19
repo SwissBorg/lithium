@@ -16,21 +16,17 @@ private[sbr] object StrategyDecision {
 
   /**
     * The reachable nodes that should be downed.
+    * Also downs the `selfNode` if it is indirectly-connected.
     */
-  sealed abstract case class DownReachable(nodeGroup: Set[ReachableNode]) extends StrategyDecision
+  sealed abstract case class DownReachable(nodesToDown: Set[ReachableNode], selfNode: Node)
+      extends StrategyDecision
 
   object DownReachable {
     def apply(worldView: WorldView): DownReachable =
-      new DownReachable(worldView.reachableNodes) {}
+      new DownReachable(worldView.reachableNodes, worldView.selfNode) {}
   }
 
-  sealed abstract case class DownSelf(node: Node) extends StrategyDecision
-
-  object DownSelf {
-    def apply(worldView: WorldView): DownSelf = new DownSelf(worldView.selfNode) {}
-  }
-
-  sealed abstract case class DownIndirectlyConnected(nodeGroup: Set[IndirectlyConnectedNode])
+  sealed abstract case class DownIndirectlyConnected(nodesToDown: Set[IndirectlyConnectedNode])
       extends StrategyDecision
 
   object DownIndirectlyConnected {
@@ -41,7 +37,7 @@ private[sbr] object StrategyDecision {
   /**
     * The unreachable nodes that should be downed.
     */
-  sealed abstract case class DownUnreachable(nodeGroup: Set[UnreachableNode])
+  sealed abstract case class DownUnreachable(nodesToDown: Set[UnreachableNode])
       extends StrategyDecision
 
   object DownUnreachable {
@@ -52,9 +48,6 @@ private[sbr] object StrategyDecision {
   final case class DownThese(decision1: StrategyDecision, decision2: StrategyDecision)
       extends StrategyDecision
 
-  /**
-    * Nothing has to be done.
-    */
   case object Idle extends StrategyDecision
 
   final case class SimpleStrategyDecision(
@@ -73,13 +66,11 @@ private[sbr] object StrategyDecision {
     * Get the nodes to down given the strategy decision.
     */
   val nodesToDown: Getter[StrategyDecision, Set[Node]] = Getter[StrategyDecision, Set[Node]] {
-    case DownThese(decision1, decision2)   => nodesToDown.get(decision1) ++ nodesToDown.get(decision2)
-    case DownSelf(node)                    => Set(node)
-    case DownReachable(reachableNodes)     => reachableNodes.map(identity[Node])
-    case DownUnreachable(unreachableNodes) => unreachableNodes.map(identity[Node])
-    case DownIndirectlyConnected(indirectlyConnectedNodes) =>
-      indirectlyConnectedNodes.map(identity[Node])
-    case _: Idle.type => Set.empty
+    case DownThese(decision1, decision2)      => decision1.nodesToDown ++ decision2.nodesToDown
+    case DownReachable(nodesToDown, selfNode) => nodesToDown.map(identity[Node]) + selfNode
+    case DownUnreachable(nodesToDown)         => nodesToDown.map(identity[Node])
+    case DownIndirectlyConnected(nodesToDown) => nodesToDown.map(identity[Node])
+    case _: Idle.type                         => Set.empty
   }
 
   implicit class DecisionOps(private val decision: StrategyDecision) extends AnyVal {
@@ -93,9 +84,9 @@ private[sbr] object StrategyDecision {
       if (decision.nodesToDown.isEmpty) Idle
       else {
         decision match {
-          case Idle | _: DownSelf | _: DownIndirectlyConnected | _: DownUnreachable |
-              _: DownReachable =>
+          case Idle | _: DownIndirectlyConnected | _: DownUnreachable | _: DownReachable =>
             decision
+
           case DownThese(decision1, decision2) =>
             if (decision1.nodesToDown.isEmpty) decision2.simplify
             else if (decision2.nodesToDown.isEmpty) decision1.simplify
@@ -135,10 +126,6 @@ private[sbr] object StrategyDecision {
 
   def downIndirectlyConnected(worldView: WorldView): StrategyDecision =
     DownIndirectlyConnected(worldView)
-
-  def downSelf(worldView: WorldView): StrategyDecision = DownSelf(worldView)
-
-  val idle: StrategyDecision = Idle
 
   /**
     * Monoid combining decisions by yielding new one that is a union of both.
