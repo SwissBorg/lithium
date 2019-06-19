@@ -28,7 +28,7 @@ class Simulation[F[_]: Functor, Strat[_[_]], S <: Scenario](val strategy: Strat[
       .foldMap { worldView =>
         strategy.takeDecision(worldView).map(PostResolution.fromDecision(worldView))
       }
-      .map(_.noSplitBrain)
+      .map(_.isResolved)
   }
 
   override def toString: String = s"Simulation($strategy, $scenario)"

@@ -5,16 +5,16 @@ import com.swissborg.sbr.{SBSpec, WorldView}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 
-class ReachableNodesSpec extends SBSpec {
-  "ReachableNodes" must {
+class ReachableQuorumSpec extends SBSpec {
+  "ReachableQuorum" must {
     "instantiate the correct instance" in {
       forAll { (worldView: WorldView, quorumSize: Int Refined Positive, role: String) =>
-        ReachableNodes(worldView, quorumSize, role) match {
-          case ReachableQuorum =>
-            worldView.consideredReachableNodesWithRole(role).size should be >= quorumSize.value
+        ReachableQuorum(worldView, quorumSize, role) match {
+          case ReachableQuorum.Quorum =>
+            worldView.nonJoiningReachableNodesWithRole(role).size should be >= quorumSize.value
 
-          case ReachableSubQuorum =>
-            worldView.consideredReachableNodesWithRole(role).size should be < quorumSize.value
+          case ReachableQuorum.NoQuorum =>
+            worldView.nonJoiningReachableNodesWithRole(role).size should be < quorumSize.value
         }
       }
     }

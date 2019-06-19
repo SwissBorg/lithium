@@ -18,32 +18,31 @@ final case class PostResolution(
 ) {
 
   /**
-    * True if there are no unreachable nodes in the cluster and
+    * True if there are no non-reachable nodes in the cluster and
     * that all the partitions have the same elements, aka the
-    * resolution did create multiple clusters.
+    * resolution did not create multiple clusters.
     */
-  lazy val noSplitBrain: Boolean = {
+  lazy val isResolved: Boolean = {
     val nonEmptyPartitions = partitions.filter(_.nonEmpty)
 
-    if (nonEmptyPartitions.lengthCompare(1) > 0) {
-      // At least 2 non-empty partitions
+    val allReachableNodes = nonEmptyPartitions.forall(_.forall {
+      case _: ReachableNode => true
+      case _                => false
+    })
+
+    lazy val noSplitBrain = if (nonEmptyPartitions.lengthCompare(1) > 0) {
       nonEmptyPartitions.tail
         .foldLeft((true, nonEmptyPartitions.head)) {
           case ((noSplitBrain, expectedPartition), partition) =>
-            val hasSameNodes = expectedPartition.sameElements(partition)
-
-            val allReachableNodes = partition.forall {
-              case _: ReachableNode => true
-              case _                => false
-            }
-
-            (noSplitBrain && hasSameNodes && allReachableNodes, expectedPartition)
+            (noSplitBrain && expectedPartition.sameElements(partition), expectedPartition)
         }
         ._1
     } else {
       // 1 or less non-empty partitions
       true
     }
+
+    allReachableNodes && noSplitBrain
   }
 }
 
@@ -60,13 +59,7 @@ object PostResolution {
       case DownThese(_, _: DownReachable) => PostResolution.empty
 
       case _ =>
-        val nodesAfterDowning = decision.nodesToDown.iterator
-          .foldLeft(worldView) {
-            case (worldView, nodeToDown) => worldView.removeMember(nodeToDown.member)
-          }
-          .nodes
-          .toSortedSet
-
+        val nodesAfterDowning = worldView.nodes.toSortedSet -- decision.nodesToDown
         PostResolution.one(nodesAfterDowning)
     }
 

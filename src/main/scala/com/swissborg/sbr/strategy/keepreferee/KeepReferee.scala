@@ -24,15 +24,17 @@ private[sbr] class KeepReferee[F[_]: Applicative](config: Config) extends Strate
   import config._
 
   override def takeDecision(worldView: WorldView): F[StrategyDecision] =
-    worldView.consideredReachableNodes
+    worldView.nonJoiningReachableNodes
       .find(_.member.address.toString === address.value)
       .fold(StrategyDecision.downReachable(worldView)) { _ =>
-        if (worldView.consideredReachableNodes.size < downAllIfLessThanNodes)
+        if (worldView.nonJoiningReachableNodes.size < downAllIfLessThanNodes)
           StrategyDecision.downReachable(worldView)
         else
           StrategyDecision.downUnreachable(worldView)
       }
       .pure[F]
+
+  override def toString: String = s"KeepReferee($config)"
 }
 
 private[sbr] object KeepReferee {
