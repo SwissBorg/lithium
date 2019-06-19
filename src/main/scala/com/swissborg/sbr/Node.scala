@@ -36,17 +36,20 @@ private[sbr] object Node {
   implicit val nodeOrder: Order[Node] = Order.fromOrdering
 }
 
-private[sbr] sealed trait CleanNode extends Node
+private[sbr] sealed trait NonIndirectlyConnectedNode extends Node
 
-private[sbr] object CleanNode {
-  implicit val consideredNodeOrdering: Ordering[CleanNode] = Ordering.by(_.member)
-  implicit val consideredNodeOrder: Order[CleanNode] = Order.fromOrdering
+private[sbr] object NonIndirectlyConnectedNode {
+  implicit val nonIndirectlyConnectedNodeOrdering: Ordering[NonIndirectlyConnectedNode] =
+    Ordering.by(_.member)
+
+  implicit val nonIndirectlyConnectedNodeOrder: Order[NonIndirectlyConnectedNode] =
+    Order.fromOrdering
 }
 
 /**
   * A cluster node that cannot be reached from any of its observers.
   */
-private[sbr] final case class UnreachableNode(member: Member) extends CleanNode {
+private[sbr] final case class UnreachableNode(member: Member) extends NonIndirectlyConnectedNode {
   override def copyMember(member: Member): Node = copy(member = member)
 }
 
@@ -58,7 +61,7 @@ private[sbr] object UnreachableNode {
 /**
   * A cluster nodes that can be reached by all its observers.
   */
-private[sbr] final case class ReachableNode(member: Member) extends CleanNode {
+private[sbr] final case class ReachableNode(member: Member) extends NonIndirectlyConnectedNode {
   override def copyMember(member: Member): Node = copy(member = member)
 }
 

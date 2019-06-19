@@ -48,9 +48,6 @@ private[sbr] object StrategyDecision {
   final case class DownThese(decision1: StrategyDecision, decision2: StrategyDecision)
       extends StrategyDecision
 
-  /**
-    * Nothing has to be done.
-    */
   case object Idle extends StrategyDecision
 
   final case class SimpleStrategyDecision(
@@ -129,8 +126,6 @@ private[sbr] object StrategyDecision {
 
   def downIndirectlyConnected(worldView: WorldView): StrategyDecision =
     DownIndirectlyConnected(worldView)
-
-  val idle: StrategyDecision = Idle
 
   /**
     * Monoid combining decisions by yielding new one that is a union of both.

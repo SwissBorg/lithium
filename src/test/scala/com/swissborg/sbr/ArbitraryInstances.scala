@@ -130,15 +130,10 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
         selfNode <- arbitrary[JoiningOrWeaklyUpMember]
         nodes <- arbitrary[Set[JoiningOrWeaklyUpMember]]
         nodes0 = nodes - selfNode
-
-        selfNodeStatuses = selfNode.copyUp(0)
-        nodes0Statuses = nodes0.toList.zipWithIndex.map {
-          case (weaklyUpMember, ix) => ReachableNode(weaklyUpMember.copyUp(ix + 1))
-        }.toSet
-
-        worldView = WorldView
-          .fromNodes(ReachableNode(selfNodeStatuses), nodes0Statuses.map(identity))
-      } yield tag[JoiningOrWeaklyUpOnlyTag][WorldView](worldView)
+      } yield
+        tag[JoiningOrWeaklyUpOnlyTag][WorldView](
+          WorldView.fromNodes(ReachableNode(selfNode), nodes0.map(ReachableNode(_)))
+        )
     )
 
   implicit val arbNode: Arbitrary[Node] =

@@ -157,8 +157,8 @@ it is cut-off from the rest. This can prevent the scenario where you have a 100
 node cluster, the oldest node become unreachable. 99 nodes will be downed and 
 leave the cluster heavily crippled.
 
-When `down-if-alone` is enabled, multiple partitions occur, and the oldest node is alone.
-The cluster will down itself as a partition cannot know if the unreachable nodes are in
+When `down-if-alone` is enabled, multiple partitions occur, and the oldest node is alone 
+the cluster will down itself as a partition cannot know if the unreachable nodes are in
 a single partition or form multiple ones. Hence, it then assumes that there is only one
 other partition and downs itself. On the other side, the oldest node (who is alone) knows
 it is alone and will down itself.

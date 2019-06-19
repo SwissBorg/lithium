@@ -13,19 +13,19 @@ object ArbitraryInstances extends com.swissborg.sbr.ArbitraryInstances {
     posNum[Int].map(refineV[Positive](_).right.get) // trust me
   }
 
-  implicit val arbReachableNodes: Arbitrary[ReachableNodes] = Arbitrary(
+  implicit val arbReachableNodes: Arbitrary[ReachableQuorum] = Arbitrary(
     for {
       worldView <- arbitrary[WorldView]
       quorumSize <- arbitrary[Int Refined Positive]
       role <- arbitrary[String]
-    } yield ReachableNodes(worldView, quorumSize, role)
+    } yield ReachableQuorum(worldView, quorumSize, role)
   )
 
-  implicit val arbUnreachableNodes: Arbitrary[UnreachableNodes] = Arbitrary(
+  implicit val arbUnreachableNodes: Arbitrary[UnreachableQuorum] = Arbitrary(
     for {
       worldView <- arbitrary[WorldView]
       quorumSize <- arbitrary[Int Refined Positive]
       role <- arbitrary[String]
-    } yield UnreachableNodes(worldView, quorumSize, role)
+    } yield UnreachableQuorum(worldView, quorumSize, role)
   )
 }
