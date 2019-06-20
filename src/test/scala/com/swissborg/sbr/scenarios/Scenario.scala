@@ -5,7 +5,6 @@ import akka.cluster.MemberStatus.{Joining, Removed, WeaklyUp}
 import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
 import com.swissborg.sbr.ArbitraryInstances._
-import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.testImplicits._
 import com.swissborg.sbr.utils._
 import com.swissborg.sbr.{Node, ReachableNode, WorldView}

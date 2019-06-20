@@ -2,6 +2,7 @@ package com.swissborg.sbr
 
 import akka.cluster.ClusterEvent._
 import akka.cluster.Member
+import com.swissborg.sbr.testImplicits._
 import cats.implicits._
 
 class WorldViewSpec extends SBSpec {

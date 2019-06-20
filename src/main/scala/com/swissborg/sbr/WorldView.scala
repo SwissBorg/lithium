@@ -13,6 +13,8 @@ import com.swissborg.sbr.reachability.SBReachabilityReporter._
 import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder
 
+import scala.collection.immutable.SortedSet
+
 /**
   * Represents the view of the cluster from the point of view of the
   * `selfNode`.
@@ -54,60 +56,62 @@ private[sbr] final case class WorldView private (
 
   lazy val members: NonEmptySet[Member] = nodes.map(_.member)
 
-  lazy val nonJoiningNodes: Set[Node] = nodes.filter(isNonJoining)
+  lazy val nonJoiningNodes: SortedSet[Node] = nodes.filter(isNonJoining)
 
-  def nonJoiningNodesWithRole(role: String): Set[Node] =
+  def nonJoiningNodesWithRole(role: String): SortedSet[Node] =
     if (role.nonEmpty) nonJoiningNodes.filter(_.member.roles.contains(role)) else nonJoiningNodes
 
-  lazy val nonJoiningNonICNodes: Set[NonIndirectlyConnectedNode] = nodes.collect {
+  lazy val nonJoiningNonICNodes: SortedSet[NonIndirectlyConnectedNode] = nodes.collect {
     case node: NonIndirectlyConnectedNode if isNonJoining(node) => node
   }
 
-  def nonJoiningNonICNodesWithRole(role: String): Set[NonIndirectlyConnectedNode] =
+  def nonJoiningNonICNodesWithRole(role: String): SortedSet[NonIndirectlyConnectedNode] =
     if (role.nonEmpty) nonJoiningNonICNodes.filter(_.member.roles.contains(role))
     else nonJoiningNonICNodes
 
-  lazy val nonJoiningReachableNodes: Set[ReachableNode] = reachableNodes.collect {
+  lazy val nonJoiningReachableNodes: SortedSet[ReachableNode] = reachableNodes.collect {
     case n if isNonJoining(n) => n
   }
 
-  def nonJoiningReachableNodesWithRole(role: String): Set[ReachableNode] =
+  def nonJoiningReachableNodesWithRole(role: String): SortedSet[ReachableNode] =
     if (role.nonEmpty) nonJoiningReachableNodes.filter(_.member.roles.contains(role))
     else nonJoiningReachableNodes
 
   /**
     * All the reachable nodes.
     */
-  lazy val reachableNodes: Set[ReachableNode] = nodes.collect { case r: ReachableNode => r }
+  lazy val reachableNodes: SortedSet[ReachableNode] = nodes.collect { case r: ReachableNode => r }
 
   /**
     * All the unreachable nodes.
     */
-  lazy val unreachableNodes: Set[UnreachableNode] = nodes.collect { case r: UnreachableNode => r }
+  lazy val unreachableNodes: SortedSet[UnreachableNode] = nodes.collect {
+    case r: UnreachableNode => r
+  }
 
   /**
     * The indirectly connected nodes with the given role.
     */
-  def indirectlyConnectedNodesWithRole(role: String): Set[IndirectlyConnectedNode] =
+  def indirectlyConnectedNodesWithRole(role: String): SortedSet[IndirectlyConnectedNode] =
     if (role.nonEmpty) indirectlyConnectedNodes.filter(_.member.roles.contains(role))
     else indirectlyConnectedNodes
 
   /**
     * All the indirectly connected nodes.
     */
-  lazy val indirectlyConnectedNodes: Set[IndirectlyConnectedNode] = nodes.collect {
+  lazy val indirectlyConnectedNodes: SortedSet[IndirectlyConnectedNode] = nodes.collect {
     case r: IndirectlyConnectedNode => r
   }
 
-  lazy val nonJoiningUnreachableNodes: Set[UnreachableNode] = unreachableNodes.collect {
+  lazy val nonJoiningUnreachableNodes: SortedSet[UnreachableNode] = unreachableNodes.collect {
     case n if isNonJoining(n) => n
   }
 
-  def unreachableNodesWithRole(role: String): Set[UnreachableNode] =
+  def unreachableNodesWithRole(role: String): SortedSet[UnreachableNode] =
     if (role.nonEmpty) unreachableNodes.filter(_.member.roles.contains(role))
     else unreachableNodes
 
-  def nonJoiningUnreachableNodesWithRole(role: String): Set[UnreachableNode] =
+  def nonJoiningUnreachableNodesWithRole(role: String): SortedSet[UnreachableNode] =
     if (role.nonEmpty) nonJoiningUnreachableNodes.filter(_.member.roles.contains(role))
     else nonJoiningUnreachableNodes
 
@@ -297,7 +301,7 @@ private[sbr] object WorldView {
     *
     * Used in tests.
     */
-  def fromNodes(selfNode: Node, otherNodes: Set[Node]): WorldView = {
+  def fromNodes(selfNode: Node, otherNodes: SortedSet[Node]): WorldView = {
     def convert(node: Node): (UniqueAddress, Status) =
       node.member.uniqueAddress -> (node match {
         case _: UnreachableNode         => Status(node.member, Unreachable)

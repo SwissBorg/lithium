@@ -24,7 +24,7 @@ class KeepMajoritySpec extends ThreeNodeSpec("KeepMajority", KeepMajoritySpecThr
 
       runOn(node1, node2) {
         waitForSurvivors(node1, node2)
-        waitForDownOrGone(node3)
+        waitForAllLeaving(node3)
       }
 
       runOn(node3) {
