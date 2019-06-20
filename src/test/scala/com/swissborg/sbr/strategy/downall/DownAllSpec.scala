@@ -5,12 +5,8 @@ import cats.implicits._
 import com.swissborg.sbr._
 import com.swissborg.sbr.scenarios._
 import com.swissborg.sbr.strategy.StrategyDecision._
-import com.swissborg.sbr.strategy.Union
-import com.swissborg.sbr.strategy.indirectlyconnected.IndirectlyConnected
 
 class DownAllSpec extends SBSpec {
-  import DownAllSpec._
-
   "DownAll" must {
     "always down nodes" in {
       val downAll: DownAll[Id] = new DownAll[Id]
@@ -32,25 +28,22 @@ class DownAllSpec extends SBSpec {
       "handle a split during the oldest-removed scenarios"
     )(identity)
 
-    simulate[Id, DownAllWithIC, IndirectlyConnectedScenario]("handle non-clean partitions")(
+    simulateWithNonCleanPartitions[Id, DownAll, CleanPartitionsScenario](
+      "handle non-clean partitions"
+    )(
       identity
     )
 
-    simulate[Id, DownAllWithIC, WithIndirectlyConnected[UpDisseminationScenario]](
+    simulateWithNonCleanPartitions[Id, DownAll, UpDisseminationScenario](
       "handle non-clean partitions during up-dissemination scenarios"
     )(
       identity
     )
 
-    simulate[Id, DownAllWithIC, WithIndirectlyConnected[OldestRemovedDisseminationScenario]](
+    simulateWithNonCleanPartitions[Id, DownAll, OldestRemovedDisseminationScenario](
       "handle non-clean partitions during oldest-removed scenarios"
     )(
       identity
     )
   }
-}
-
-object DownAllSpec {
-  // TODO not needed it already downs everything.
-  type DownAllWithIC[F[_]] = Union[F, DownAll, IndirectlyConnected]
 }

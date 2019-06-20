@@ -192,14 +192,14 @@ object UpDisseminationScenario {
   }
 }
 
-final case class WithIndirectlyConnected[S <: Scenario](
+final case class WithNonCleanPartitions[S <: Scenario](
     worldViews: NonEmptyList[WorldView],
     clusterSize: Int Refined Positive
 ) extends Scenario
 
-object WithIndirectlyConnected {
-  implicit def arbWithIndirectlyConnectedScenario[S <: Scenario: Arbitrary]
-      : Arbitrary[WithIndirectlyConnected[S]] = Arbitrary {
+object WithNonCleanPartitions {
+  implicit def arbWithNonCleanPartitions[S <: Scenario: Arbitrary]
+      : Arbitrary[WithNonCleanPartitions[S]] = Arbitrary {
     for {
       scenario <- arbitrary[S]
 
@@ -210,6 +210,6 @@ object WithIndirectlyConnected {
             worldView.withIndirectlyConnectedNode(indirectlyConnectedNode.member.uniqueAddress)
         })
       }
-    } yield WithIndirectlyConnected(worldViews, scenario.clusterSize)
+    } yield WithNonCleanPartitions(worldViews, scenario.clusterSize)
   }
 }

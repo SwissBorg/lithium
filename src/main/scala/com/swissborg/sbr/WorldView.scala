@@ -8,11 +8,7 @@ import cats.implicits._
 import cats.kernel.Eq
 import com.swissborg.sbr.WorldView.Status
 import com.swissborg.sbr.implicits._
-import com.swissborg.sbr.reachability.SBReachabilityReporter.SBReachabilityStatus.{
-  IndirectlyConnected,
-  Reachable,
-  Unreachable
-}
+import com.swissborg.sbr.reachability.SBReachabilityReporter.SBReachabilityStatus._
 import com.swissborg.sbr.reachability.SBReachabilityReporter._
 import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder
@@ -22,8 +18,8 @@ import io.circe.generic.semiauto.deriveEncoder
   * `selfNode`.
   */
 private[sbr] final case class WorldView private (
-    val selfUniqueAddress: UniqueAddress,
-    val selfStatus: Status,
+    selfUniqueAddress: UniqueAddress,
+    selfStatus: Status,
     /**
       * The ordering on nodes is defined on their unique address,
       * ignoring for instance the status.
@@ -34,7 +30,7 @@ private[sbr] final case class WorldView private (
       * then added. Only adding it will not override the value as they
       * are equal given the ordering.
       */
-    val otherMembersStatus: Map[UniqueAddress, Status]
+    otherMembersStatus: Map[UniqueAddress, Status]
 ) {
   import WorldView._
 
