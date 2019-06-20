@@ -36,28 +36,27 @@ private[sbr] class SBResolver(
 
   import SBResolver._
 
-  context.actorOf(SBSplitBrainReporter.props(self, stableAfter, downAllWhenUnstable))
+  context.actorOf(
+    SBSplitBrainReporter.props(self, stableAfter, downAllWhenUnstable),
+    "splitbrain-reporter"
+  )
 
   private val cluster: Cluster = Cluster(context.system)
 
   private val selfAddress: Address = cluster.selfMember.address
 
-  private val defaultStrategy: Union[SyncIO, Strategy, IndirectlyConnected] =
+  private val strategy: Union[SyncIO, Strategy, IndirectlyConnected] =
     new Union(_strategy, new IndirectlyConnected)
 
   private val downAll: downall.DownAll[SyncIO] = new downall.DownAll()
 
   override def receive: Receive = {
-    case e @ HandleSplitBrain(worldView) =>
-      log.info("Received split-brain to resolve...")
-      log.info(e.simple.asJson.noSpaces)
-
-      runStrategy(defaultStrategy, worldView).unsafeRunSync()
+    case HandleSplitBrain(worldView) =>
+      log.info(s"Received request to handle a split-brain... {}", worldView.simple.asJson.noSpaces)
+      runStrategy(strategy, worldView).unsafeRunSync()
 
     case DownAll(worldView) =>
-      log.info("Downing all...")
-      log.info(worldView.simple.asJson.noSpaces)
-
+      log.info(s"Received request to down all the nodes... {}", worldView.simple.asJson.noSpaces)
       runStrategy(downAll, worldView).unsafeRunSync()
   }
 
@@ -79,7 +78,7 @@ private[sbr] class SBResolver(
               liftF(
                 SyncIO(
                   log.warning(
-                    "SPLIT-BRAIN MUST BE MANUALLY RESOLVED. The leader is joining the cluster and misses information."
+                    "SPLIT-BRAIN MUST BE MANUALLY RESOLVED! The leader is joining or weakly-up and misses information."
                   )
                 )
               ).as(true)
@@ -88,12 +87,15 @@ private[sbr] class SBResolver(
             }
         )
         .ifM(
-          down(decision.nodesToDown) >> liftF(SyncIO(log.info(decision.simple.asJson.noSpaces))),
-          liftF(SyncIO(log.info("Cannot take a decision. Not the leader.")))
+          down(decision.nodesToDown) >> liftF(downingLogMessage(decision)),
+          liftF(SyncIO(log.info("Ignored the request, not the leader.")))
         )
         .value
         .void
     }
+
+    def downingLogMessage(decision: StrategyDecision): SyncIO[Unit] =
+      SyncIO(log.info("Downing the nodes: {}", decision.simple.asJson.noSpaces))
 
     strategy.takeDecision(worldView).flatMap(execute)
   }.handleErrorWith(err => SyncIO(log.error(err, "An error occurred during decision making.")))

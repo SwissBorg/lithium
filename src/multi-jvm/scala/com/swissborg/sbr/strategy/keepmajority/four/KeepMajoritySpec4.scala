@@ -17,16 +17,6 @@ class KeepMajoritySpec4 extends ThreeNodeSpec("KeepMajority", KeepMajoritySpecTh
         testConductor.blackhole(node2, node3, Direction.Receive).await
       }
 
-      enterBarrier("links-failed")
-
-      runOn(node2) {
-        waitToBecomeUnreachable(node3)
-      }
-
-      runOn(node1) {
-        waitToBecomeUnreachable(node2, node3)
-      }
-
       enterBarrier("split-brain")
 
       runOn(node2, node3) {
