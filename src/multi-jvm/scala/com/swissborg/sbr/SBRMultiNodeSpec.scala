@@ -27,12 +27,17 @@ abstract class SBRMultiNodeSpec(val config: MultiNodeConfig)
 
   protected def waitToBecomeUnreachable(roleNames: RoleName*): Unit =
     awaitCond(allUnreachable(roleNames: _*))
+
   protected def waitForSurvivors(roleNames: RoleName*): Unit =
     awaitCond(allSurvivors(roleNames: _*))
+
   protected def waitForUp(roleNames: RoleName*): Unit = awaitCond(allUp(roleNames: _*))
+
   protected def waitForSelfDowning(implicit system: ActorSystem): Unit = awaitCond(downedItself)
-  protected def waitForDownOrGone(roleNames: RoleName*): Unit =
-    awaitCond(allDownOrGone(roleNames: _*))
+
+  protected def waitForAllLeaving(roleNames: RoleName*): Unit =
+    awaitCond(allLeaving(roleNames: _*))
+
   protected def waitExistsAllDownOrGone(groups: Seq[Seq[RoleName]]): Unit =
     awaitCond(existsAllDownOrGone(groups))
 
@@ -51,22 +56,24 @@ abstract class SBRMultiNodeSpec(val config: MultiNodeConfig)
     )
 
   private def existsAllDownOrGone(groups: Seq[Seq[RoleName]]): Boolean =
-    groups.exists(group => allDownOrGone(group: _*))
+    groups.exists(group => allLeaving(group: _*))
 
   private def downedItself(implicit system: ActorSystem): Boolean = {
     val selfAddress = Cluster(system).selfAddress
+//    println(s"------------- ${Cluster(system).state.unreachable}")
     Cluster(system).state.members
-      .exists(m => m.address === selfAddress && (m.status === Down || m.address === Removed))
+      .exists(m => m.address === selfAddress && (m.status === Exiting || m.status === Down))
   }
 
-  private def allDownOrGone(roleNames: RoleName*): Boolean =
+  private def allLeaving(roleNames: RoleName*): Boolean =
     roleNames.forall { role =>
       val members = Cluster(system).state.members
       val unreachable = Cluster(system).state.unreachable
 
       val address = addressOf(role)
+
       unreachable.isEmpty && // no unreachable members
-      (members.exists(m => m.address === address && m.status === Down) || // member is down
+      (members.exists(m => m.address === address && (m.status === Down || m.status === Exiting)) || // member is down
       !members.exists(_.address === address)) // member is not in the cluster
     }
 }

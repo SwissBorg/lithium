@@ -24,7 +24,7 @@ class KeepMajoritySpec4 extends ThreeNodeSpec("KeepMajority", KeepMajoritySpecTh
       }
 
       runOn(node1) {
-        waitForDownOrGone(node2, node3)
+        waitForAllLeaving(node2, node3)
       }
 
       enterBarrier("split-brain-resolved")

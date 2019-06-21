@@ -34,7 +34,7 @@ class RoleStaticQuorumSpec extends FiveNodeSpec("StaticQuorum", RoleStaticQuorum
       enterBarrier("links-failed")
 
       runOn(node1, node2) {
-        waitForDownOrGone(node3, node4, node5)
+        waitForAllLeaving(node3, node4, node5)
       }
 
       runOn(node3, node4, node5) {

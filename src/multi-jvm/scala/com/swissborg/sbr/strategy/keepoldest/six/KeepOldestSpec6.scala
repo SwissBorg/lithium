@@ -30,7 +30,7 @@ class KeepOldestSpec6 extends FiveNodeSpec("KeepOldest", KeepOldestSpecFiveNodeC
       enterBarrier("links-failed")
 
       runOn(node1) {
-        waitForDownOrGone(node2, node3, node4, node5)
+        waitForAllLeaving(node2, node3, node4, node5)
       }
 
       runOn(node2, node3, node4, node5) {
