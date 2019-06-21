@@ -1,10 +1,11 @@
 package com.swissborg.sbr
 
 import cats.Applicative
-import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.Gen.const
+import org.scalacheck.{Arbitrary, Gen}
+import shapeless.tag.@@
 
-object testImplicits {
+object testImplicits extends com.swissborg.sbr.implicits {
   implicit val genApplicative: Applicative[Gen] = new Applicative[Gen] {
     override def pure[A](x: A): Gen[A] = const(x)
     override def ap[A, B](ff: Gen[A => B])(fa: Gen[A]): Gen[B] =
@@ -19,4 +20,6 @@ object testImplicits {
     override def ap[A, B](ff: Arbitrary[A => B])(fa: Arbitrary[A]): Arbitrary[B] =
       Arbitrary(Applicative[Gen].ap(ff.arbitrary)(fa.arbitrary))
   }
+
+  implicit def taggedOrdering[A: Ordering, B]: Ordering[A @@ B] = Ordering[A].on(identity)
 }

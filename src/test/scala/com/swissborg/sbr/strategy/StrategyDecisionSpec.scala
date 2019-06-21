@@ -2,16 +2,20 @@ package com.swissborg.sbr.strategy
 
 import cats.Monoid
 import cats.implicits._
+import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.strategy.StrategyDecision._
-import com.swissborg.sbr.{SBSpec, WorldView}
+import com.swissborg.sbr.{Node, SBSpec, WorldView}
+
+import scala.collection.immutable.SortedSet
 
 class StrategyDecisionSpec extends SBSpec {
   "StrategyDecision" must {
     "extract the correct nodes from the world view" in {
       forAll { worldView: WorldView =>
         DownReachable(worldView).nodesToDown.map(_.member) should ===(
-          worldView.reachableNodes.map(_.member)
+          worldView.nodes.map(_.member)
         )
+
         DownUnreachable(worldView).nodesToDown.map(_.member) should ===(
           worldView.unreachableNodes.map(_.member)
         )
@@ -21,9 +25,9 @@ class StrategyDecisionSpec extends SBSpec {
     "extract the correct nodes from the decision" in {
       forAll { strategyDecision: StrategyDecision =>
         strategyDecision match {
-          case DownReachable(nodesToDown, selfNode) =>
+          case DownReachable(nodesToDown) =>
             strategyDecision.nodesToDown.map(_.member) should ===(
-              nodesToDown.map(_.member) + selfNode.member
+              nodesToDown.map(_.member).toSortedSet
             )
 
           case DownUnreachable(nodesToDown) =>
@@ -42,11 +46,14 @@ class StrategyDecisionSpec extends SBSpec {
 
     "correctly combine decisions" in {
       forAll { decisions: List[StrategyDecision] =>
-        (decisions.flatMap(_.nodesToDown).toSet should contain).theSameElementsAs(
+        val expectedNodesToDown: SortedSet[Node] =
+          decisions.flatMap(_.nodesToDown)(collection.breakOut)
+
+        expectedNodesToDown should contain theSameElementsAs
           decisions
             .foldRight(Monoid[StrategyDecision].empty)(Monoid[StrategyDecision].combine)
             .nodesToDown
-        )
+
       }
     }
   }

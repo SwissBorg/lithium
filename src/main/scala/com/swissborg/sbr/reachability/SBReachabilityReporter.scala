@@ -55,9 +55,6 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
     case MemberRemoved(m, _) =>
       context.become(active(remove(m.uniqueAddress).runS(state).unsafeRunSync()))
 
-    case MemberDowned(m) =>
-      context.become(active(remove(m.uniqueAddress).runS(state).unsafeRunSync()))
-
     case ReachableMember(m) =>
       context.become(active(withReachable(m.uniqueAddress).runS(state).unsafeRunSync()))
 
