@@ -30,7 +30,7 @@ class StaticQuorumSpec5 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Co
 
       runOn(node1, node2, node3) {
         waitForSurvivors(node1, node2, node3)
-        waitForDownOrGone(node4, node5)
+        waitForAllLeaving(node4, node5)
       }
 
       runOn(node4, node5) {

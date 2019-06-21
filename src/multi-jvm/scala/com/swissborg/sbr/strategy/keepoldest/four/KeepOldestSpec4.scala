@@ -26,7 +26,7 @@ class KeepOldestSpec4 extends ThreeNodeSpec("KeepOldest", KeepOldestSpecThreeNod
       enterBarrier("links-failed")
 
       runOn(node3) {
-        waitForDownOrGone(node1, node2)
+        waitForAllLeaving(node1, node2)
       }
 
       runOn(node1, node2) {

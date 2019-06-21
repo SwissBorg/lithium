@@ -37,7 +37,7 @@ class KeepOldestSpec2 extends FiveNodeSpec("KeepOldest", KeepOldestSpecFiveNodeC
 
       runOn(node1) {
         waitForSurvivors(node1)
-        waitForDownOrGone(node2, node3, node4, node5)
+        waitForAllLeaving(node2, node3, node4, node5)
       }
 
       runOn(node2, node3, node4, node5) {
