@@ -10,7 +10,6 @@ import com.swissborg.sbr.strategy.keepreferee.KeepReferee
 import com.swissborg.sbr.strategy.keepreferee.KeepReferee.Config.Address
 import com.swissborg.sbr.strategy.staticquorum.StaticQuorum
 import com.swissborg.sbr.ArbitraryInstances._
-import com.swissborg.sbr.strategy.StrategyDecision.DownIndirectlyConnected
 import com.swissborg.sbr.strategy.indirectlyconnected.IndirectlyConnected
 import com.swissborg.sbr.strategy.{Strategy, Union}
 import eu.timepit.refined.auto._

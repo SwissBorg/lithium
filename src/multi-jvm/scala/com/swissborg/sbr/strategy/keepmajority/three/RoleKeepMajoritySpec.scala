@@ -36,7 +36,7 @@ class RoleKeepMajoritySpec extends FiveNodeSpec("KeepMajority", RoleKeepMajority
 
       runOn(node1, node2) {
         waitForSurvivors(node1, node2)
-        waitForDownOrGone(node3, node4, node5)
+        waitForAllLeaving(node3, node4, node5)
       }
 
       runOn(node3, node4, node5) {

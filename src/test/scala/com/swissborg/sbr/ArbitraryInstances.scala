@@ -11,6 +11,7 @@ import com.swissborg.sbr.reachability.SBReachabilityReporter.SBReachabilityStatu
 import com.swissborg.sbr.reachability.SBReachabilityReporter._
 import com.swissborg.sbr.strategy.StrategyDecision
 import com.swissborg.sbr.strategy.StrategyDecision._
+import com.swissborg.sbr.testImplicits._
 import org.scalacheck.Arbitrary._
 import org.scalacheck.{Arbitrary, Gen}
 import shapeless.tag
@@ -103,7 +104,7 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
   implicit val arbWorldView: Arbitrary[WorldView] = Arbitrary(
     for {
       selfNode <- arbitrary[Node]
-      nodes <- arbitrary[Set[Node]]
+      nodes <- arbitrary[SortedSet[Node]]
       nodes0 = nodes - selfNode
     } yield WorldView.fromNodes(ReachableNode(selfNode.member), nodes0)
   )
@@ -111,24 +112,26 @@ trait ArbitraryInstances extends ArbitraryInstances0 {
   implicit val arbHealthyWorldView: Arbitrary[HealthyWorldView] = Arbitrary(
     for {
       selfNode <- arbitrary[ReachableNode]
-      nodes <- arbitrary[Set[ReachableNode]]
+      nodes <- arbitrary[SortedSet[ReachableNode]]
       nodes0 = nodes - selfNode
       worldView = WorldView.fromNodes(selfNode, nodes0.map(identity))
     } yield tag[HealthyTag][WorldView](worldView)
   )
 
-  implicit val arbAllUpWorldView: Arbitrary[AllUpWorldView] = Arbitrary(for {
-    selfNode <- arbUpMember.arbitrary.map(ReachableNode(_))
-    nodes <- arbitrary[Set[LeavingMember]].map(_.map(ReachableNode(_)))
-    nodes0 = nodes - selfNode
-    worldView = WorldView.fromNodes(selfNode, nodes0.map(identity))
-  } yield tag[AllUpTag][WorldView](worldView))
+  implicit val arbAllUpWorldView: Arbitrary[AllUpWorldView] = {
+    Arbitrary(for {
+      selfNode <- arbUpMember.arbitrary.map(ReachableNode(_))
+      nodes <- arbitrary[SortedSet[Member @@ LeavingTag]].map(_.map(ReachableNode(_)))
+      nodes0 = nodes - selfNode
+      worldView = WorldView.fromNodes(selfNode, nodes0.map(identity))
+    } yield tag[AllUpTag][WorldView](worldView))
+  }
 
   implicit val arbJoiningOrWeaklyUpOnlyWorldView: Arbitrary[JoiningOrWeaklyUpOnlyWorldView] =
     Arbitrary(
       for {
-        selfNode <- arbitrary[JoiningOrWeaklyUpMember]
-        nodes <- arbitrary[Set[JoiningOrWeaklyUpMember]]
+        selfNode <- arbitrary[Member @@ JoiningOrWeaklyUpTag]
+        nodes <- arbitrary[SortedSet[Member @@ JoiningOrWeaklyUpTag]]
         nodes0 = nodes - selfNode
       } yield
         tag[JoiningOrWeaklyUpOnlyTag][WorldView](

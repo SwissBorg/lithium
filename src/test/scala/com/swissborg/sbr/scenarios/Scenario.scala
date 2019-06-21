@@ -5,7 +5,6 @@ import akka.cluster.MemberStatus.{Joining, Removed, WeaklyUp}
 import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
 import com.swissborg.sbr.ArbitraryInstances._
-import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.testImplicits._
 import com.swissborg.sbr.utils._
 import com.swissborg.sbr.{Node, ReachableNode, WorldView}
@@ -192,14 +191,14 @@ object UpDisseminationScenario {
   }
 }
 
-final case class WithIndirectlyConnected[S <: Scenario](
+final case class WithNonCleanPartitions[S <: Scenario](
     worldViews: NonEmptyList[WorldView],
     clusterSize: Int Refined Positive
 ) extends Scenario
 
-object WithIndirectlyConnected {
-  implicit def arbWithIndirectlyConnectedScenario[S <: Scenario: Arbitrary]
-      : Arbitrary[WithIndirectlyConnected[S]] = Arbitrary {
+object WithNonCleanPartitions {
+  implicit def arbWithNonCleanPartitions[S <: Scenario: Arbitrary]
+      : Arbitrary[WithNonCleanPartitions[S]] = Arbitrary {
     for {
       scenario <- arbitrary[S]
 
@@ -210,6 +209,6 @@ object WithIndirectlyConnected {
             worldView.withIndirectlyConnectedNode(indirectlyConnectedNode.member.uniqueAddress)
         })
       }
-    } yield WithIndirectlyConnected(worldViews, scenario.clusterSize)
+    } yield WithNonCleanPartitions(worldViews, scenario.clusterSize)
   }
 }

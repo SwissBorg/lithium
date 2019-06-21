@@ -2,9 +2,11 @@ package com.swissborg.sbr
 
 import cats.implicits._
 import cats.tests.StrictCatsEquality
-import cats.{Functor, Monoid}
-import com.swissborg.sbr.scenarios.Scenario
-import com.swissborg.sbr.strategy.Strategy
+import cats.{Applicative, Functor, Monoid}
+import com.swissborg.sbr.ArbitraryStrategy._
+import com.swissborg.sbr.scenarios.{Scenario, WithNonCleanPartitions}
+import com.swissborg.sbr.strategy._
+import com.swissborg.sbr.strategy.indirectlyconnected.IndirectlyConnected
 import com.swissborg.sbr.utils.PostResolution
 import org.scalacheck.Arbitrary
 import org.scalactic.anyvals._
@@ -47,4 +49,13 @@ trait SBSpec
         run(simulation.splitBrainResolved.map(_ shouldBe true))
       }
     }
+
+  final def simulateWithNonCleanPartitions[F[_]: Applicative, Strat[_[_]], S <: Scenario: Arbitrary](
+      name: String
+  )(run: F[Assertion] => Assertion)(
+      implicit strategy: ArbitraryStrategy[Strat[F]],
+      ev: Strat[F] <:< Strategy[F],
+      M: Monoid[F[PostResolution]]
+  ): Unit =
+    simulate[F, Union[?[_], Strat, IndirectlyConnected], WithNonCleanPartitions[S]](name)(run)
 }

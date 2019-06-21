@@ -8,7 +8,6 @@ import org.scalacheck.Gen
 import org.scalacheck.Gen._
 
 package object scenarios {
-  type IndirectlyConnectedScenario = WithIndirectlyConnected[CleanPartitionsScenario]
 
   /**
     * Split the nodes into n sub-clusters, where 1 <= n <= #nodes.

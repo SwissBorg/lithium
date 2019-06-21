@@ -1,10 +1,13 @@
 package com.swissborg.sbr.strategy
 
 import cats.Monoid
+import cats.data.NonEmptySet
 import com.swissborg.sbr._
 import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder
 import monocle.Getter
+
+import scala.collection.immutable.SortedSet
 
 /**
   * Represents the strategy that needs to be taken
@@ -15,19 +18,22 @@ private[sbr] sealed abstract class StrategyDecision extends Product with Seriali
 private[sbr] object StrategyDecision {
 
   /**
-    * The reachable nodes that should be downed.
-    * Also downs the `selfNode` if it is indirectly-connected.
+    * Decision to down the reachable nodes.
+    *
+    * The `nodesToDown` contains all the nodes in the cluster as all the
+    * non-reachable nodes will have to be downed before the reachable
+    * nodes can gracefully leave the cluster.
     */
-  sealed abstract case class DownReachable(nodesToDown: Set[ReachableNode], selfNode: Node)
-      extends StrategyDecision
+  sealed abstract case class DownReachable(nodesToDown: NonEmptySet[Node]) extends StrategyDecision
 
   object DownReachable {
     def apply(worldView: WorldView): DownReachable =
-      new DownReachable(worldView.reachableNodes, worldView.selfNode) {}
+      new DownReachable(worldView.nodes) {}
   }
 
-  sealed abstract case class DownIndirectlyConnected(nodesToDown: Set[IndirectlyConnectedNode])
-      extends StrategyDecision
+  sealed abstract case class DownIndirectlyConnected(
+      nodesToDown: SortedSet[IndirectlyConnectedNode]
+  ) extends StrategyDecision
 
   object DownIndirectlyConnected {
     def apply(worldView: WorldView): DownIndirectlyConnected =
@@ -37,7 +43,7 @@ private[sbr] object StrategyDecision {
   /**
     * The unreachable nodes that should be downed.
     */
-  sealed abstract case class DownUnreachable(nodesToDown: Set[UnreachableNode])
+  sealed abstract case class DownUnreachable(nodesToDown: SortedSet[UnreachableNode])
       extends StrategyDecision
 
   object DownUnreachable {
@@ -65,16 +71,17 @@ private[sbr] object StrategyDecision {
   /**
     * Get the nodes to down given the strategy decision.
     */
-  val nodesToDown: Getter[StrategyDecision, Set[Node]] = Getter[StrategyDecision, Set[Node]] {
-    case DownThese(decision1, decision2)      => decision1.nodesToDown ++ decision2.nodesToDown
-    case DownReachable(nodesToDown, selfNode) => nodesToDown.map(identity[Node]) + selfNode
-    case DownUnreachable(nodesToDown)         => nodesToDown.map(identity[Node])
-    case DownIndirectlyConnected(nodesToDown) => nodesToDown.map(identity[Node])
-    case _: Idle.type                         => Set.empty
-  }
+  val nodesToDown: Getter[StrategyDecision, SortedSet[Node]] =
+    Getter[StrategyDecision, SortedSet[Node]] {
+      case DownThese(decision1, decision2)      => decision1.nodesToDown ++ decision2.nodesToDown
+      case DownReachable(nodesToDown)           => nodesToDown.toSortedSet
+      case DownUnreachable(nodesToDown)         => nodesToDown.map(identity[Node])
+      case DownIndirectlyConnected(nodesToDown) => nodesToDown.map(identity[Node])
+      case _: Idle.type                         => SortedSet.empty
+    }
 
   implicit class DecisionOps(private val decision: StrategyDecision) extends AnyVal {
-    def nodesToDown: Set[Node] = StrategyDecision.nodesToDown.get(decision)
+    def nodesToDown: SortedSet[Node] = StrategyDecision.nodesToDown.get(decision)
 
     /**
       * The strategy decision with the leafs without nodes to to
