@@ -33,7 +33,7 @@ class KeepRefereeSpec extends ThreeNodeSpec("KeepReferee", KeepRefereeSpecThreeN
 
       runOn(node1) {
         waitForSurvivors(node1)
-        waitForDownOrGone(node2, node3)
+        waitForAllLeaving(node2, node3)
       }
 
       runOn(node2, node3) {

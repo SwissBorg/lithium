@@ -53,7 +53,7 @@ class WorldViewSuite extends WordSpec with Matchers {
     "build from nodes" in {
       val w = WorldView.fromNodes(
         IndirectlyConnectedNode(aa),
-        Set(
+        SortedSet(
           ReachableNode(bb),
           IndirectlyConnectedNode(cc),
           UnreachableNode(dd),
