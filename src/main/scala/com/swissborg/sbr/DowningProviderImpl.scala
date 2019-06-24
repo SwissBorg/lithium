@@ -6,14 +6,11 @@ import akka.actor.{ActorSystem, Props}
 import akka.cluster.DowningProvider
 import cats.effect.SyncIO
 import cats.implicits._
+import com.swissborg.sbr
 import com.swissborg.sbr.resolver.SBResolver
 import com.swissborg.sbr.strategy.Strategy
 import com.swissborg.sbr.strategy.StrategyReader.UnknownStrategy
-import com.swissborg.sbr.strategy.downall.DownAll
-import com.swissborg.sbr.strategy.keepmajority.KeepMajority
-import com.swissborg.sbr.strategy.keepoldest.KeepOldest
-import com.swissborg.sbr.strategy.keepreferee.KeepReferee
-import com.swissborg.sbr.strategy.staticquorum.StaticQuorum
+import com.swissborg.sbr.strategy._
 import eu.timepit.refined.pureconfig._
 import pureconfig.generic.auto._
 
@@ -32,6 +29,7 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
 
   override def downRemovalMargin: FiniteDuration = config.stableAfter
 
+  @SuppressWarnings(Array("org.wartremover.warts.Throw"))
   override def downingActorProps: Option[Props] = {
     val keepMajority = KeepMajority.Config.name
     val keepOldest = KeepOldest.Config.name
@@ -43,15 +41,19 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
       SBResolver.props(strategy, config.stableAfter, config.downAllWhenUnstable)
 
     val strategy = config.activeStrategy match {
-      case `keepMajority`  => KeepMajority.Config.load.map(c => sbResolver(new KeepMajority(c)))
-      case `keepOldest`    => KeepOldest.Config.load.map(c => sbResolver(new KeepOldest(c)))
-      case `keepReferee`   => KeepReferee.Config.load.map(c => sbResolver(new KeepReferee(c)))
-      case `staticQuorum`  => StaticQuorum.Config.load.map(c => sbResolver(new StaticQuorum(c)))
-      case `downAll`       => sbResolver(new DownAll).asRight
+      case `keepMajority` =>
+        KeepMajority.Config.load.map(c => sbResolver(new sbr.strategy.KeepMajority(c)))
+      case `keepOldest` =>
+        KeepOldest.Config.load.map(c => sbResolver(new sbr.strategy.KeepOldest(c)))
+      case `keepReferee` =>
+        KeepReferee.Config.load.map(c => sbResolver(new sbr.strategy.KeepReferee(c)))
+      case `staticQuorum` =>
+        StaticQuorum.Config.load.map(c => sbResolver(new sbr.strategy.StaticQuorum(c)))
+      case `downAll`       => sbResolver(new sbr.strategy.DownAll).asRight
       case unknownStrategy => UnknownStrategy(unknownStrategy).asLeft
     }
 
-    strategy.toTry.get.some
+    strategy.fold(throw _, Some(_))
   }
 }
 
@@ -68,6 +70,7 @@ object DowningProviderImpl {
     private final val downAllWhenUnstablePath: String = "com.swissborg.sbr.down-all-when-unstable"
 
     // TODO handle errors
+    @SuppressWarnings(Array("org.wartremover.warts.TryPartial"))
     def apply(system: ActorSystem): Config = {
       val activeStrategy = system.settings.config.getString(activeStrategyPath)
 

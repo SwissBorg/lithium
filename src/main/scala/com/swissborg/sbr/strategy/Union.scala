@@ -1,8 +1,8 @@
-package com.swissborg.sbr.strategy
+package com.swissborg.sbr
+package strategy
 
 import cats.implicits._
-import cats.{Functor, Semigroupal}
-import com.swissborg.sbr.WorldView
+import cats._
 
 /**
   * Strategy combining `a` and `b` by taking the union
@@ -13,6 +13,6 @@ private[sbr] class Union[F[_]: Functor: Semigroupal, Strat1[_[_]], Strat2[_[_]]]
     b: Strat2[F]
 )(implicit ev1: Strat1[F] <:< Strategy[F], ev2: Strat2[F] <:< Strategy[F])
     extends Strategy[F] {
-  override def takeDecision(worldView: WorldView): F[StrategyDecision] =
+  override def takeDecision(worldView: WorldView): F[Decision] =
     (a.takeDecision(worldView), b.takeDecision(worldView)).mapN(_ |+| _)
 }
