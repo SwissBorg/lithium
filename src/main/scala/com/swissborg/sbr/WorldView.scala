@@ -17,6 +17,9 @@ import scala.collection.immutable.SortedSet
 /**
   * Represents the view of the cluster from the point of view of the
   * `selfNode`.
+  *
+  * Only contains nodes in the same data-center as the `selfNode`.
+  * As a result, partitions between data-centers are not handled.
   */
 private[sbr] final case class WorldView private (
     selfUniqueAddress: UniqueAddress,
@@ -133,7 +136,7 @@ private[sbr] final case class WorldView private (
             copy(
               otherMembersStatus = otherMembersStatus - member.uniqueAddress + (member.uniqueAddress -> s
                 .withMember(member))
-            )
+          )
         )
     }
   }
