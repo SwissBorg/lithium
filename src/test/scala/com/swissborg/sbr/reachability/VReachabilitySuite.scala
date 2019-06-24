@@ -33,8 +33,8 @@ class VReachabilitySuite extends WordSpec with Matchers {
     }
 
     "become unreachable from indirectly-connected" in {
-      VIndirectlyConnected.fromProtest(aa, bb, 0).withUnreachableFrom(aa, 1) should ===(
-        VUnreachable.fromDetection(aa, 1).withUnreachableFrom(bb, 0)
+      VIndirectlyConnected.fromProtest(aa, bb, 0).withUnreachableFrom(aa, 0) should ===(
+        VUnreachable.fromDetection(aa, 0).withUnreachableFrom(bb, 0)
       )
     }
 
@@ -91,7 +91,9 @@ class VReachabilitySuite extends WordSpec with Matchers {
     "add a new protester" in {
       VIndirectlyConnected.fromProtest(aa, bb, 0).withProtest(cc, bb, 0) should ===(
         VIndirectlyConnected(
-          NonEmptyMap.fromMapUnsafe(SortedMap(bb -> Detection.protested(aa, 0).addProtester(cc)))
+          NonEmptyMap.fromMapUnsafe(
+            SortedMap(bb -> DetectionProtest.protested(aa, 0).addProtester(cc, 0))
+          )
         )
       )
     }
@@ -100,7 +102,7 @@ class VReachabilitySuite extends WordSpec with Matchers {
       VIndirectlyConnected
         .fromProtest(aa, bb, 0)
         .withProtest(cc, bb, 0)
-        .withoutProtest(aa, bb) should ===(VIndirectlyConnected.fromProtest(cc, bb, 0))
+        .withoutProtest(aa, bb, 0) should ===(VIndirectlyConnected.fromProtest(cc, bb, 0))
     }
   }
 }

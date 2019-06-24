@@ -3,15 +3,8 @@ package com.swissborg.sbr
 import cats.effect.Sync
 import cats.{Applicative, ApplicativeError, Functor, Semigroupal}
 import com.swissborg.sbr.scenarios.Scenario
-import com.swissborg.sbr.strategy.downall.DownAll
-import com.swissborg.sbr.strategy.keepmajority.KeepMajority
-import com.swissborg.sbr.strategy.keepoldest.KeepOldest
-import com.swissborg.sbr.strategy.keepreferee.KeepReferee
-import com.swissborg.sbr.strategy.keepreferee.KeepReferee.Config.Address
-import com.swissborg.sbr.strategy.staticquorum.StaticQuorum
-import com.swissborg.sbr.ArbitraryInstances._
-import com.swissborg.sbr.strategy.indirectlyconnected.IndirectlyConnected
-import com.swissborg.sbr.strategy.{Strategy, Union}
+import com.swissborg.sbr.instances.ArbitraryTestInstances._
+import com.swissborg.sbr.strategy._
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
@@ -37,9 +30,9 @@ object ArbitraryStrategy {
 
           downIfLessThan <- chooseNum(1, nodes.length)
         } yield
-          new KeepReferee[F](
+          new strategy.KeepReferee[F](
             KeepReferee.Config(
-              refineV[Address](referee.member.address.toString).right.get,
+              refineV[SBAddress](referee.member.address.toString).right.get,
               refineV[Positive](downIfLessThan).right.get
             )
           )
@@ -55,7 +48,10 @@ object ArbitraryStrategy {
         for {
           quorumSize <- chooseNum(minQuorumSize, clusterSize.value)
           role <- arbitrary[String]
-        } yield new StaticQuorum(StaticQuorum.Config(role, refineV[Positive](quorumSize).right.get))
+        } yield
+          new strategy.StaticQuorum(
+            StaticQuorum.Config(role, refineV[Positive](quorumSize).right.get)
+          )
       }
     }
 
@@ -63,7 +59,9 @@ object ArbitraryStrategy {
       : ArbitraryStrategy[KeepMajority[F]] =
     new ArbitraryStrategy[KeepMajority[F]] {
       override def fromScenario(scenario: Scenario): Arbitrary[KeepMajority[F]] =
-        Arbitrary(arbitrary[String].map(role => new KeepMajority(KeepMajority.Config(role))))
+        Arbitrary(
+          arbitrary[String].map(role => new strategy.KeepMajority(KeepMajority.Config(role)))
+        )
     }
 
   implicit def keepOldestArbitraryStrategy[F[_]: ApplicativeError[?[_], Throwable]]
@@ -73,7 +71,7 @@ object ArbitraryStrategy {
         for {
           downIfAlone <- arbitrary[Boolean]
           role <- arbitrary[String]
-        } yield new KeepOldest(KeepOldest.Config(downIfAlone, role))
+        } yield new strategy.KeepOldest(KeepOldest.Config(downIfAlone, role))
       }
 
     }
@@ -81,13 +79,13 @@ object ArbitraryStrategy {
   implicit def downAllArbitraryStrategy[F[_]: Applicative]: ArbitraryStrategy[DownAll[F]] =
     new ArbitraryStrategy[DownAll[F]] {
       override def fromScenario(scenario: Scenario): Arbitrary[DownAll[F]] =
-        Arbitrary(Gen.const(new DownAll[F]()))
+        Arbitrary(Gen.const(new strategy.DownAll[F]()))
     }
 
   implicit def downIndirectlyConnectedArbitraryStrategy[F[_]: Applicative]
       : ArbitraryStrategy[IndirectlyConnected[F]] = new ArbitraryStrategy[IndirectlyConnected[F]] {
     override def fromScenario(scenario: Scenario): Arbitrary[IndirectlyConnected[F]] =
-      Arbitrary(Gen.const(new IndirectlyConnected[F]()))
+      Arbitrary(Gen.const(new strategy.IndirectlyConnected[F]()))
   }
 
   implicit def unionArbitraryStrategy[F[_]: Functor: Semigroupal, Strat1[_[_]], Strat2[_[_]]](
