@@ -17,6 +17,9 @@ import scala.collection.immutable.SortedSet
 /**
   * Represents the view of the cluster from the point of view of the
   * `selfNode`.
+  *
+  * Only contains nodes in the same data-center as the `selfNode`.
+  * As a result, partitions between data-centers are not handled.
   */
 private[sbr] final case class WorldView private (
     selfUniqueAddress: UniqueAddress,
@@ -114,7 +117,7 @@ private[sbr] final case class WorldView private (
     if (role.nonEmpty) nonJoiningUnreachableNodes.filter(_.member.roles.contains(role))
     else nonJoiningUnreachableNodes
 
-  def addOrUpdate(member: Member): WorldView =
+  def addOrUpdate(member: Member): WorldView = sameDataCenter(member) {
     if (member.uniqueAddress === selfUniqueAddress) {
       copy(selfStatus = selfStatus.withMember(member))
     } else {
@@ -133,11 +136,12 @@ private[sbr] final case class WorldView private (
             copy(
               otherMembersStatus = otherMembersStatus - member.uniqueAddress + (member.uniqueAddress -> s
                 .withMember(member))
-            )
+          )
         )
     }
+  }
 
-  def removeMember(member: Member): WorldView =
+  def removeMember(member: Member): WorldView = sameDataCenter(member) {
     if (member.uniqueAddress === selfUniqueAddress) {
       copy(member.uniqueAddress, selfStatus = selfStatus.withMember(member)) // ignore only update // todo is it safe?
     } else {
@@ -147,6 +151,7 @@ private[sbr] final case class WorldView private (
           copy(otherMembersStatus = otherMembersStatus - member.uniqueAddress)
         }
     }
+  }
 
   /**
     * Change the `node`'s state to `Reachable`.
@@ -171,7 +176,7 @@ private[sbr] final case class WorldView private (
     *
     * Used in tests.
     */
-  private[sbr] def changeSelf(member: Member): WorldView = {
+  private[sbr] def changeSelf(member: Member): WorldView = sameDataCenter(member) {
     val newSelfStatus = otherMembersStatus
       .get(member.uniqueAddress)
       .fold(Status(member, SBReachabilityStatus.Reachable)) { m =>
@@ -230,6 +235,16 @@ private[sbr] final case class WorldView private (
   private def isNonJoining(node: Node): Boolean =
     node.member.status != Joining && node.member.status != WeaklyUp
 
+  /**
+    * Update the world view if and only if the `member` is in the same datacenter.
+    */
+  private def sameDataCenter(member: Member)(updatedWorldView: => WorldView): WorldView =
+    if (selfStatus.member.dataCenter == member.dataCenter) {
+      updatedWorldView
+    } else {
+      this
+    }
+
   lazy val simple: Simple = Simple(
     selfUniqueAddress,
     reachableNodes.toList.map(n => SimpleMember.fromMember(n.member)),
@@ -269,10 +284,15 @@ private[sbr] object WorldView {
 
   /**
     * Create a world view based on the `state`.
+    * All the members not in the same data-center as `selfMember`
+    * will be ignored.
     */
   def fromSnapshot(selfMember: Member, snapshot: CurrentClusterState): WorldView = {
-    val latestSelfMember = snapshot.members.find(_.uniqueAddress === selfMember.uniqueAddress)
-    val otherMembers = latestSelfMember.fold(snapshot.members)(snapshot.members - _)
+    val sameDCMembers = snapshot.members.filter(_.dataCenter == selfMember.dataCenter)
+    val sameDCUnreachable = snapshot.unreachable.filter(_.dataCenter == selfMember.dataCenter)
+
+    val latestSelfMember = sameDCMembers.find(_.uniqueAddress === selfMember.uniqueAddress)
+    val otherMembers = latestSelfMember.fold(sameDCMembers)(sameDCMembers - _)
 
     // Initiate the world view with the current
     // cluster member. The snapshot contains its
@@ -282,7 +302,7 @@ private[sbr] object WorldView {
     val w = latestSelfMember.fold(WorldView.init(selfMember))(WorldView.init)
 
     // add reachable members to the world view
-    val w1 = (otherMembers -- snapshot.unreachable).foldLeft(w) {
+    val w1 = (otherMembers -- sameDCUnreachable).foldLeft(w) {
       case (w, member) =>
         member.status match {
           case Removed => w.removeMember(member)
@@ -291,7 +311,7 @@ private[sbr] object WorldView {
     }
 
     // add unreachable members to the world view
-    snapshot.unreachable // selfMember cannot be unreachable
+    sameDCUnreachable // selfMember cannot be unreachable
       .foldLeft(w1) {
         case (w, member) =>
           member.status match {
@@ -307,6 +327,8 @@ private[sbr] object WorldView {
     * Used in tests.
     */
   def fromNodes(selfNode: Node, otherNodes: SortedSet[Node]): WorldView = {
+    val sameDCOtherNodes = otherNodes.filter(_.member.dataCenter == selfNode.member.dataCenter)
+
     def convert(node: Node): (UniqueAddress, Status) =
       node.member.uniqueAddress -> (node match {
         case _: UnreachableNode => Status(node.member, SBReachabilityStatus.Unreachable)
@@ -315,11 +337,11 @@ private[sbr] object WorldView {
           Status(node.member, SBReachabilityStatus.IndirectlyConnected)
       })
 
-    assert(!otherNodes.contains(selfNode))
+    assert(!sameDCOtherNodes.contains(selfNode))
 
     val (selfUniqueAddress, selfStatus) = convert(selfNode)
 
-    val (_, others) = otherNodes.partition(_.member.status === Removed)
+    val (_, others) = sameDCOtherNodes.partition(_.member.status === Removed)
 
     WorldView(
       selfUniqueAddress,
@@ -341,6 +363,7 @@ private[sbr] object WorldView {
   final case class Status(member: Member, reachability: SBReachabilityStatus) {
     def withReachability(updatedReachability: SBReachabilityStatus): Status =
       copy(reachability = updatedReachability)
+
     def withMember(updatedMember: Member): Status = copy(member = updatedMember)
   }
 }
