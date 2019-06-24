@@ -1,6 +1,5 @@
-package com.swissborg.sbr.strategy
-
-import com.swissborg.sbr.WorldView
+package com.swissborg.sbr
+package strategy
 
 /**
   * Interface for split-brain resolution strategies.
@@ -12,5 +11,5 @@ private[sbr] trait Strategy[F[_]] {
     *
     * @param worldView the world view of the cluster from the callers actor sytem.
     */
-  def takeDecision(worldView: WorldView): F[StrategyDecision]
+  def takeDecision(worldView: WorldView): F[Decision]
 }

@@ -1,19 +1,14 @@
-package com.swissborg.sbr.resolver
+package com.swissborg.sbr
+package resolver
 
-import akka.actor.{Actor, ActorLogging, Address, Props}
+import akka.actor._
 import akka.cluster.Cluster
-import akka.cluster.MemberStatus.{Joining, WeaklyUp}
-import cats.data.OptionT
-import cats.data.OptionT._
+import akka.cluster._
 import cats.effect.SyncIO
 import cats.implicits._
-import com.swissborg.sbr.WorldView.SimpleWorldView
 import com.swissborg.sbr.implicits._
-import com.swissborg.sbr.resolver.SBResolver.HandleSplitBrain.Simple
-import com.swissborg.sbr.splitbrain.SBSplitBrainReporter
-import com.swissborg.sbr.strategy.indirectlyconnected.IndirectlyConnected
-import com.swissborg.sbr.strategy.{Strategy, StrategyDecision, Union, downall}
-import com.swissborg.sbr.{Node, WorldView}
+import com.swissborg.sbr.splitbrain._
+import com.swissborg.sbr.strategy._
 import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.syntax._
@@ -22,6 +17,20 @@ import scala.concurrent.duration._
 
 /**
   * Actor resolving split-brain scenarios.
+  *
+  * It handles two events: `SBResolver.HandleSplitBrain` and `SBResolver.DownAll`,
+  * both accompagnied with a `WorldView` describing a partitioned cluster.
+  *
+  * The `SBResolver.HandleSplitBrain` event triggers the downing of the members
+  * as described by the decision given by `Union(_strategy, IndirectlyConnected)`.
+  * All but the joining/weakly-up members in the cluster will run the strategy.
+  * Joining/weakly-up members will not down the nodes as their world view might
+  * be wrong. It can happen that they did not see all the reachability contentions
+  * and noted some nodes as unreachable that are in fact indirectly-connected.
+  *
+  * The `SBResolver.DownAll` event triggers the downing of all the nodes. In contrast
+  * to the event above, joining/weakly-up will also down nodes. To down all the nodes
+  * the only information is needed are all the cluster members.
   *
   * @param _strategy the strategy with which to resolved the split-brain.
   * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
@@ -33,72 +42,86 @@ private[sbr] class SBResolver(
     private val downAllWhenUnstable: Option[FiniteDuration]
 ) extends Actor
     with ActorLogging {
-
-  import SBResolver._
-
-  context.actorOf(
-    SBSplitBrainReporter.props(self, stableAfter, downAllWhenUnstable),
-    "splitbrain-reporter"
+  discard(
+    context.actorOf(
+      SBSplitBrainReporter.props(self, stableAfter, downAllWhenUnstable),
+      "splitbrain-reporter"
+    )
   )
 
   private val cluster: Cluster = Cluster(context.system)
 
-  private val selfAddress: Address = cluster.selfMember.address
-
   private val strategy: Union[SyncIO, Strategy, IndirectlyConnected] =
     new Union(_strategy, new IndirectlyConnected)
 
-  private val downAll: downall.DownAll[SyncIO] = new downall.DownAll()
+  private val downAll: DownAll[SyncIO] = new DownAll()
 
+  @SuppressWarnings(Array("org.wartremover.warts.Any"))
   override def receive: Receive = {
-    case HandleSplitBrain(worldView) =>
-      log.info(s"Received request to handle a split-brain... {}", worldView.simple.asJson.noSpaces)
-      runStrategy(strategy, worldView).unsafeRunSync()
-
-    case DownAll(worldView) =>
-      log.info(s"Received request to down all the nodes... {}", worldView.simple.asJson.noSpaces)
-      runStrategy(downAll, worldView).unsafeRunSync()
+    case SBResolver.HandleSplitBrain(worldView) => handleSplitBrain(worldView).unsafeRunSync()
+    case SBResolver.DownAll(worldView)          => downAll(worldView).unsafeRunSync()
   }
 
-  private def runStrategy(strategy: Strategy[SyncIO], worldView: WorldView): SyncIO[Unit] = {
-    def down(nodes: Set[Node]): OptionT[SyncIO, Unit] =
-      liftF(nodes.toList.traverse_(node => SyncIO(cluster.down(node.member.address))))
+  /**
+    * Handle the partition using the [[Union]] of the configured
+    * strategy and the [[IndirectlyConnected]].
+    */
+  private def handleSplitBrain(worldView: WorldView): SyncIO[Unit] =
+    for {
+      _ <- SyncIO(
+        log
+          .info(s"Received request to handle a split-brain... {}", worldView.simple.asJson.noSpaces)
+      )
 
-    // Execute the decision by downing all the nodes to be downed if
-    // the current node is the leader. Otherwise, do nothing.
-    def execute(decision: StrategyDecision): SyncIO[Unit] = {
-      val leader: OptionT[SyncIO, Address] = OptionT(SyncIO(cluster.state.leader))
-
-      leader
-        .flatMap(
-          leader =>
-            if (leader === selfAddress && (cluster.selfMember.status === Joining || cluster.selfMember.status === WeaklyUp)) {
-              // A leader that joined during a split-brain might not be aware of all the
-              // indirectly-connected nodes and so should not take a decision.
-              liftF(
-                SyncIO(
-                  log.warning(
-                    "SPLIT-BRAIN MUST BE MANUALLY RESOLVED! The leader is joining or weakly-up and misses information."
-                  )
-                )
-              ).as(true)
-            } else {
-              pure(leader === selfAddress)
-            }
+      // A member that joined during a split-brain might not be aware of all the
+      // indirectly-connected nodes and so should not take a decision.
+      _ <- isNonJoining.ifM(
+        runStrategy(strategy, worldView),
+        SyncIO(
+          log
+            .info("[{}] is joining/weakly-up. Cannot resolve the split-brain.", cluster.selfAddress)
         )
-        .ifM(
-          down(decision.nodesToDown) >> liftF(downingLogMessage(decision)),
-          liftF(SyncIO(log.info("Ignored the request, not the leader.")))
-        )
-        .value
-        .void
-    }
+      )
+    } yield ()
 
-    def downingLogMessage(decision: StrategyDecision): SyncIO[Unit] =
-      SyncIO(log.info("Downing the nodes: {}", decision.simple.asJson.noSpaces))
+  /**
+    * Handle the partition by downing all the members.
+    */
+  private def downAll(worldView: WorldView): SyncIO[Unit] =
+    for {
+      _ <- SyncIO(
+        log.info(s"Received request to down all the nodes... {}", worldView.simple.asJson.noSpaces)
+      )
+      _ <- runStrategy(downAll, worldView)
+    } yield ()
 
-    strategy.takeDecision(worldView).flatMap(execute)
-  }.handleErrorWith(err => SyncIO(log.error(err, "An error occurred during decision making.")))
+  /**
+    * Run `strategy` on `worldView`.
+    *
+    * Enable `nonJoiningOnly` so that joining and weakly-up
+    * members do not run the strategy.
+    */
+  private def runStrategy(
+      strategy: Strategy[SyncIO],
+      worldView: WorldView
+  ): SyncIO[Unit] = {
+    def execute(decision: Decision): SyncIO[Unit] =
+      for {
+        _ <- decision.nodesToDown.toList
+          .traverse_(node => SyncIO(cluster.down(node.member.address)))
+        _ <- SyncIO(log.info("Downing the nodes: {}", decision.simple.asJson.noSpaces))
+
+      } yield ()
+
+    strategy
+      .takeDecision(worldView)
+      .flatMap(execute)
+      .handleErrorWith(err => SyncIO(log.error(err, "An error occurred during the resolution.")))
+  }
+
+  private val isNonJoining: SyncIO[Boolean] = SyncIO(
+    cluster.selfMember.status =!= MemberStatus.Joining && cluster.selfMember.status =!= MemberStatus.WeaklyUp
+  )
 }
 
 object SBResolver {
@@ -114,11 +137,11 @@ object SBResolver {
   }
 
   private[sbr] final case class HandleSplitBrain(worldView: WorldView) extends Event {
-    lazy val simple: HandleSplitBrain.Simple = Simple(worldView.simple)
+    lazy val simple: HandleSplitBrain.Simple = HandleSplitBrain.Simple(worldView.simple)
   }
 
   private[sbr] object HandleSplitBrain {
-    final case class Simple(worldView: SimpleWorldView)
+    final case class Simple(worldView: WorldView.Simple)
 
     object Simple {
       implicit val simpleHandleSplitBrainEncoder: Encoder[Simple] = deriveEncoder

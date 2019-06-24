@@ -8,8 +8,7 @@ import cats.implicits._
 import cats.kernel.Eq
 import com.swissborg.sbr.WorldView.Status
 import com.swissborg.sbr.implicits._
-import com.swissborg.sbr.reachability.SBReachabilityReporter.SBReachabilityStatus._
-import com.swissborg.sbr.reachability.SBReachabilityReporter._
+import com.swissborg.sbr.reachability._
 import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder
 
@@ -126,7 +125,7 @@ private[sbr] final case class WorldView private (
           copy(
             otherMembersStatus = otherMembersStatus + (member.uniqueAddress -> Status(
               member,
-              Reachable
+              SBReachabilityStatus.Reachable
             ))
           )
         )(
@@ -152,18 +151,20 @@ private[sbr] final case class WorldView private (
   /**
     * Change the `node`'s state to `Reachable`.
     */
-  def withReachableNode(node: UniqueAddress): WorldView = changeReachability(node, Reachable)
+  def withReachableNode(node: UniqueAddress): WorldView =
+    changeReachability(node, SBReachabilityStatus.Reachable)
 
   /**
     * Change the `node`'s status to `Unreachable`.
     */
-  def withUnreachableNode(node: UniqueAddress): WorldView = changeReachability(node, Unreachable)
+  def withUnreachableNode(node: UniqueAddress): WorldView =
+    changeReachability(node, SBReachabilityStatus.Unreachable)
 
   /**
     * Change the `node`'s status to `IndirectlyConnected`.
     */
   def withIndirectlyConnectedNode(node: UniqueAddress): WorldView =
-    changeReachability(node, IndirectlyConnected)
+    changeReachability(node, SBReachabilityStatus.IndirectlyConnected)
 
   /**
     * Replace the `selfMember` with `member`.
@@ -173,10 +174,10 @@ private[sbr] final case class WorldView private (
   private[sbr] def changeSelf(member: Member): WorldView = {
     val newSelfStatus = otherMembersStatus
       .get(member.uniqueAddress)
-      .fold(Status(member, Reachable)) { m =>
+      .fold(Status(member, SBReachabilityStatus.Reachable)) { m =>
         m.withMember(member)
       }
-      .withReachability(Reachable)
+      .withReachability(SBReachabilityStatus.Reachable)
 
     selfStatus.member.status match {
       case Removed =>
@@ -229,7 +230,7 @@ private[sbr] final case class WorldView private (
   private def isNonJoining(node: Node): Boolean =
     node.member.status != Joining && node.member.status != WeaklyUp
 
-  lazy val simple: SimpleWorldView = SimpleWorldView(
+  lazy val simple: Simple = Simple(
     selfUniqueAddress,
     reachableNodes.toList.map(n => SimpleMember.fromMember(n.member)),
     indirectlyConnectedNodes.toList.map(n => SimpleMember.fromMember(n.member)),
@@ -238,16 +239,16 @@ private[sbr] final case class WorldView private (
 }
 
 private[sbr] object WorldView {
-  final case class SimpleWorldView(
+  final case class Simple(
       selfUniqueAddress: UniqueAddress,
       reachableMembers: List[SimpleMember],
       indirectlyConnectedMembers: List[SimpleMember],
       unreachableMembers: List[SimpleMember]
   )
 
-  object SimpleWorldView {
-    implicit val simpleWorldViewEncoder: Encoder[SimpleWorldView] = deriveEncoder
-    implicit val simpleWorldEq: Eq[SimpleWorldView] = Eq.and(
+  object Simple {
+    implicit val simpleWorldViewEncoder: Encoder[Simple] = deriveEncoder
+    implicit val simpleWorldEq: Eq[Simple] = Eq.and(
       Eq.and(
         Eq.and(Eq.by(_.reachableMembers), Eq.by(_.unreachableMembers)),
         Eq.by(_.indirectlyConnectedMembers)
@@ -260,7 +261,11 @@ private[sbr] object WorldView {
     * Create an empty world view.
     */
   def init(selfMember: Member): WorldView =
-    new WorldView(selfMember.uniqueAddress, Status(selfMember, Reachable), Map.empty)
+    new WorldView(
+      selfMember.uniqueAddress,
+      Status(selfMember, SBReachabilityStatus.Reachable),
+      Map.empty
+    )
 
   /**
     * Create a world view based on the `state`.
@@ -304,9 +309,10 @@ private[sbr] object WorldView {
   def fromNodes(selfNode: Node, otherNodes: SortedSet[Node]): WorldView = {
     def convert(node: Node): (UniqueAddress, Status) =
       node.member.uniqueAddress -> (node match {
-        case _: UnreachableNode         => Status(node.member, Unreachable)
-        case _: ReachableNode           => Status(node.member, Reachable)
-        case _: IndirectlyConnectedNode => Status(node.member, IndirectlyConnected)
+        case _: UnreachableNode => Status(node.member, SBReachabilityStatus.Unreachable)
+        case _: ReachableNode   => Status(node.member, SBReachabilityStatus.Reachable)
+        case _: IndirectlyConnectedNode =>
+          Status(node.member, SBReachabilityStatus.IndirectlyConnected)
       })
 
     assert(!otherNodes.contains(selfNode))
@@ -327,9 +333,9 @@ private[sbr] object WorldView {
     */
   private def toNode(member: Member, reachability: SBReachabilityStatus): Node =
     reachability match {
-      case Reachable           => ReachableNode(member)
-      case Unreachable         => UnreachableNode(member)
-      case IndirectlyConnected => IndirectlyConnectedNode(member)
+      case SBReachabilityStatus.Reachable           => ReachableNode(member)
+      case SBReachabilityStatus.Unreachable         => UnreachableNode(member)
+      case SBReachabilityStatus.IndirectlyConnected => IndirectlyConnectedNode(member)
     }
 
   final case class Status(member: Member, reachability: SBReachabilityStatus) {

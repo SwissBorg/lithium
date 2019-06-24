@@ -1,10 +1,10 @@
 package com.swissborg.sbr
 
 import cats.implicits._
-import cats.{Functor, Monoid}
-import com.swissborg.sbr.scenarios.Scenario
-import com.swissborg.sbr.strategy.Strategy
-import com.swissborg.sbr.utils.PostResolution
+import cats._
+import com.swissborg.sbr.scenarios._
+import com.swissborg.sbr.strategy._
+import com.swissborg.sbr.utils._
 import org.scalacheck.Arbitrary
 import org.scalacheck.Arbitrary.arbitrary
 
