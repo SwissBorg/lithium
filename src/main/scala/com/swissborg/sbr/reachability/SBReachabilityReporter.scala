@@ -51,7 +51,6 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
   private def active(state: SBReachabilityReporterState): Receive = {
     case SBReachabilityChanged(r) =>
-      log.debug("FUCK")
       context.become(active(updateReachabilities(r).runS(state).unsafeRunSync()))
 
     case MemberRemoved(m, _) =>
