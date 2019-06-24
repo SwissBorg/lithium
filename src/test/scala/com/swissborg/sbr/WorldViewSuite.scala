@@ -6,7 +6,7 @@ import akka.cluster.MemberStatus._
 import akka.cluster.swissborg.TestMember
 import com.swissborg.sbr.WorldView.Status
 import com.swissborg.sbr.implicits._
-import com.swissborg.sbr.reachability.SBReachabilityReporter.SBReachabilityStatus._
+import com.swissborg.sbr.reachability._
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.collection.immutable.SortedSet
@@ -293,7 +293,7 @@ class WorldViewSuite extends WordSpec with Matchers {
         )
         .addOrUpdate(aa.copy(Leaving))
 
-      w.selfStatus should ===(Status(aa.copy(Leaving), Reachable))
+      w.selfStatus should ===(Status(aa.copy(Leaving), SBReachabilityStatus.Reachable))
     }
 
     "get the latest state of selfMember from the snapshot" in {

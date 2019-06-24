@@ -12,7 +12,6 @@ import com.swissborg.sbr.WorldView
 private[splitbrain] final case class SBSplitBrainReporterState(worldView: WorldView) {
   def updatedMember(m: Member): SBSplitBrainReporterState =
     m.status match {
-//      case MemberStatus.Down    => copy(worldView = worldView.removeMember(m))
       case MemberStatus.Removed => copy(worldView = worldView.removeMember(m))
       case _                    => copy(worldView = worldView.addOrUpdate(m))
     }
