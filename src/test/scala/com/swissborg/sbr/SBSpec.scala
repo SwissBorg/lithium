@@ -4,9 +4,9 @@ import cats.implicits._
 import cats.tests.StrictCatsEquality
 import cats.{Applicative, Functor, Monoid}
 import com.swissborg.sbr.ArbitraryStrategy._
+import com.swissborg.sbr.instances.ArbitraryTestInstances
 import com.swissborg.sbr.scenarios.{Scenario, WithNonCleanPartitions}
-import com.swissborg.sbr.strategy._
-import com.swissborg.sbr.strategy.indirectlyconnected.IndirectlyConnected
+import com.swissborg.sbr.strategy.{IndirectlyConnected, _}
 import com.swissborg.sbr.utils.PostResolution
 import org.scalacheck.Arbitrary
 import org.scalactic.anyvals._
@@ -18,7 +18,7 @@ trait SBSpec
     with Matchers
     with ScalaCheckPropertyChecks
     with StrictCatsEquality
-    with ArbitraryInstances {
+    with ArbitraryTestInstances {
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(
       minSuccessful = PosInt(1000),

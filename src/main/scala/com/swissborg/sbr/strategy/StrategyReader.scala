@@ -1,4 +1,5 @@
-package com.swissborg.sbr.strategy
+package com.swissborg.sbr
+package strategy
 
 import cats.implicits._
 import pureconfig.error.ConfigReaderFailures
@@ -29,7 +30,12 @@ private[sbr] trait StrategyReader[A] {
 }
 
 private[sbr] object StrategyReader {
-  sealed abstract class StrategyError(message: String) extends Throwable(message)
+  sealed abstract class StrategyError(message: String)
+      extends Throwable(message)
+      with Product
+      with Serializable
+
   final case class ConfigReaderError(f: ConfigReaderFailures) extends StrategyError(s"$f")
+
   final case class UnknownStrategy(strategy: String) extends StrategyError(strategy)
 }
