@@ -1,6 +1,7 @@
 package com.swissborg.sbr
 
 import akka.cluster.ClusterEvent._
+import akka.cluster.ClusterSettings.DataCenter
 import akka.cluster.MemberStatus.{Joining, Removed, WeaklyUp}
 import akka.cluster.{Member, UniqueAddress}
 import cats.data.NonEmptySet
@@ -114,7 +115,7 @@ private[sbr] final case class WorldView private (
     if (role.nonEmpty) nonJoiningUnreachableNodes.filter(_.member.roles.contains(role))
     else nonJoiningUnreachableNodes
 
-  def addOrUpdate(member: Member): WorldView =
+  def addOrUpdate(member: Member): WorldView = sameDataCenter(member) {
     if (member.uniqueAddress === selfUniqueAddress) {
       copy(selfStatus = selfStatus.withMember(member))
     } else {
@@ -133,11 +134,12 @@ private[sbr] final case class WorldView private (
             copy(
               otherMembersStatus = otherMembersStatus - member.uniqueAddress + (member.uniqueAddress -> s
                 .withMember(member))
-            )
+          )
         )
     }
+  }
 
-  def removeMember(member: Member): WorldView =
+  def removeMember(member: Member): WorldView = sameDataCenter(member) {
     if (member.uniqueAddress === selfUniqueAddress) {
       copy(member.uniqueAddress, selfStatus = selfStatus.withMember(member)) // ignore only update // todo is it safe?
     } else {
@@ -147,6 +149,7 @@ private[sbr] final case class WorldView private (
           copy(otherMembersStatus = otherMembersStatus - member.uniqueAddress)
         }
     }
+  }
 
   /**
     * Change the `node`'s state to `Reachable`.
@@ -171,7 +174,7 @@ private[sbr] final case class WorldView private (
     *
     * Used in tests.
     */
-  private[sbr] def changeSelf(member: Member): WorldView = {
+  private[sbr] def changeSelf(member: Member): WorldView = sameDataCenter(member) {
     val newSelfStatus = otherMembersStatus
       .get(member.uniqueAddress)
       .fold(Status(member, SBReachabilityStatus.Reachable)) { m =>
@@ -229,6 +232,16 @@ private[sbr] final case class WorldView private (
     */
   private def isNonJoining(node: Node): Boolean =
     node.member.status != Joining && node.member.status != WeaklyUp
+
+  /**
+    * Update the world view if and only if the `member` is in the same datacenter.
+    */
+  private def sameDataCenter(member: Member)(updatedWorldView: => WorldView): WorldView =
+    if (selfStatus.member.dataCenter == member.dataCenter) {
+      updatedWorldView
+    } else {
+      this
+    }
 
   lazy val simple: Simple = Simple(
     selfUniqueAddress,
@@ -341,6 +354,7 @@ private[sbr] object WorldView {
   final case class Status(member: Member, reachability: SBReachabilityStatus) {
     def withReachability(updatedReachability: SBReachabilityStatus): Status =
       copy(reachability = updatedReachability)
+
     def withMember(updatedMember: Member): Status = copy(member = updatedMember)
   }
 }
