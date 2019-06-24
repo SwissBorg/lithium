@@ -1,7 +1,6 @@
 package com.swissborg.sbr
 
 import akka.cluster.ClusterEvent._
-import akka.cluster.ClusterSettings.DataCenter
 import akka.cluster.MemberStatus.{Joining, Removed, WeaklyUp}
 import akka.cluster.{Member, UniqueAddress}
 import cats.data.NonEmptySet
@@ -134,7 +133,7 @@ private[sbr] final case class WorldView private (
             copy(
               otherMembersStatus = otherMembersStatus - member.uniqueAddress + (member.uniqueAddress -> s
                 .withMember(member))
-          )
+            )
         )
     }
   }
@@ -282,10 +281,15 @@ private[sbr] object WorldView {
 
   /**
     * Create a world view based on the `state`.
+    * All the members not in the same data-center as `selfMember`
+    * will be ignored.
     */
   def fromSnapshot(selfMember: Member, snapshot: CurrentClusterState): WorldView = {
-    val latestSelfMember = snapshot.members.find(_.uniqueAddress === selfMember.uniqueAddress)
-    val otherMembers = latestSelfMember.fold(snapshot.members)(snapshot.members - _)
+    val sameDCMembers = snapshot.members.filter(_.dataCenter == selfMember.dataCenter)
+    val sameDCUnreachable = snapshot.unreachable.filter(_.dataCenter == selfMember.dataCenter)
+
+    val latestSelfMember = sameDCMembers.find(_.uniqueAddress === selfMember.uniqueAddress)
+    val otherMembers = latestSelfMember.fold(sameDCMembers)(sameDCMembers - _)
 
     // Initiate the world view with the current
     // cluster member. The snapshot contains its
@@ -295,7 +299,7 @@ private[sbr] object WorldView {
     val w = latestSelfMember.fold(WorldView.init(selfMember))(WorldView.init)
 
     // add reachable members to the world view
-    val w1 = (otherMembers -- snapshot.unreachable).foldLeft(w) {
+    val w1 = (otherMembers -- sameDCUnreachable).foldLeft(w) {
       case (w, member) =>
         member.status match {
           case Removed => w.removeMember(member)
@@ -304,7 +308,7 @@ private[sbr] object WorldView {
     }
 
     // add unreachable members to the world view
-    snapshot.unreachable // selfMember cannot be unreachable
+    sameDCUnreachable // selfMember cannot be unreachable
       .foldLeft(w1) {
         case (w, member) =>
           member.status match {
@@ -320,6 +324,8 @@ private[sbr] object WorldView {
     * Used in tests.
     */
   def fromNodes(selfNode: Node, otherNodes: SortedSet[Node]): WorldView = {
+    val sameDCOtherNodes = otherNodes.filter(_.member.dataCenter == selfNode.member.dataCenter)
+
     def convert(node: Node): (UniqueAddress, Status) =
       node.member.uniqueAddress -> (node match {
         case _: UnreachableNode => Status(node.member, SBReachabilityStatus.Unreachable)
@@ -328,11 +334,11 @@ private[sbr] object WorldView {
           Status(node.member, SBReachabilityStatus.IndirectlyConnected)
       })
 
-    assert(!otherNodes.contains(selfNode))
+    assert(!sameDCOtherNodes.contains(selfNode))
 
     val (selfUniqueAddress, selfStatus) = convert(selfNode)
 
-    val (_, others) = otherNodes.partition(_.member.status === Removed)
+    val (_, others) = sameDCOtherNodes.partition(_.member.status === Removed)
 
     WorldView(
       selfUniqueAddress,
