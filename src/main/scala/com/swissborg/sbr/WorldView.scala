@@ -136,7 +136,7 @@ private[sbr] final case class WorldView private (
             copy(
               otherMembersStatus = otherMembersStatus - member.uniqueAddress + (member.uniqueAddress -> s
                 .withMember(member))
-          )
+            )
         )
     }
   }
