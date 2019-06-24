@@ -4,8 +4,6 @@ import akka.actor.Address
 import akka.cluster.UniqueAddress
 import cats.data.State._
 import cats.implicits._
-import com.swissborg.sbr.reachability.SBReachabilityReporter.SBReachabilityStatus._
-import com.swissborg.sbr.reachability.SBReachabilityReporter._
 import com.swissborg.sbr.reachability.SBReachabilityReporterState.updatedStatus
 import org.scalatest.{Matchers, WordSpec}
 
@@ -19,30 +17,30 @@ class SBReachabilityReporterStateSuite extends WordSpec with Matchers {
   "SBReachabilityReporterState" must {
     "be reachable when empty" in {
       val s = SBReachabilityReporterState(aa)
-      updatedStatus(aa).runA(s).value should ===(Some(Reachable))
+      updatedStatus(aa).runA(s).value should ===(Some(SBReachabilityStatus.Reachable))
 
-      updatedStatus(bb).runA(s).value should ===(Some(Reachable))
+      updatedStatus(bb).runA(s).value should ===(Some(SBReachabilityStatus.Reachable))
 
       (updatedStatus(bb) >> updatedStatus(bb)).runA(s).value should ===(None)
     }
 
     "be unreachable when there is no contention" in {
       val s = SBReachabilityReporterState(aa).withUnreachableFrom(aa, bb, 0)
-      updatedStatus(bb).runA(s).value should ===(Some(Unreachable))
+      updatedStatus(bb).runA(s).value should ===(Some(SBReachabilityStatus.Unreachable))
 
       val s1 = SBReachabilityReporterState(aa).withReachable(bb).withUnreachableFrom(aa, bb, 0)
-      updatedStatus(bb).runA(s1).value should ===(Some(Unreachable))
+      updatedStatus(bb).runA(s1).value should ===(Some(SBReachabilityStatus.Unreachable))
     }
 
     "be indirectly connected when there is a contention" in {
       val s = SBReachabilityReporterState(aa).withContention(bb, cc, dd, 1)
-      updatedStatus(dd).runA(s).value should ===(Some(IndirectlyConnected))
+      updatedStatus(dd).runA(s).value should ===(Some(SBReachabilityStatus.IndirectlyConnected))
     }
 
     "be unreachable when a contention is resolved" in {
       val s =
         SBReachabilityReporterState(aa).withContention(aa, cc, dd, 1).withUnreachableFrom(aa, dd, 0)
-      updatedStatus(dd).runA(s).value should ===(Some(Unreachable))
+      updatedStatus(dd).runA(s).value should ===(Some(SBReachabilityStatus.Unreachable))
     }
 
     "be unreachable only when all the contentions are resolved" in {
@@ -52,7 +50,7 @@ class SBReachabilityReporterStateSuite extends WordSpec with Matchers {
           .withContention(cc, dd, bb, 1)
           .withContention(ee, aa, bb, 1)
 
-      updatedStatus(bb).runA(s).value should ===(Some(IndirectlyConnected))
+      updatedStatus(bb).runA(s).value should ===(Some(SBReachabilityStatus.IndirectlyConnected))
 
       (for {
         _ <- updatedStatus(bb)
@@ -66,7 +64,7 @@ class SBReachabilityReporterStateSuite extends WordSpec with Matchers {
         _ <- updatedStatus(bb)
         _ <- modify[SBReachabilityReporterState](_.withUnreachableFrom(ee, bb, 0))
         status <- updatedStatus(bb)
-      } yield status).runA(s).value should ===(Some(Unreachable))
+      } yield status).runA(s).value should ===(Some(SBReachabilityStatus.Unreachable))
     }
 
     "ignore a contention for old versions" in {
@@ -77,7 +75,7 @@ class SBReachabilityReporterStateSuite extends WordSpec with Matchers {
       (for {
         _ <- modify[SBReachabilityReporterState](_.withUnreachableFrom(cc, bb, 1))
         status <- updatedStatus(bb)
-      } yield status).runA(s).value should ===(Some(IndirectlyConnected))
+      } yield status).runA(s).value should ===(Some(SBReachabilityStatus.IndirectlyConnected))
     }
 
     "reset a contention when there is a new version" in {
@@ -88,7 +86,7 @@ class SBReachabilityReporterStateSuite extends WordSpec with Matchers {
       (for {
         _ <- modify[SBReachabilityReporterState](_.withUnreachableFrom(ee, bb, 2))
         status <- updatedStatus(bb)
-      } yield status).runA(s).value should ===(Some(Unreachable))
+      } yield status).runA(s).value should ===(Some(SBReachabilityStatus.Unreachable))
     }
 
     "update a contention when it is for the current version" in {
@@ -100,7 +98,7 @@ class SBReachabilityReporterStateSuite extends WordSpec with Matchers {
         _ <- modify[SBReachabilityReporterState](_.withUnreachableFrom(cc, bb, 1))
         _ <- modify[SBReachabilityReporterState](_.withUnreachableFrom(ee, bb, 1))
         status <- updatedStatus(bb)
-      } yield status).runA(s).value should ===(Some(Unreachable))
+      } yield status).runA(s).value should ===(Some(SBReachabilityStatus.Unreachable))
     }
 
     "become reachable after calling reachable" in {
@@ -113,12 +111,12 @@ class SBReachabilityReporterStateSuite extends WordSpec with Matchers {
       (for {
         _ <- modify[SBReachabilityReporterState](_.withReachable(bb))
         status <- updatedStatus(bb)
-      } yield status).runA(s).value should ===(Some(Reachable))
+      } yield status).runA(s).value should ===(Some(SBReachabilityStatus.Reachable))
 
       (for {
         _ <- modify[SBReachabilityReporterState](_.withReachable(cc))
         status <- updatedStatus(cc)
-      } yield status).runA(s).value should ===(Some(Reachable))
+      } yield status).runA(s).value should ===(Some(SBReachabilityStatus.Reachable))
     }
 
     "update contentions when a node is removed" in {
@@ -130,17 +128,23 @@ class SBReachabilityReporterStateSuite extends WordSpec with Matchers {
 
       val removeAA = modify[SBReachabilityReporterState](_.remove(aa))
 
-      (removeAA >> updatedStatus(cc)).runA(s).value should ===(Some(Unreachable))
-      (removeAA >> updatedStatus(bb)).runA(s).value should ===(Some(Unreachable))
+      (removeAA >> updatedStatus(cc)).runA(s).value should ===(
+        Some(SBReachabilityStatus.Unreachable)
+      )
+      (removeAA >> updatedStatus(bb)).runA(s).value should ===(
+        Some(SBReachabilityStatus.Unreachable)
+      )
 
       val removeBB = modify[SBReachabilityReporterState](_.remove(bb))
 
-      (removeBB >> updatedStatus(cc)).runA(s).value should ===(Some(Reachable))
-      (removeBB >> updatedStatus(aa)).runA(s).value should ===(Some(IndirectlyConnected))
+      (removeBB >> updatedStatus(cc)).runA(s).value should ===(Some(SBReachabilityStatus.Reachable))
+      (removeBB >> updatedStatus(aa)).runA(s).value should ===(
+        Some(SBReachabilityStatus.IndirectlyConnected)
+      )
     }
 
     "expect a contention ack" in {
-      val contentionAck = ContentionAck(bb, cc, dd, 0L)
+      val contentionAck = SBReachabilityReporter.ContentionAck(bb, cc, dd, 0L)
 
       val s = SBReachabilityReporterState(aa).expectContentionAck(contentionAck)
 
@@ -148,9 +152,9 @@ class SBReachabilityReporterStateSuite extends WordSpec with Matchers {
     }
 
     "expect multiple contention acks" in {
-      val contentionAck0 = ContentionAck(bb, cc, dd, 0L)
-      val contentionAck1 = ContentionAck(bb, cc, ee, 0L)
-      val contentionAck2 = ContentionAck(bb, cc, dd, 1L)
+      val contentionAck0 = SBReachabilityReporter.ContentionAck(bb, cc, dd, 0L)
+      val contentionAck1 = SBReachabilityReporter.ContentionAck(bb, cc, ee, 0L)
+      val contentionAck2 = SBReachabilityReporter.ContentionAck(bb, cc, dd, 1L)
 
       val s = SBReachabilityReporterState(aa)
         .expectContentionAck(contentionAck0)
@@ -163,9 +167,9 @@ class SBReachabilityReporterStateSuite extends WordSpec with Matchers {
     }
 
     "remove the contention ack" in {
-      val contentionAck0 = ContentionAck(bb, cc, dd, 0L)
-      val contentionAck1 = ContentionAck(bb, cc, ee, 0L)
-      val contentionAck2 = ContentionAck(bb, cc, dd, 1L)
+      val contentionAck0 = SBReachabilityReporter.ContentionAck(bb, cc, dd, 0L)
+      val contentionAck1 = SBReachabilityReporter.ContentionAck(bb, cc, ee, 0L)
+      val contentionAck2 = SBReachabilityReporter.ContentionAck(bb, cc, dd, 1L)
 
       val s = SBReachabilityReporterState(aa)
         .expectContentionAck(contentionAck0)
@@ -177,9 +181,9 @@ class SBReachabilityReporterStateSuite extends WordSpec with Matchers {
     }
 
     "remove all contention acks" in {
-      val contentionAck0 = ContentionAck(bb, cc, dd, 0L)
-      val contentionAck1 = ContentionAck(bb, cc, ee, 0L)
-      val contentionAck2 = ContentionAck(bb, cc, dd, 1L)
+      val contentionAck0 = SBReachabilityReporter.ContentionAck(bb, cc, dd, 0L)
+      val contentionAck1 = SBReachabilityReporter.ContentionAck(bb, cc, ee, 0L)
+      val contentionAck2 = SBReachabilityReporter.ContentionAck(bb, cc, dd, 1L)
 
       val s = SBReachabilityReporterState(aa)
         .expectContentionAck(contentionAck0)
@@ -194,19 +198,19 @@ class SBReachabilityReporterStateSuite extends WordSpec with Matchers {
       val s = SBReachabilityReporterState(aa)
         .withContention(cc, dd, ee, 1)
         .withContention(aa, dd, ee, 1)
-        .withoutContention(cc, dd, ee)
-        .withoutContention(aa, dd, ee)
+        .withoutContention(cc, dd, ee, 1)
+        .withoutContention(aa, dd, ee, 1)
 
-      updatedStatus(ee).runA(s).value should ===(Some(Unreachable))
+      updatedStatus(ee).runA(s).value should ===(Some(SBReachabilityStatus.Unreachable))
     }
 
     "stay indirectly-connected when removing part of the contentions" in {
       val s = SBReachabilityReporterState(aa)
         .withContention(cc, dd, ee, 1)
         .withContention(aa, dd, ee, 1)
-        .withoutContention(aa, dd, ee)
+        .withoutContention(aa, dd, ee, 1)
 
-      updatedStatus(ee).runA(s).value should ===(Some(IndirectlyConnected))
+      updatedStatus(ee).runA(s).value should ===(Some(SBReachabilityStatus.IndirectlyConnected))
     }
   }
 }

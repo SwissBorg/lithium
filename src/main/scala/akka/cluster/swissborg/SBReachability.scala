@@ -1,10 +1,19 @@
 package akka.cluster.swissborg
 
 import akka.cluster.swissborg.implicits._
-import akka.cluster.{Reachability, UniqueAddress}
+import akka.cluster._
 import cats.implicits._
 
+/**
+  * Newtype of [[Reachability]] so it can be used by actors in other
+  * namespaces than `akka.cluster`
+  */
 final case class SBReachability(private val r: Reachability) extends AnyVal {
+
+  /**
+    * Attempt to get the [[Reachability.Record]] describing the unreachability detection of
+    * `subject` by `observer`.
+    */
   def findUnreachableRecord(
       observer: UniqueAddress,
       subject: UniqueAddress
@@ -14,6 +23,9 @@ final case class SBReachability(private val r: Reachability) extends AnyVal {
         r.subject === subject && r.status === Reachability.Unreachable // find the record describing that `observer` sees `subject` as unreachable
       }
 
+  /**
+    * @see [[Reachability.observersGroupedByUnreachable]]
+    */
   def observersGroupedByUnreachable: Map[UniqueAddress, Set[UniqueAddress]] =
     r.observersGroupedByUnreachable
 }

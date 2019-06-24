@@ -2,7 +2,7 @@ package akka.cluster.swissborg
 
 import akka.actor.{ActorPath, Address, ChildActorPath, RootActorPath}
 import akka.cluster.{Member, UniqueAddress, Reachability => _}
-import com.swissborg.sbr.ArbitraryInstances._
+import com.swissborg.sbr.instances.ArbitraryTestInstances._
 import org.scalacheck.Arbitrary._
 import org.scalacheck.{Arbitrary, Gen}
 import shapeless.tag

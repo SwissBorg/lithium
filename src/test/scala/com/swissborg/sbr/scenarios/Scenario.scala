@@ -1,13 +1,12 @@
-package com.swissborg.sbr.scenarios
+package com.swissborg.sbr
+package scenarios
 
 import akka.cluster.Member
 import akka.cluster.MemberStatus.{Joining, Removed, WeaklyUp}
 import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
-import com.swissborg.sbr.ArbitraryInstances._
-import com.swissborg.sbr.testImplicits._
+import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.utils._
-import com.swissborg.sbr.{Node, ReachableNode, WorldView}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
