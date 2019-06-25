@@ -1,17 +1,18 @@
-package com.swissborg.sbr.protobuf
+package com.swissborg.sbr
+package protobuf
 
 import akka.actor.ExtendedActorSystem
 import akka.cluster.UniqueAddress
-import akka.serialization.{
-  SerializationExtension,
-  Serializer,
-  SerializerWithStringManifest,
-  Serializers
-}
+import akka.serialization._
 import com.google.protobuf.ByteString
-import com.swissborg.sbr.reachability.SBReachabilityReporter.{Contention, ContentionAck}
+import com.swissborg.sbr.reachability._
 import com.swissborg.sbr.reachability.{SBReachabilityReporterProtocol => rr}
 
+/**
+  * Serializer for [[SBReachabilityReporter.Contention]] and [[SBReachabilityReporter.ContentionAck]]
+  * messages sent over the network between
+  * [[com.swissborg.sbr.reachability.SBReachabilityReporter]] actors.
+  */
 class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
   import SBMessageSerializer._
 
@@ -19,15 +20,23 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
 
   override val includeManifest: Boolean = false
 
-  override def toBinary(o: AnyRef): Array[Byte] = o match {
-    case contention: Contention       => contentionToProtoByteArray(contention)
-    case contentionAck: ContentionAck => contentionAckToProtoByteArray(contentionAck)
-    case other                        => throw SerializationException(s"Cannot serialize $other")
-  }
+  @SuppressWarnings(Array("org.wartremover.warts.Throw"))
+  override def toBinary(o: AnyRef): Array[Byte] =
+    o match {
+      case contention: SBReachabilityReporter.Contention =>
+        contentionToProtoByteArray(contention)
+
+      case contentionAck: SBReachabilityReporter.ContentionAck =>
+        contentionAckToProtoByteArray(contentionAck)
+
+      case other =>
+        throw SerializationException(s"Cannot serialize $other")
+    }
 
   override def fromBinary(bytes: Array[Byte], manifest: Option[Class[_]]): AnyRef =
     fromProto(rr.SBReachabilityReporterMsg.parseFrom(bytes))
 
+  @SuppressWarnings(Array("org.wartremover.warts.Throw"))
   private def fromProto(msg: rr.SBReachabilityReporterMsg): AnyRef = msg match {
     case rr
           .SBReachabilityReporterMsg(rr.SBReachabilityReporterMsg.Payload.Contention(contention)) =>
@@ -39,50 +48,63 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
     case other => throw SerializationException(s"Cannot decode $other")
   }
 
-  private def contentionToProtoByteArray(contention: Contention): Array[Byte] = {
-    def contentionToProto(contention: Contention): rr.Contention = contention match {
-      case Contention(protester, observer, subject, version) =>
-        rr.Contention()
-          .withProtester(toAkkaInternalProto(protester))
-          .withObserver(toAkkaInternalProto(observer))
-          .withSubject(toAkkaInternalProto(subject))
-          .withVersion(version)
-    }
+  private def contentionToProtoByteArray(
+      contention: SBReachabilityReporter.Contention
+  ): Array[Byte] = {
+    def contentionToProto(contention: SBReachabilityReporter.Contention): rr.Contention =
+      contention match {
+        case SBReachabilityReporter.Contention(protester, observer, subject, version) =>
+          rr.Contention()
+            .withProtester(toAkkaInternalProto(protester))
+            .withObserver(toAkkaInternalProto(observer))
+            .withSubject(toAkkaInternalProto(subject))
+            .withVersion(version)
+      }
 
     rr.SBReachabilityReporterMsg().withContention(contentionToProto(contention)).toByteArray
   }
 
-  private def contentionFromProto(contention: rr.Contention): Contention = contention match {
-    case rr.Contention(Some(protester), Some(observer), Some(subject), Some(version)) =>
-      Contention(
-        toUniqueAddress(protester),
-        toUniqueAddress(observer),
-        toUniqueAddress(subject),
-        version
-      )
+  @SuppressWarnings(Array("org.wartremover.warts.Throw"))
+  private def contentionFromProto(contention: rr.Contention): SBReachabilityReporter.Contention =
+    contention match {
+      case rr.Contention(Some(protester), Some(observer), Some(subject), Some(version)) =>
+        SBReachabilityReporter.Contention(
+          toUniqueAddress(protester),
+          toUniqueAddress(observer),
+          toUniqueAddress(subject),
+          version
+        )
 
-    case _ => throw SerializationException(s"Missing fields in $contention")
-  }
-
-  private def contentionAckToProtoByteArray(contentionAck: ContentionAck): Array[Byte] = {
-    def contentionAckToProto(contentionAck: ContentionAck): rr.ContentionAck = contentionAck match {
-      case ContentionAck(from, observer, subject, version) =>
-        rr.ContentionAck()
-          .withFrom(toAkkaInternalProto(from))
-          .withObserver(toAkkaInternalProto(observer))
-          .withSubject(toAkkaInternalProto(subject))
-          .withVersion(version)
+      case _ => throw SerializationException(s"Missing fields in $contention")
     }
+
+  private def contentionAckToProtoByteArray(
+      contentionAck: SBReachabilityReporter.ContentionAck
+  ): Array[Byte] = {
+    def contentionAckToProto(
+        contentionAck: SBReachabilityReporter.ContentionAck
+    ): rr.ContentionAck =
+      contentionAck match {
+        case SBReachabilityReporter.ContentionAck(from, observer, subject, version) =>
+          rr.ContentionAck()
+            .withFrom(toAkkaInternalProto(from))
+            .withObserver(toAkkaInternalProto(observer))
+            .withSubject(toAkkaInternalProto(subject))
+            .withVersion(version)
+      }
 
     rr.SBReachabilityReporterMsg()
       .withContentionAck(contentionAckToProto(contentionAck))
       .toByteArray
   }
 
-  private def contentionAckFromProto(contentionAck: rr.ContentionAck): ContentionAck =
+  @SuppressWarnings(Array("org.wartremover.warts.Throw"))
+  private def contentionAckFromProto(
+      contentionAck: rr.ContentionAck
+  ): SBReachabilityReporter.ContentionAck =
     contentionAck match {
       case rr.ContentionAck(Some(to), Some(observer), Some(subject), Some(version)) =>
-        ContentionAck(
+        SBReachabilityReporter.ContentionAck(
           toUniqueAddress(to),
           toUniqueAddress(observer),
           toUniqueAddress(subject),
@@ -114,6 +136,7 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
       uniqueAddress.bytes.toByteArray
     )
 
+  @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
   private def fromAkkaInternalProtoByteArray[A <: AnyRef](
       serializerId: Int,
       manifest: Option[String],

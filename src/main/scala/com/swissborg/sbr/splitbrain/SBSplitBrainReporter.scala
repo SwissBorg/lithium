@@ -1,17 +1,17 @@
 package com.swissborg.sbr.splitbrain
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Timers}
+import akka.actor._
 import akka.cluster.ClusterEvent._
-import akka.cluster.MemberStatus.{Joining, WeaklyUp}
-import akka.cluster.{Cluster, Member, UniqueAddress}
+import akka.cluster.MemberStatus._
+import akka.cluster._
 import cats.data.StateT
 import cats.data.StateT._
 import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.sbr._
 import com.swissborg.sbr.implicits._
-import com.swissborg.sbr.reachability.SBReachabilityReporter
-import com.swissborg.sbr.resolver.SBResolver
+import com.swissborg.sbr.reachability._
+import com.swissborg.sbr.resolver._
 
 import scala.concurrent.duration._
 
@@ -34,10 +34,11 @@ private[sbr] class SBSplitBrainReporter(
   private val cluster = Cluster(context.system)
   private val selfMember = cluster.selfMember
 
-  context.actorOf(SBReachabilityReporter.props(self), "sb-reachability-reporter")
+  discard(context.actorOf(SBReachabilityReporter.props(self), "sb-reachability-reporter"))
 
   override def receive: Receive = initializing
 
+  @SuppressWarnings(Array("org.wartremover.warts.Any"))
   private def initializing: Receive = {
     case snapshot: CurrentClusterState =>
       unstashAll()
@@ -46,6 +47,7 @@ private[sbr] class SBSplitBrainReporter(
     case _ => stash()
   }
 
+  @SuppressWarnings(Array("org.wartremover.warts.Any"))
   private def active(state: SBSplitBrainReporterState): Receive = {
     case e: MemberEvent =>
       context.become(active(updateMember(e).runS(state).unsafeRunSync()))

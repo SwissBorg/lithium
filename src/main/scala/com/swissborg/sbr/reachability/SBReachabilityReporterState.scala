@@ -1,8 +1,8 @@
-package com.swissborg.sbr.reachability
+package com.swissborg.sbr
+package reachability
 
 import akka.cluster.UniqueAddress
 import cats.data.State
-import com.swissborg.sbr.reachability.SBReachabilityReporter._
 
 /**
   * State of the SBRFailureDetector.
@@ -10,16 +10,30 @@ import com.swissborg.sbr.reachability.SBReachabilityReporter._
 final private[reachability] case class SBReachabilityReporterState private (
     selfUniqueAddress: UniqueAddress,
     reachabilities: Map[Subject, VReachability],
-    pendingContentionAcks: Map[UniqueAddress, Set[ContentionAck]],
-    receivedAcks: Map[UniqueAddress, ContentionAck]
+    pendingContentionAcks: Map[UniqueAddress, Set[SBReachabilityReporter.ContentionAck]],
+    receivedAcks: Map[UniqueAddress, SBReachabilityReporter.ContentionAck]
 ) {
 
   /**
     * Set the `subject` as reachable.
     */
-  private[reachability] def withReachable(
+  private[reachability] def withReachable(subject: Subject): SBReachabilityReporterState =
+    _withReachable(subject, tagAsRetrieved = false)
+
+  /**
+    * Set the `subject` as reachable and already tag its reachability as retrieved
+    */
+  private[reachability] def withReachableAndSetAsRetrieved(
+      subject: Subject
+  ): SBReachabilityReporterState =
+    _withReachable(subject, tagAsRetrieved = true)
+
+  /**
+    * Set the `subject` as reachable.
+    */
+  private def _withReachable(
       subject: Subject,
-      tagAsRetrieved: Boolean = false
+      tagAsRetrieved: Boolean
   ): SBReachabilityReporterState = {
     val reachable = VReachable.notRetrieved
     copy(
@@ -68,11 +82,12 @@ final private[reachability] case class SBReachabilityReporterState private (
   private[reachability] def withoutContention(
       protester: Protester,
       observer: Observer,
-      subject: Subject
+      subject: Subject,
+      version: Version
   ): SBReachabilityReporterState = {
     val updatedReachabilities = reachabilities + (subject -> reachabilities
       .get(subject)
-      .fold(VReachable.notRetrieved)(_.withoutProtest(protester, observer)))
+      .fold(VReachable.notRetrieved)(_.withoutProtest(protester, observer, version)))
 
     copy(reachabilities = updatedReachabilities)
   }
@@ -89,13 +104,17 @@ final private[reachability] case class SBReachabilityReporterState private (
       receivedAcks = receivedAcks - node
     )
 
-  private[reachability] def expectContentionAck(ack: ContentionAck): SBReachabilityReporterState =
+  private[reachability] def expectContentionAck(
+      ack: SBReachabilityReporter.ContentionAck
+  ): SBReachabilityReporterState =
     copy(
       pendingContentionAcks = pendingContentionAcks + (ack.from -> (pendingContentionAcks
         .getOrElse(ack.from, Set.empty) + ack))
     )
 
-  private[reachability] def registerContentionAck(ack: ContentionAck): SBReachabilityReporterState =
+  private[reachability] def registerContentionAck(
+      ack: SBReachabilityReporter.ContentionAck
+  ): SBReachabilityReporterState =
     pendingContentionAcks.get(ack.from).fold(this) { pendingAcks =>
       val newPendingAcks = pendingAcks - ack
 
@@ -126,7 +145,7 @@ private[reachability] object SBReachabilityReporterState {
     s.reachabilities
       .get(subject)
       .fold[(SBReachabilityReporterState, Option[SBReachabilityStatus])](
-        (s.withReachable(subject, tagAsRetrieved = true), Some(SBReachabilityStatus.Reachable))
+        (s.withReachableAndSetAsRetrieved(subject), Some(SBReachabilityStatus.Reachable))
       ) { reachability =>
         if (reachability.hasBeenRetrieved) {
           (s, None)

@@ -1,9 +1,10 @@
-package com.swissborg.sbr.reachability
+package com.swissborg.sbr
+package reachability
 
 import akka.cluster.UniqueAddress
 import cats.data.NonEmptyMap
 import com.swissborg.sbr.implicits._
-import com.swissborg.sbr.reachability.Detection.allUnprotested
+import com.swissborg.sbr.reachability.DetectionProtest.Unprotested
 
 /**
   * ADT representing the reachability of a member.
@@ -36,7 +37,7 @@ sealed abstract private[reachability] class VReachability {
   /**
     * Forget all the protests done by `protester` towards `observer`.
     */
-  def withoutProtest(protester: Protester, observer: Observer): VReachability
+  def withoutProtest(protester: Protester, observer: Observer, version: Version): VReachability
 
   /**
     * Remove all mentions of `node`.
@@ -47,6 +48,15 @@ sealed abstract private[reachability] class VReachability {
 private[reachability] object VReachability {
   def unreachableFrom(observer: Observer, version: Version): VReachability =
     VUnreachable.fromDetection(observer, version)
+
+  private[reachability] def allUnprotested(
+      detections: NonEmptyMap[Observer, DetectionProtest]
+  ): Boolean =
+    detections.forall {
+      case _: Unprotested => true
+      case _              => false
+    }
+
 }
 
 /**
@@ -66,7 +76,11 @@ private[reachability] final case class VReachable private (hasBeenRetrieved: Boo
   override def withUnreachableFrom(observer: Observer, version: Version): VReachability =
     VUnreachable.fromDetection(observer, version)
 
-  override def withoutProtest(protester: Protester, observer: Observer): VReachability = this
+  override def withoutProtest(
+      protester: Protester,
+      observer: Observer,
+      version: Version
+  ): VReachability = this
 
   override def remove(node: UniqueAddress): VReachability = this
 }
@@ -79,7 +93,7 @@ private object VReachable {
   * A member that is indirectly connected. At least one of the unreachability detections has been been contested.
   */
 private[reachability] final case class VIndirectlyConnected private (
-    detections: NonEmptyMap[Observer, Detection],
+    detections: NonEmptyMap[Observer, DetectionProtest],
     hasBeenRetrieved: Boolean
 ) extends VReachability {
   override lazy val tagAsRetrieved: VReachability = copy(hasBeenRetrieved = true)
@@ -90,71 +104,65 @@ private[reachability] final case class VIndirectlyConnected private (
       version: Version
   ): VReachability = {
     val updatedDetection =
-      detections.lookup(observer).fold(Detection.protested(protester, version)) { currentProtest =>
-        if (currentProtest.version < version) {
-          // protest has a newer version, start a new protest
-          Detection.protested(protester, version)
-        } else if (currentProtest.version == version) {
-          // protest is for the current detection, update it
-          currentProtest.addProtester(protester)
-        } else {
-          // protest is for an old detection
-          currentProtest
-        }
-      }
+      detections
+        .lookup(observer)
+        .fold(DetectionProtest.protested(protester, version))(_.addProtester(protester, version))
 
     copy(detections = detections.add(observer -> updatedDetection))
   }
 
+  @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
   override def withUnreachableFrom(observer: Observer, version: Version): VReachability = {
     val updatedDetection =
-      detections.lookup(observer).fold[Detection](Detection.Unprotested(version)) {
-        currentProtest =>
-          if (currentProtest.version < version) {
-            // detection has a newer version, start a new empty protest
-            Detection.Unprotested(version)
-          } else {
-            // a newer detection has already been received
-            currentProtest
-          }
-      }
+      detections.lookup(observer).fold(DetectionProtest.unprotested(version))(_.detection(version))
 
     // `observer` is not protesting any of the observations anymore
     val updatedDetections =
-      detections.map(_.removeProtester(observer)).add(observer -> updatedDetection)
+      detections.map(_.pruneProtester(observer)).add(observer -> updatedDetection)
 
     val isUnprotested = updatedDetections.forall {
-      case _: Detection.Protested   => false
-      case _: Detection.Unprotested => true
+      case _: DetectionProtest.Protested   => false
+      case _: DetectionProtest.Unprotested => true
     }
 
     if (isUnprotested) {
-      VUnreachable(updatedDetections.asInstanceOf[NonEmptyMap[Observer, Detection.Unprotested]])
+      VUnreachable(
+        updatedDetections.asInstanceOf[NonEmptyMap[Observer, DetectionProtest.Unprotested]]
+      )
     } else {
       copy(detections = updatedDetections)
     }
   }
 
-  override def withoutProtest(protester: Protester, observer: Observer): VReachability = {
-    val updatedDetections = detections.updateWith(observer)(_.removeProtester(protester))
+  @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
+  override def withoutProtest(
+      protester: Protester,
+      observer: Observer,
+      version: Version
+  ): VReachability = {
+    val updatedDetections = detections.updateWith(observer)(_.removeProtester(protester, version))
 
-    if (allUnprotested(updatedDetections)) {
+    if (VReachability.allUnprotested(updatedDetections)) {
       // We are sure that it only contains `Unprotested` values.
-      VUnreachable(updatedDetections.asInstanceOf[NonEmptyMap[Observer, Detection.Unprotested]])
+      VUnreachable(
+        updatedDetections.asInstanceOf[NonEmptyMap[Observer, DetectionProtest.Unprotested]]
+      )
     } else {
       copy(detections = updatedDetections)
     }
   }
 
+  @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
   override def remove(node: UniqueAddress): VReachability = {
     val updatedDetections = (detections - node).map {
-      case (observer, protest) => observer -> protest.removeProtester(node)
+      case (observer, protest) =>
+        observer -> protest.pruneProtester(node)
     }
 
     NonEmptyMap.fromMap(updatedDetections).fold(VReachable.notRetrieved) { detections =>
-      if (allUnprotested(detections)) {
+      if (VReachability.allUnprotested(detections)) {
         // We are sure that it only contains `Unprotested` values.
-        VUnreachable(detections.asInstanceOf[NonEmptyMap[Observer, Detection.Unprotested]])
+        VUnreachable(detections.asInstanceOf[NonEmptyMap[Observer, DetectionProtest.Unprotested]])
       } else {
         copy(detections = detections)
       }
@@ -163,21 +171,27 @@ private[reachability] final case class VIndirectlyConnected private (
 }
 
 private object VIndirectlyConnected {
-  def apply(detections: NonEmptyMap[Observer, Detection]): VReachability =
-    VIndirectlyConnected(detections, false)
+  def apply(detections: NonEmptyMap[Observer, DetectionProtest]): VReachability =
+    VIndirectlyConnected(detections, hasBeenRetrieved = false)
 
-  def fromProtested(protested: Detection.Protested, observer: Observer): VReachability =
-    VIndirectlyConnected(NonEmptyMap.of(observer -> protested), hasBeenRetrieved = false)
+  def fromDetection(detection: DetectionProtest, observer: Observer): VReachability =
+    detection match {
+      case protested: DetectionProtest.Protested =>
+        VIndirectlyConnected(NonEmptyMap.of(observer -> protested), hasBeenRetrieved = false)
+
+      case unprotested: DetectionProtest.Unprotested =>
+        VUnreachable(NonEmptyMap.of(observer -> unprotested))
+    }
 
   def fromProtest(protester: Protester, observer: Observer, version: Version): VReachability =
-    fromProtested(Detection.Protested.one(protester, version), observer)
+    fromDetection(DetectionProtest.Protested.one(protester, version), observer)
 }
 
 /**
   * An unreachable member.
   */
 private[reachability] final case class VUnreachable private (
-    detections: NonEmptyMap[Observer, Detection.Unprotested],
+    detections: NonEmptyMap[Observer, DetectionProtest.Unprotested],
     hasBeenRetrieved: Boolean
 ) extends VReachability {
   override lazy val tagAsRetrieved: VReachability = copy(hasBeenRetrieved = true)
@@ -188,38 +202,45 @@ private[reachability] final case class VUnreachable private (
       version: Version
   ): VReachability = {
     val maybeUpdatedProtested =
-      detections.lookup(observer).fold(Option(Detection.Protested.one(protester, version))) {
-        currentUnprotested =>
-          if (currentUnprotested.version == version) {
-            // Also when equal because the contention is against an unreachable
-            // detection received previously.
-            Some(currentUnprotested.addProtester(protester))
-          } else if (currentUnprotested.version < version) {
-            Some(Detection.Protested.one(protester, version))
-          } else {
-            None
-          }
-      }
+      detections
+        .lookup(observer)
+        .fold[Option[DetectionProtest]](Option(DetectionProtest.Protested.one(protester, version))) {
+          currentUnprotested =>
+            if (currentUnprotested.version == version) {
+              // Also when equal because the contention is against an unreachable
+              // detection received previously.
+              Some(currentUnprotested.addProtester(protester, version))
+            } else if (currentUnprotested.version < version) {
+              Some(DetectionProtest.Protested.one(protester, version))
+            } else {
+              None
+            }
+        }
 
     maybeUpdatedProtested.fold[VReachability](this) { protested =>
-      VIndirectlyConnected.fromProtested(protested, observer)
+      VIndirectlyConnected.fromDetection(protested, observer)
     }
   }
 
   override def withUnreachableFrom(observer: Observer, version: Version): VReachability = {
-    val updatedUnprotested = detections.lookup(observer).fold(Detection.Unprotested(version)) {
-      currentUnprotested =>
-        if (currentUnprotested.version < version) {
-          Detection.Unprotested(version)
-        } else {
-          currentUnprotested
-        }
-    }
+    val updatedUnprotested =
+      detections.lookup(observer).fold(DetectionProtest.Unprotested(version)) {
+        currentUnprotested =>
+          if (currentUnprotested.version < version) {
+            DetectionProtest.Unprotested(version)
+          } else {
+            currentUnprotested
+          }
+      }
 
     copy(detections = detections.add(observer -> updatedUnprotested))
   }
 
-  override def withoutProtest(protester: Protester, observer: Observer): VReachability = {
+  override def withoutProtest(
+      protester: Protester,
+      observer: Observer,
+      version: Version
+  ): VReachability = {
     val updatedDetections = detections - observer
 
     NonEmptyMap.fromMap(updatedDetections).fold(VReachable.notRetrieved)(d => copy(detections = d))
@@ -236,10 +257,10 @@ private[reachability] final case class VUnreachable private (
 private object VUnreachable {
   def fromDetection(observer: Observer, version: Version): VUnreachable =
     VUnreachable(
-      NonEmptyMap.of(observer -> Detection.Unprotested(version)),
+      NonEmptyMap.of(observer -> DetectionProtest.Unprotested(version)),
       hasBeenRetrieved = false
     )
 
-  def apply(detections: NonEmptyMap[Observer, Detection.Unprotested]): VReachability =
+  def apply(detections: NonEmptyMap[Observer, DetectionProtest.Unprotested]): VReachability =
     VUnreachable(detections, hasBeenRetrieved = false)
 }

@@ -14,9 +14,6 @@ message SBReachabilityReporterMsg {
     oneof Payload {
         Contention contention = 1;
         ContentionAck contentionAck = 2;
-
-        Introduction introduction = 3;
-        IntroductionAck introductionAck = 4;
     }
 }
 
@@ -32,21 +29,6 @@ message ContentionAck {
     AkkaInternal observer = 2;
     AkkaInternal subject = 3;
     google.protobuf.Int64Value version = 4;
-}
-
-message Introduction {
-    message Record {
-        AkkaInternal subject = 1;
-        AkkaInternal observer = 2;
-        repeated AkkaInternal disagreeing = 3;
-        google.protobuf.Int64Value version = 4;
-    }
-
-    repeated Record contentions = 1;
-}
-
-message IntroductionAck {
-    AkkaInternal from = 1;
 }
 
 message AkkaInternal {
