@@ -11,7 +11,7 @@ final private[reachability] case class SBReachabilityReporterState private (
     selfUniqueAddress: UniqueAddress,
     reachabilities: Map[Subject, VReachability],
     pendingContentionAcks: Map[UniqueAddress, Set[SBReachabilityReporter.ContentionAck]],
-    receivedAcks: Map[UniqueAddress, SBReachabilityReporter.ContentionAck]
+    receivedAcks: Map[UniqueAddress, Set[SBReachabilityReporter.ContentionAck]]
 ) {
 
   /**
@@ -114,19 +114,23 @@ final private[reachability] case class SBReachabilityReporterState private (
 
   private[reachability] def registerContentionAck(
       ack: SBReachabilityReporter.ContentionAck
-  ): SBReachabilityReporterState =
-    pendingContentionAcks.get(ack.from).fold(this) { pendingAcks =>
-      val newPendingAcks = pendingAcks - ack
+  ): SBReachabilityReporterState = {
+    val updatedPendingContentionAcks = pendingContentionAcks
+      .get(ack.from)
+      .fold(pendingContentionAcks) { pendingAcks =>
+        val newPendingAcks = pendingAcks - ack
 
-      val newPendingContentionAcks =
         if (newPendingAcks.isEmpty) pendingContentionAcks - ack.from
         else pendingContentionAcks + (ack.from -> newPendingAcks)
+      }
 
-      copy(
-        pendingContentionAcks = newPendingContentionAcks,
-        receivedAcks = receivedAcks + (ack.from -> ack)
-      )
-    }
+    val updatedReceivedAcks = receivedAcks + (ack.from -> (receivedAcks.getOrElse(
+      ack.from,
+      Set.empty
+    ) + ack))
+
+    copy(pendingContentionAcks = updatedPendingContentionAcks, receivedAcks = updatedReceivedAcks)
+  }
 }
 
 private[reachability] object SBReachabilityReporterState {
