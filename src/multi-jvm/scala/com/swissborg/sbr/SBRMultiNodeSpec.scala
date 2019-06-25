@@ -60,9 +60,11 @@ abstract class SBRMultiNodeSpec(val config: MultiNodeConfig)
 
   private def downedItself(implicit system: ActorSystem): Boolean = {
     val selfAddress = Cluster(system).selfAddress
-//    println(s"------------- ${Cluster(system).state.unreachable}")
     Cluster(system).state.members
-      .exists(m => m.address === selfAddress && (m.status === Exiting || m.status === Down))
+      .exists(
+        m =>
+          m.address === selfAddress && (m.status === Exiting || m.status === Down || m.status === Removed)
+      )
   }
 
   private def allLeaving(roleNames: RoleName*): Boolean =
