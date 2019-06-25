@@ -60,11 +60,9 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
       context.become(active(withReachable(m.uniqueAddress).runS(state).unsafeRunSync()))
 
     case c: Contention =>
-      log.debug("Received contention: {}", c)
       context.become(active(withContentionFrom(sender(), c).runS(state).unsafeRunSync()))
 
     case ack: ContentionAck =>
-      log.debug("Received contention ack: {}", ack)
       context.become(active(registerContentionAck(ack).runS(state).unsafeRunSync()))
 
     case SendWithRetry(message, to, key, timeout) =>
@@ -103,13 +101,15 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
       * Send the contention to `to` expecting an ack. If an ack is not received in 1 second the actor
       * will retry.
       */
-    def sendContentionWithRetry(contention: Contention, to: UniqueAddress): Res[Unit] =
-      sendWithRetry(
-        contention,
-        sbReachabilityReporterOnNode(to),
-        ContentionKey(to, contention.observer, contention.subject),
-        ackTimeout
-      )
+    def sendContentionWithRetry(
+        contention: Contention,
+        to: UniqueAddress,
+        expectedAck: ContentionAck
+    ): Res[Unit] =
+      for {
+        _ <- StateT.modify[SyncIO, SBReachabilityReporterState](_.expectContentionAck(expectedAck))
+        _ <- sendWithRetry(contention, sbReachabilityReporterOnNode(to), expectedAck, ackTimeout)
+      } yield ()
 
     /**
       * All the instances of this actor living on the other cluster nodes.
@@ -127,13 +127,16 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
         sbFailureDetectors <- sbFailureDetectors
         state <- StateT.get[SyncIO, SBReachabilityReporterState]
         state <- sbFailureDetectors.traverse_[Res, Unit] { to =>
-          val ack = ContentionAck.fromContention(contention, to)
-          val key = ContentionKey.fromAck(ack)
+          val expectedAck = ContentionAck.fromContention(contention, to)
 
-          val contentionAlreadyReceived = state.receivedAcks.get(ack.from).exists(_ === ack)
+          val hasBeenAcked =
+            state.receivedAcks.get(to).exists(_.exists(_ === expectedAck))
+
+          val sendingInProgress =
+            state.pendingContentionAcks.get(to).exists(_.exists(_ === expectedAck))
 
           val res: StateT[SyncIO, SBReachabilityReporterState, Unit] =
-            if (contentionAlreadyReceived) {
+            if (hasBeenAcked || sendingInProgress) {
               // No need to send the broadcast as it was already received.
               StateT.empty
             } else if (to === selfUniqueAddress) {
@@ -144,16 +147,15 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
                   contention.observer,
                   contention.subject,
                   contention.version
-                ).registerContentionAck(ack) // so it won't be done again in subsequently
+                ).registerContentionAck(expectedAck) // so it won't be done again in subsequently
               )
             } else {
               for {
                 // Cancel the timer for the previous observer, subject pair contention
                 // as there is only one timer per such pair. There's no need to make sure
                 // it was delivered, the new contention will override it.
-                _ <- StateT.liftF(cancelContentionResend(key))
-                _ <- sendContentionWithRetry(contention, to)
-                _ <- StateT.modify[SyncIO, SBReachabilityReporterState](_.expectContentionAck(ack))
+                _ <- StateT.liftF(cancelContentionResend(expectedAck))
+                _ <- sendContentionWithRetry(contention, to, expectedAck)
               } yield ()
             }
 
@@ -167,8 +169,12 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
         _.withUnreachableFrom(contention.observer, contention.subject, contention.version)
       )
 
+    /**
+      * Remove from the state all the contentions on unreachability detections
+      * that are not part of the state anymore.
+      */
     def removeStaleContentions(reachability: SBReachability): Res[Unit] = StateT.modify { state =>
-      state.receivedAcks.valuesIterator
+      state.receivedAcks.valuesIterator.flatten
         .filterNot {
           case ContentionAck(_, observer, subject, version) =>
             reachability.findUnreachableRecord(observer, subject).exists(_.version == version)
@@ -213,7 +219,7 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
           .getOrElse(node, Set.empty)
           .foldLeft(SyncIO.unit) {
             case (cancelContentionResends, ack) =>
-              cancelContentionResends >> cancelContentionResend(ContentionKey.fromAck(ack))
+              cancelContentionResends >> cancelContentionResend(ack)
           }
       }
 
@@ -276,6 +282,7 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
     )
 
     for {
+      _ <- StateT.liftF(SyncIO(log.debug("Received contention: {}", contention)))
       _ <- withContention(contention)
       _ <- sendReachability(contention.subject)
       _ <- ackContention(sender, contention)
@@ -284,7 +291,8 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
 
   private def registerContentionAck(ack: ContentionAck): Res[Unit] =
     for {
-      _ <- StateT.liftF(cancelContentionResend(ContentionKey.fromAck(ack)))
+      _ <- StateT.liftF(SyncIO(log.debug("Received contention ack: {}", ack)))
+      _ <- StateT.liftF(cancelContentionResend(ack))
       _ <- StateT.modify[SyncIO, SBReachabilityReporterState](_.registerContentionAck(ack))
     } yield ()
 
@@ -315,7 +323,7 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
     )
   }
 
-  private def cancelContentionResend(key: ContentionKey): SyncIO[Unit] = SyncIO(timers.cancel(key))
+  private def cancelContentionResend(ack: ContentionAck): SyncIO[Unit] = SyncIO(timers.cancel(ack))
 
   private def sbReachabilityReporterOnNode(node: UniqueAddress): ActorPath =
     ActorPath.fromString(s"${node.address.toString}/${self.path.toStringWithoutAddress}")
@@ -337,18 +345,18 @@ private[sbr] object SBReachabilityReporter {
 
   def props(sendTo: ActorRef): Props = Props(new SBReachabilityReporter(sendTo))
 
-  /**
-    * Key for the timer related to the at-least-once delivery resend for the contention
-    * of the observation of `observer` of `subject` as unreachable.
-    *
-    * Warning: `to` must containing the address!
-    */
-  private final case class ContentionKey(to: UniqueAddress, observer: Observer, subject: Subject)
-
-  private object ContentionKey {
-    def fromAck(ack: ContentionAck): ContentionKey =
-      ContentionKey(ack.from, ack.observer, ack.subject)
-  }
+//  /**
+//    * Key for the timer related to the at-least-once delivery resend for the contention
+//    * of the observation of `observer` of `subject` as unreachable.
+//    *
+//    * Warning: `to` must containing the address!
+//    */
+//  private final case class ContentionKey(to: UniqueAddress, observer: Observer, subject: Subject)
+//
+//  private object ContentionKey {
+//    def fromAck(ack: ContentionAck): ContentionKey =
+//      ContentionKey(ack.from, ack.observer, ack.subject)
+//  }
 
   /**
     * Send `message` to `addressee`. If the message is not acknowledged it is resent after `timeout`. The retry can
