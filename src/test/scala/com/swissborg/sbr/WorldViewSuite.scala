@@ -6,7 +6,7 @@ import akka.cluster.MemberStatus._
 import akka.cluster.swissborg.TestMember
 import com.swissborg.sbr.WorldView.Status
 import com.swissborg.sbr.implicits._
-import com.swissborg.sbr.reachability.SBReachabilityReporter.SBReachabilityStatus._
+import com.swissborg.sbr.reachability._
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.collection.immutable.SortedSet
@@ -27,6 +27,9 @@ class WorldViewSuite extends WordSpec with Matchers {
   val exiting = TestMember(Address("akka.tcp", "sys", "exiting", 2552), Exiting)
   val down = TestMember(Address("akka.tcp", "sys", "down", 2552), Down)
   val removed = TestMember(Address("akka.tcp", "sys", "removed", 2552), Removed)
+
+  val otherDC = TestMember(Address("akka.tcp", "sys", "other-dc", 2552), Up, "Other")
+  val bbInOtherDC = TestMember(Address("akka.tcp", "sys", "b", 2552), Removed, "Other")
 
   "WorldView" must {
     "init" in {
@@ -293,7 +296,7 @@ class WorldViewSuite extends WordSpec with Matchers {
         )
         .addOrUpdate(aa.copy(Leaving))
 
-      w.selfStatus should ===(Status(aa.copy(Leaving), Reachable))
+      w.selfStatus should ===(Status(aa.copy(Leaving), SBReachabilityStatus.Reachable))
     }
 
     "get the latest state of selfMember from the snapshot" in {
@@ -316,6 +319,24 @@ class WorldViewSuite extends WordSpec with Matchers {
       )
 
       w.selfStatus.member.status should ===(aa0.status)
+    }
+
+    "ignore members from another datacenter" in {
+      val w = WorldView.fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb)))
+      w.addOrUpdate(otherDC) should ===(w)
+      w.removeMember(bbInOtherDC) should ===(w)
+    }
+
+    "ignore members from another data-center when building from a snapshot" in {
+      WorldView.fromSnapshot(aa, CurrentClusterState(SortedSet(aa, otherDC), SortedSet(otherDC))) should ===(
+        WorldView.fromSnapshot(aa, CurrentClusterState(SortedSet(aa)))
+      )
+    }
+
+    "ignore members from another data-center when building from nodes" in {
+      WorldView.fromNodes(ReachableNode(aa), SortedSet(UnreachableNode(otherDC))) should ===(
+        WorldView.fromNodes(ReachableNode(aa), SortedSet.empty)
+      )
     }
   }
 }

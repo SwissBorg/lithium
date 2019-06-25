@@ -1,9 +1,8 @@
-package com.swissborg.sbr.utils
+package com.swissborg.sbr
+package utils
 
-import cats.Monoid
-import com.swissborg.sbr._
-import com.swissborg.sbr.strategy.StrategyDecision
-import com.swissborg.sbr.strategy.StrategyDecision._
+import cats._
+import com.swissborg.sbr.strategy._
 
 import scala.collection.SortedSet
 
@@ -51,12 +50,12 @@ object PostResolution {
 
   def one(nodes: SortedSet[Node]): PostResolution = PostResolution(List(nodes))
 
-  def fromDecision(worldView: WorldView)(decision: StrategyDecision): PostResolution =
+  def fromDecision(worldView: WorldView)(decision: Decision): PostResolution =
     decision match {
       // In all these cases the entire partition will down itself.
-      case _: DownReachable               => PostResolution.empty
-      case DownThese(_: DownReachable, _) => PostResolution.empty
-      case DownThese(_, _: DownReachable) => PostResolution.empty
+      case _: Decision.DownReachable                        => PostResolution.empty
+      case Decision.DownThese(_: Decision.DownReachable, _) => PostResolution.empty
+      case Decision.DownThese(_, _: Decision.DownReachable) => PostResolution.empty
 
       case _ =>
         val nodesAfterDowning = worldView.nodes.toSortedSet -- decision.nodesToDown
