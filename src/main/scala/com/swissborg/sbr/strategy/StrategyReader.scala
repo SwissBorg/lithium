@@ -2,6 +2,7 @@ package com.swissborg.sbr
 package strategy
 
 import cats.implicits._
+import com.typesafe.config.Config
 import pureconfig.error.ConfigReaderFailures
 import pureconfig.{ConfigReader, Derivation}
 
@@ -23,9 +24,9 @@ private[sbr] trait StrategyReader[A] {
   /**
     * Attempts to load the strategy `A` otherwise an error.
     */
-  def load(implicit R: Derivation[ConfigReader[A]]): Either[ConfigReaderError, A] =
+  def load(config: Config)(implicit R: Derivation[ConfigReader[A]]): Either[ConfigReaderError, A] =
     pureconfig
-      .loadConfig[A](s"com.swissborg.sbr.$name")
+      .loadConfig[A](config, s"com.swissborg.sbr.$name")
       .leftMap(ConfigReaderError)
 }
 

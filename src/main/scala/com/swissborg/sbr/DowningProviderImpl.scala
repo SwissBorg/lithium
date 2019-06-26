@@ -42,14 +42,27 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
 
     val strategy = config.activeStrategy match {
       case `keepMajority` =>
-        KeepMajority.Config.load.map(c => sbResolver(new sbr.strategy.KeepMajority(c)))
+        KeepMajority.Config
+          .load(system.settings.config)
+          .map(c => sbResolver(new sbr.strategy.KeepMajority(c)))
+
       case `keepOldest` =>
-        KeepOldest.Config.load.map(c => sbResolver(new sbr.strategy.KeepOldest(c)))
+        KeepOldest.Config
+          .load(system.settings.config)
+          .map(c => sbResolver(new sbr.strategy.KeepOldest(c)))
+
       case `keepReferee` =>
-        KeepReferee.Config.load.map(c => sbResolver(new sbr.strategy.KeepReferee(c)))
+        KeepReferee.Config
+          .load(system.settings.config)
+          .map(c => sbResolver(new sbr.strategy.KeepReferee(c)))
+
       case `staticQuorum` =>
-        StaticQuorum.Config.load.map(c => sbResolver(new sbr.strategy.StaticQuorum(c)))
-      case `downAll`       => sbResolver(new sbr.strategy.DownAll).asRight
+        StaticQuorum.Config
+          .load(system.settings.config)
+          .map(c => sbResolver(new sbr.strategy.StaticQuorum(c)))
+
+      case `downAll` => sbResolver(new sbr.strategy.DownAll).asRight
+
       case unknownStrategy => UnknownStrategy(unknownStrategy).asLeft
     }
 
