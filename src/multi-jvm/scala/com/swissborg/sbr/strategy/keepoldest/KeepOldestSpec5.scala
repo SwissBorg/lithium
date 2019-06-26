@@ -20,7 +20,7 @@ class KeepOldestSpec5MultiJvmNode5 extends KeepOldestSpec5
   */
 class KeepOldestSpec5 extends FiveNodeSpec("KeepOldest", KeepOldestSpecFiveNodeConfig) {
   override def assertions(): Unit =
-    "handle scenario 11" in within(60 seconds) {
+    "handle scenario 5" in within(120 seconds) {
       runOn(node1) {
         testConductor.blackhole(node4, node5, Direction.Receive).await
       }

@@ -43,6 +43,12 @@ sealed abstract private[reachability] class VReachability {
     * Remove all mentions of `node`.
     */
   def remove(node: UniqueAddress): VReachability
+
+  val toSBReachabilityStatus: SBReachabilityStatus = this match {
+    case _: VReachable           => SBReachabilityStatus.Reachable
+    case _: VIndirectlyConnected => SBReachabilityStatus.IndirectlyConnected
+    case _: VUnreachable         => SBReachabilityStatus.Unreachable
+  }
 }
 
 private[reachability] object VReachability {
@@ -56,7 +62,6 @@ private[reachability] object VReachability {
       case _: Unprotested => true
       case _              => false
     }
-
 }
 
 /**

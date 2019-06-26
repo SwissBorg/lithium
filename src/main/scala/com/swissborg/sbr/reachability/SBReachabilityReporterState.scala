@@ -138,33 +138,49 @@ private[reachability] object SBReachabilityReporterState {
     SBReachabilityReporterState(selfUniqueAddress, Map.empty, Map.empty, Map.empty)
 
   /**
-    * Return the `subject`'s status if it has changed since the last time
+    * Return the `subject`'s reachability if it has changed since the last time
     * this method was called.
     *
-    * The status is `None` when it has not changed since the last status retrieval.
+    * The status is `None` when it has not changed since the last reachability retrieval.
     */
-  private[reachability] def updatedStatus(
+  private[reachability] def updatedReachability(
       subject: Subject
   ): State[SBReachabilityReporterState, Option[SBReachabilityStatus]] = State { s =>
     s.reachabilities
       .get(subject)
-      .fold[(SBReachabilityReporterState, Option[SBReachabilityStatus])](
-        (s.withReachableAndSetAsRetrieved(subject), Some(SBReachabilityStatus.Reachable))
+      .fold(
+        (
+          s.withReachableAndSetAsRetrieved(subject),
+          Option[SBReachabilityStatus](SBReachabilityStatus.Reachable)
+        )
       ) { reachability =>
         if (reachability.hasBeenRetrieved) {
           (s, None)
         } else {
-          val sbReachabilityStatus: SBReachabilityStatus = reachability match {
-            case _: VReachable           => SBReachabilityStatus.Reachable
-            case _: VIndirectlyConnected => SBReachabilityStatus.IndirectlyConnected
-            case _: VUnreachable         => SBReachabilityStatus.Unreachable
-          }
-
           (
             s.copy(reachabilities = s.reachabilities + (subject -> reachability.tagAsRetrieved)),
-            Some(sbReachabilityStatus)
+            Some(reachability.toSBReachabilityStatus)
           )
         }
+      }
+  }
+
+  /**
+    * Return all the changed reachabilities since the last time this method was called.
+    */
+  private[reachability] val allUpdatedReachabilies
+      : State[SBReachabilityReporterState, Map[Subject, SBReachabilityStatus]] = State { s =>
+    s.reachabilities
+      .foldLeft((s, Map.empty[Subject, SBReachabilityStatus])) {
+        case ((s, statuses), (subject, reachability)) =>
+          if (reachability.hasBeenRetrieved) {
+            (s, statuses)
+          } else {
+            (
+              s.copy(reachabilities = s.reachabilities + (subject -> reachability.tagAsRetrieved)),
+              statuses + (subject -> reachability.toSBReachabilityStatus)
+            )
+          }
       }
   }
 }
