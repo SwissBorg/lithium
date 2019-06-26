@@ -5,7 +5,6 @@ import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus._
 import akka.cluster._
 import cats.data.StateT
-import cats.data.StateT._
 import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.sbr._
@@ -13,6 +12,7 @@ import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.reachability._
 import com.swissborg.sbr.resolver._
 
+import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
 
 /**
@@ -52,16 +52,13 @@ private[sbr] class SBSplitBrainReporter(
     case e: MemberEvent =>
       context.become(active(updateMember(e).runS(state).unsafeRunSync()))
 
-    case e @ NodeReachable(node) =>
-      log.debug("{}", e)
+    case NodeReachable(node) =>
       context.become(active(withReachableNode(node).runS(state).unsafeRunSync()))
 
-    case e @ NodeUnreachable(node) =>
-      log.debug("{}", e)
+    case NodeUnreachable(node) =>
       context.become(active(withUnreachableNode(node).runS(state).unsafeRunSync()))
 
-    case e @ NodeIndirectlyConnected(node) =>
-      log.debug("{}", e)
+    case NodeIndirectlyConnected(node) =>
       context.become(active(withIndirectlyConnectedNode(node).runS(state).unsafeRunSync()))
 
     case ClusterIsStable =>
@@ -72,10 +69,18 @@ private[sbr] class SBSplitBrainReporter(
   }
 
   /**
-    * Modify the state using `f` and TODO
+    * Modify the state using `f` and manage the stability timers.
+    *
+    * If the change describes a non-stable change of the world view
+    * it will reset the `ClusterIsStable` timer. If the after applying
+    * `f` the world view is not subject to a partition anymore, the
+    * `ClusterIsUnstable` timer is cancelled. On the other hand, if the
+    * partition worsened and the timer is not running, it is started.
     */
-  private def modifyS(f: SBSplitBrainReporterState => SBSplitBrainReporterState): Res[Unit] =
-    modifyF { state =>
+  private def modifyAndManageStability(
+      f: SBSplitBrainReporterState => SBSplitBrainReporterState
+  ): Res[Unit] =
+    StateT.modifyF { state =>
       val updatedState = f(state)
 
       val diff = DiffInfo(state.worldView, updatedState.worldView)
@@ -93,6 +98,7 @@ private[sbr] class SBSplitBrainReporter(
         else resetClusterIsStable
 
       for {
+        _ <- SyncIO(log.debug("DIFF {}", diff))
         _ <- if (downAllWhenUnstable.isDefined)
           clusterIsUnstableIsActive.ifM(
             // When the timer is running it should not be interfered
@@ -116,22 +122,25 @@ private[sbr] class SBSplitBrainReporter(
     }
 
   private def updateMember(e: MemberEvent): Res[Unit] =
-    modifyS(_.updatedMember(e.member)) >> liftF(SyncIO(log.debug("Member event: {}", e)))
+    modifyAndManageStability(_.updatedMember(e.member))
 
   private def withReachableNode(node: UniqueAddress): Res[Unit] =
-    modifyS(_.withReachableNode(node)) >> liftF(
-      SyncIO(log.debug("Node became reachable: {}", node))
-    )
+    for {
+      _ <- modifyAndManageStability(_.withReachableNode(node))
+      _ <- StateT.liftF(SyncIO(log.debug("[{}] is reachable.", node)))
+    } yield ()
 
   private def withUnreachableNode(node: UniqueAddress): Res[Unit] =
-    modifyS(_.withUnreachableNode(node)) >> liftF(
-      SyncIO(log.debug("Node became unreachable: {}", node))
-    )
+    for {
+      _ <- modifyAndManageStability(_.withUnreachableNode(node))
+      _ <- StateT.liftF(SyncIO(log.debug("[{}] is unreachable.", node)))
+    } yield ()
 
   private def withIndirectlyConnectedNode(node: UniqueAddress): Res[Unit] =
-    modifyS(_.withIndirectlyConnectedNode(node)) >> liftF(
-      SyncIO(log.debug("Node became indirectly-connected: {}", node))
-    )
+    for {
+      _ <- modifyAndManageStability(_.withIndirectlyConnectedNode(node))
+      _ <- StateT.liftF(SyncIO(log.debug("[{}] is indirectly-connected.", node)))
+    } yield ()
 
   private val scheduleClusterIsStable: SyncIO[Unit] =
     SyncIO(timers.startSingleTimer(ClusterIsStable, ClusterIsStable, stableAfter))
@@ -160,19 +169,19 @@ private[sbr] class SBSplitBrainReporter(
     for {
       // Cancel else the partition will be downed if it takes too long for
       // the split-brain to be resolved after `SBResolver` downs the nodes.
-      _ <- liftF[SyncIO, SBSplitBrainReporterState, Unit](cancelClusterIsUnstable)
+      _ <- StateT.liftF[SyncIO, SBSplitBrainReporterState, Unit](cancelClusterIsUnstable)
       _ <- ifSplitBrain(SBResolver.HandleSplitBrain(_))
-      _ <- liftF(scheduleClusterIsStable)
+      _ <- StateT.liftF(scheduleClusterIsStable)
     } yield ()
 
   private val downAll: Res[Unit] = for {
-    _ <- liftF[SyncIO, SBSplitBrainReporterState, Unit](cancelClusterIsStable)
+    _ <- StateT.liftF[SyncIO, SBSplitBrainReporterState, Unit](cancelClusterIsStable)
     _ <- ifSplitBrain(SBResolver.DownAll)
-    _ <- liftF(scheduleClusterIsStable)
+    _ <- StateT.liftF(scheduleClusterIsStable)
   } yield ()
 
   private def ifSplitBrain(event: WorldView => SBResolver.Event): Res[Unit] =
-    inspectF { state =>
+    StateT.inspectF { state =>
       if (hasSplitBrain(state.worldView)) {
         SyncIO(splitBrainResolver ! event(state.worldView))
       } else {
@@ -233,29 +242,25 @@ private[sbr] object SBSplitBrainReporter {
 
   private[splitbrain] object DiffInfo {
     def apply(oldWorldView: WorldView, updatedWorldView: WorldView): DiffInfo = {
+      def isNonJoining(member: Member): Boolean =
+        member.status =!= Joining && member.status =!= WeaklyUp
+
       // Remove members that are `Joining` or `WeaklyUp` as they
       // can appear during a split-brain.
-      def nonJoining[N <: Node](nodes: Set[N]): List[Member] =
-        nodes.iterator.collect {
-          case ReachableNode(member) if member.status =!= Joining && member.status =!= WeaklyUp =>
-            member
-          case UnreachableNode(member) if member.status =!= Joining && member.status =!= WeaklyUp =>
-            member
-          case IndirectlyConnectedNode(member)
-              if member.status =!= Joining && member.status =!= WeaklyUp =>
-            member
-        }.toList
+      def nonJoining[N <: Node](nodes: SortedSet[N]): SortedSet[Member] =
+        nodes.collect {
+          case ReachableNode(member) if isNonJoining(member)           => member
+          case UnreachableNode(member) if isNonJoining(member)         => member
+          case IndirectlyConnectedNode(member) if isNonJoining(member) => member
+        }
 
       /**
-        * True if the both lists contain the same members in the same order.
-        *
-        * Warning: expects both arguments to be sorted.
-        */
-      def pairWiseEquals(members1: List[Member], members2: List[Member]): Boolean =
-        members1.sorted.zip(members2.sorted).forall {
+        * True if the both sets contain the same members with the same status.
+        **/
+      def noChange(members1: SortedSet[Member], members2: SortedSet[Member]): Boolean =
+        members1.size === members2.size && members1.iterator.zip(members2.iterator).forall {
           case (member1, member2) =>
-            member1 === member2 && // only compares unique addresses
-              member1.status === member2.status
+            member1.uniqueAddress === member2.uniqueAddress && member1.status === member2.status
         }
 
       val oldReachable = nonJoining(oldWorldView.reachableNodes)
@@ -266,17 +271,14 @@ private[sbr] object SBSplitBrainReporter {
       val updatedIndirectlyConnected = nonJoining(updatedWorldView.indirectlyConnectedNodes)
       val updatedUnreachable = nonJoining(updatedWorldView.unreachableNodes)
 
-      val stable = pairWiseEquals(oldReachable, updatedReachable) &&
-        // A change between unreachable and indirectly-connected does not affect the stability.
-        pairWiseEquals(
-          oldIndirectlyConnected ++ oldUnreachable,
-          updatedIndirectlyConnected ++ updatedUnreachable
-        )
+      val stableReachable = noChange(oldReachable, updatedReachable)
+      val stableIndirectlyConnected = noChange(oldIndirectlyConnected, updatedIndirectlyConnected)
+      val stableUnreachable = noChange(oldUnreachable, updatedUnreachable)
 
       val increase =
         oldIndirectlyConnected.size < updatedIndirectlyConnected.size || oldUnreachable.size < updatedUnreachable.size
 
-      new DiffInfo(stable, increase) {}
+      new DiffInfo(stableReachable && stableIndirectlyConnected && stableUnreachable, increase) {}
     }
   }
 }
