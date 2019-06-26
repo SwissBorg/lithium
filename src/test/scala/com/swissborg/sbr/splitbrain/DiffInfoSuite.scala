@@ -122,7 +122,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
 
       val diff = DiffInfo(oldW, updatedW)
 
-      diff.changeIsStable shouldBe true
+      diff.changeIsStable shouldBe false
       diff.hasNewUnreachableOrIndirectlyConnected shouldBe true
     }
 
@@ -138,7 +138,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
 
       val diff = DiffInfo(oldW, updatedW)
 
-      diff.changeIsStable shouldBe true
+      diff.changeIsStable shouldBe false
       diff.hasNewUnreachableOrIndirectlyConnected shouldBe true
     }
 
