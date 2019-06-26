@@ -5,7 +5,6 @@ import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus._
 import akka.cluster._
 import cats.data.StateT
-import cats.data.StateT._
 import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.sbr._
@@ -53,16 +52,13 @@ private[sbr] class SBSplitBrainReporter(
     case e: MemberEvent =>
       context.become(active(updateMember(e).runS(state).unsafeRunSync()))
 
-    case e @ NodeReachable(node) =>
-      log.debug("{}", e)
+    case NodeReachable(node) =>
       context.become(active(withReachableNode(node).runS(state).unsafeRunSync()))
 
-    case e @ NodeUnreachable(node) =>
-      log.debug("{}", e)
+    case NodeUnreachable(node) =>
       context.become(active(withUnreachableNode(node).runS(state).unsafeRunSync()))
 
-    case e @ NodeIndirectlyConnected(node) =>
-      log.debug("{}", e)
+    case NodeIndirectlyConnected(node) =>
       context.become(active(withIndirectlyConnectedNode(node).runS(state).unsafeRunSync()))
 
     case ClusterIsStable =>
@@ -73,10 +69,18 @@ private[sbr] class SBSplitBrainReporter(
   }
 
   /**
-    * Modify the state using `f` and TODO
+    * Modify the state using `f` and manage the stability timers.
+    *
+    * If the change describes a non-stable change of the world view
+    * it will reset the `ClusterIsStable` timer. If the after applying
+    * `f` the world view is not subject to a partition anymore, the
+    * `ClusterIsUnstable` timer is cancelled. On the other hand, if the
+    * partition worsened and the timer is not running, it is started.
     */
-  private def modifyS(f: SBSplitBrainReporterState => SBSplitBrainReporterState): Res[Unit] =
-    modifyF { state =>
+  private def modifyAndManageStability(
+      f: SBSplitBrainReporterState => SBSplitBrainReporterState
+  ): Res[Unit] =
+    StateT.modifyF { state =>
       val updatedState = f(state)
 
       val diff = DiffInfo(state.worldView, updatedState.worldView)
@@ -118,22 +122,25 @@ private[sbr] class SBSplitBrainReporter(
     }
 
   private def updateMember(e: MemberEvent): Res[Unit] =
-    modifyS(_.updatedMember(e.member)) >> liftF(SyncIO(log.debug("Member event: {}", e)))
+    modifyAndManageStability(_.updatedMember(e.member))
 
   private def withReachableNode(node: UniqueAddress): Res[Unit] =
-    modifyS(_.withReachableNode(node)) >> liftF(
-      SyncIO(log.debug("Node became reachable: {}", node))
-    )
+    for {
+      _ <- modifyAndManageStability(_.withReachableNode(node))
+      _ <- StateT.liftF(SyncIO(log.debug("[{}] is reachable.", node)))
+    } yield ()
 
   private def withUnreachableNode(node: UniqueAddress): Res[Unit] =
-    modifyS(_.withUnreachableNode(node)) >> liftF(
-      SyncIO(log.debug("Node became unreachable: {}", node))
-    )
+    for {
+      _ <- modifyAndManageStability(_.withUnreachableNode(node))
+      _ <- StateT.liftF(SyncIO(log.debug("[{}] is unreachable.", node)))
+    } yield ()
 
   private def withIndirectlyConnectedNode(node: UniqueAddress): Res[Unit] =
-    modifyS(_.withIndirectlyConnectedNode(node)) >> liftF(
-      SyncIO(log.debug("Node became indirectly-connected: {}", node))
-    )
+    for {
+      _ <- modifyAndManageStability(_.withIndirectlyConnectedNode(node))
+      _ <- StateT.liftF(SyncIO(log.debug("[{}] is indirectly-connected.", node)))
+    } yield ()
 
   private val scheduleClusterIsStable: SyncIO[Unit] =
     SyncIO(timers.startSingleTimer(ClusterIsStable, ClusterIsStable, stableAfter))
@@ -162,19 +169,19 @@ private[sbr] class SBSplitBrainReporter(
     for {
       // Cancel else the partition will be downed if it takes too long for
       // the split-brain to be resolved after `SBResolver` downs the nodes.
-      _ <- liftF[SyncIO, SBSplitBrainReporterState, Unit](cancelClusterIsUnstable)
+      _ <- StateT.liftF[SyncIO, SBSplitBrainReporterState, Unit](cancelClusterIsUnstable)
       _ <- ifSplitBrain(SBResolver.HandleSplitBrain(_))
-      _ <- liftF(scheduleClusterIsStable)
+      _ <- StateT.liftF(scheduleClusterIsStable)
     } yield ()
 
   private val downAll: Res[Unit] = for {
-    _ <- liftF[SyncIO, SBSplitBrainReporterState, Unit](cancelClusterIsStable)
+    _ <- StateT.liftF[SyncIO, SBSplitBrainReporterState, Unit](cancelClusterIsStable)
     _ <- ifSplitBrain(SBResolver.DownAll)
-    _ <- liftF(scheduleClusterIsStable)
+    _ <- StateT.liftF(scheduleClusterIsStable)
   } yield ()
 
   private def ifSplitBrain(event: WorldView => SBResolver.Event): Res[Unit] =
-    inspectF { state =>
+    StateT.inspectF { state =>
       if (hasSplitBrain(state.worldView)) {
         SyncIO(splitBrainResolver ! event(state.worldView))
       } else {
