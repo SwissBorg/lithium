@@ -13,6 +13,7 @@ import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.reachability._
 import com.swissborg.sbr.resolver._
 
+import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
 
 /**
@@ -93,6 +94,7 @@ private[sbr] class SBSplitBrainReporter(
         else resetClusterIsStable
 
       for {
+        _ <- SyncIO(log.debug("DIFF {}", diff))
         _ <- if (downAllWhenUnstable.isDefined)
           clusterIsUnstableIsActive.ifM(
             // When the timer is running it should not be interfered
@@ -233,29 +235,25 @@ private[sbr] object SBSplitBrainReporter {
 
   private[splitbrain] object DiffInfo {
     def apply(oldWorldView: WorldView, updatedWorldView: WorldView): DiffInfo = {
+      def isNonJoining(member: Member): Boolean =
+        member.status =!= Joining && member.status =!= WeaklyUp
+
       // Remove members that are `Joining` or `WeaklyUp` as they
       // can appear during a split-brain.
-      def nonJoining[N <: Node](nodes: Set[N]): List[Member] =
-        nodes.iterator.collect {
-          case ReachableNode(member) if member.status =!= Joining && member.status =!= WeaklyUp =>
-            member
-          case UnreachableNode(member) if member.status =!= Joining && member.status =!= WeaklyUp =>
-            member
-          case IndirectlyConnectedNode(member)
-              if member.status =!= Joining && member.status =!= WeaklyUp =>
-            member
-        }.toList
+      def nonJoining[N <: Node](nodes: SortedSet[N]): SortedSet[Member] =
+        nodes.collect {
+          case ReachableNode(member) if isNonJoining(member)           => member
+          case UnreachableNode(member) if isNonJoining(member)         => member
+          case IndirectlyConnectedNode(member) if isNonJoining(member) => member
+        }
 
       /**
-        * True if the both lists contain the same members in the same order.
-        *
-        * Warning: expects both arguments to be sorted.
-        */
-      def pairWiseEquals(members1: List[Member], members2: List[Member]): Boolean =
-        members1.sorted.zip(members2.sorted).forall {
+        * True if the both sets contain the same members with the same status.
+        **/
+      def noChange(members1: SortedSet[Member], members2: SortedSet[Member]): Boolean =
+        members1.size === members2.size && members1.iterator.zip(members2.iterator).forall {
           case (member1, member2) =>
-            member1 === member2 && // only compares unique addresses
-              member1.status === member2.status
+            member1.uniqueAddress === member2.uniqueAddress && member1.status === member2.status
         }
 
       val oldReachable = nonJoining(oldWorldView.reachableNodes)
@@ -266,17 +264,14 @@ private[sbr] object SBSplitBrainReporter {
       val updatedIndirectlyConnected = nonJoining(updatedWorldView.indirectlyConnectedNodes)
       val updatedUnreachable = nonJoining(updatedWorldView.unreachableNodes)
 
-      val stable = pairWiseEquals(oldReachable, updatedReachable) &&
-        // A change between unreachable and indirectly-connected does not affect the stability.
-        pairWiseEquals(
-          oldIndirectlyConnected ++ oldUnreachable,
-          updatedIndirectlyConnected ++ updatedUnreachable
-        )
+      val stableReachable = noChange(oldReachable, updatedReachable)
+      val stableIndirectlyConnected = noChange(oldIndirectlyConnected, updatedIndirectlyConnected)
+      val stableUnreachable = noChange(oldUnreachable, updatedUnreachable)
 
       val increase =
         oldIndirectlyConnected.size < updatedIndirectlyConnected.size || oldUnreachable.size < updatedUnreachable.size
 
-      new DiffInfo(stable, increase) {}
+      new DiffInfo(stableReachable && stableIndirectlyConnected && stableUnreachable, increase) {}
     }
   }
 }
