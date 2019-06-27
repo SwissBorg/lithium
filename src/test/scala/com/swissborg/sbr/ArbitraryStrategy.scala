@@ -20,15 +20,17 @@ object ArbitraryStrategy {
   implicit def keepRefereeArbitraryStrategy[F[_]: Applicative]: ArbitraryStrategy[KeepReferee[F]] =
     new ArbitraryStrategy[KeepReferee[F]] {
       override def fromScenario(scenario: Scenario): Arbitrary[KeepReferee[F]] = Arbitrary {
-        val nodes = scenario.worldViews.head.nodes
+        val maybeNodes = scenario.worldViews.headOption.map(_.nodes)
 
         for {
           referee <- Gen.oneOf(
-            chooseNum(0, nodes.length - 1).map(nodes.toNonEmptyList.toList.apply),
+            maybeNodes.fold(Arbitrary.arbitrary[Node]) { nodes =>
+              chooseNum(0, nodes.length - 1).map(nodes.toNonEmptyList.toList.apply)
+            },
             Arbitrary.arbitrary[Node]
           )
 
-          downIfLessThan <- chooseNum(1, nodes.length)
+          downIfLessThan <- chooseNum(1, maybeNodes.fold(1)(_.length))
         } yield
           new strategy.KeepReferee[F](
             KeepReferee.Config(
