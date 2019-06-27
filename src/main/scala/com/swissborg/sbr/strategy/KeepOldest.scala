@@ -21,10 +21,13 @@ private[sbr] class KeepOldest[F[_]: ApplicativeError[?[_], Throwable]](config: K
     val consideredNonICNodes = worldView.nonJoiningNonICNodesWithRole(role)
     val allNodesSortedByAge = consideredNonICNodes.toList.sortBy(_.member)(Member.ageOrdering)
 
+    println(s"SORTED ${allNodesSortedByAge}")
+
     // If there are no nodes in the cluster with the given role the current partition is downed.
     allNodesSortedByAge.headOption
       .fold(Decision.downReachable(worldView)) {
-        case _: ReachableNode =>
+        case oldest: ReachableNode =>
+          println(s"R $oldest")
           if (downIfAlone) {
             if (worldView.nonJoiningReachableNodesWithRole(role).size > 1) {
               // The indirectly-connected nodes are also taken in account
@@ -37,7 +40,8 @@ private[sbr] class KeepOldest[F[_]: ApplicativeError[?[_], Throwable]](config: K
             Decision.downUnreachable(worldView)
           }
 
-        case _: UnreachableNode =>
+        case oldest: UnreachableNode =>
+          println(s"U $oldest")
           if (downIfAlone) {
             if (worldView.unreachableNodesWithRole(role).size > 1) {
               // The oldest node is not alone.

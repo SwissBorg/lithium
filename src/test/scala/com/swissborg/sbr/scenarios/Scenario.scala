@@ -2,25 +2,25 @@ package com.swissborg.sbr
 package scenarios
 
 import akka.cluster.Member
-import akka.cluster.MemberStatus.{Joining, Removed, WeaklyUp}
-import cats.data.{NonEmptyList, NonEmptySet}
+import akka.cluster.MemberStatus.{Exiting, Leaving, Removed}
+import cats.data.NonEmptySet
 import cats.implicits._
 import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.utils._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
-import org.scalacheck.Arbitrary
 import org.scalacheck.Arbitrary._
 import org.scalacheck.Gen.someOf
+import org.scalacheck.{Arbitrary, Gen}
 
 sealed abstract class Scenario {
-  def worldViews: NonEmptyList[WorldView]
+  def worldViews: List[WorldView]
   def clusterSize: Int Refined Positive
 }
 
 final case class OldestRemovedDisseminationScenario(
-    worldViews: NonEmptyList[WorldView],
+    worldViews: List[WorldView],
     clusterSize: Int Refined Positive
 ) extends Scenario
 
@@ -30,11 +30,11 @@ object OldestRemovedDisseminationScenario {
         worldView: WorldView,
         allNodes: NonEmptySet[Node],
         partition: NonEmptySet[Node]
-    ): Arbitrary[WorldView] =
+    ): Arbitrary[Option[WorldView]] =
       Arbitrary {
         val otherNodes = allNodes -- partition
 
-        val oldestNode = partition.toList.sortBy(_.member)(Member.ageOrdering).head
+        val oldestNode = allNodes.toList.sortBy(_.member)(Member.ageOrdering).head
 
         // Change `self`
         val worldViewWithChangedSelf = worldView.changeSelf(partition.head.member)
@@ -44,16 +44,17 @@ object OldestRemovedDisseminationScenario {
             worldView.addOrUpdate(node.member).withUnreachableNode(node.member.uniqueAddress)
         }
 
-        arbitrary[Boolean]
-          .map { b =>
-            if (b) {
-              // Node sees the nodes removed.
-              worldView0.removeMember(oldestNode.member.copy(Removed))
-            } else {
-              // Node does not see the node removed.
-              worldView0.addOrUpdate(oldestNode.member)
-            }
+        def oldestRemoved =
+          if (worldView0.selfUniqueAddress === oldestNode.member.uniqueAddress) {
+            None
+          } else {
+            Some(worldView0.removeMember(oldestNode.member.copy(Removed)))
           }
+
+        def oldestNotRemoved =
+          Some(worldView0.addOrUpdate(oldestNode.member.copy(Leaving).copy(Exiting)))
+
+        Gen.oneOf(oldestRemoved, oldestNotRemoved)
       }
 
     for {
@@ -61,16 +62,17 @@ object OldestRemovedDisseminationScenario {
       nodes = initWorldView.nodes
       partitions <- splitCluster(nodes)
       divergedWorldViews <- partitions.traverse(divergeWorldView(initWorldView, nodes, _)).arbitrary
+      bla = divergedWorldViews.toList.flatten
     } yield
       OldestRemovedDisseminationScenario(
-        divergedWorldViews,
-        refineV[Positive](nodes.length).right.get
+        bla,
+        refineV[Positive](nodes.length).right.get // TODO -1?
       )
   }
 }
 
 final case class CleanPartitionsScenario(
-    worldViews: NonEmptyList[WorldView],
+    worldViews: List[WorldView],
     clusterSize: Int Refined Positive
 ) extends Scenario
 
@@ -106,13 +108,16 @@ object CleanPartitionsScenario {
       // Each sub-allNodes sees the other nodes as unreachable.
       partitionedWorldViews = partitions.map(partitionedWorldView(allNodes))
     } yield
-      CleanPartitionsScenario(partitionedWorldViews, refineV[Positive](allNodes.length).right.get)
+      CleanPartitionsScenario(
+        partitionedWorldViews.toList,
+        refineV[Positive](allNodes.length).right.get
+      )
   }
 
 }
 
 final case class UpDisseminationScenario(
-    worldViews: NonEmptyList[WorldView],
+    worldViews: List[WorldView],
     clusterSize: Int Refined Positive
 ) extends Scenario
 
@@ -125,9 +130,13 @@ object UpDisseminationScenario {
       * as unreachable and sees some members up that others
       * do not see.
       */
-    def divergeWorldView(worldView: WorldView, allNodes: NonEmptySet[Node], upNumber: Int)(
+    def divergeWorldView(
+        worldView: WorldView,
+        allMembersUp: NonEmptySet[Member]
+    )(
         partition: NonEmptySet[Node]
     ): Arbitrary[WorldView] = Arbitrary {
+      val allNodes = worldView.nodes
       val otherNodes = allNodes -- partition
 
       // Change `self`
@@ -138,16 +147,9 @@ object UpDisseminationScenario {
           worldView.addOrUpdate(node.member).withUnreachableNode(node.member.uniqueAddress)
       }
 
-      pickNonEmptySubset(partition)
-        .map(
-          _.filter(e => e.member.status === Joining || e.member.status === WeaklyUp)
-            .foldLeft((worldView0, upNumber)) {
-              case ((worldView, upNumber), upEvent) =>
-                (worldView.addOrUpdate(upEvent.member.copyUp(upNumber)), upNumber + 1)
-            }
-            ._1
-        )
-        .arbitrary
+      pickNonEmptySubset(allMembersUp).arbitrary.map(_.foldLeft(worldView0) {
+        case (worldView, member) => worldView.addOrUpdate(member)
+      })
     }
 
     for {
@@ -155,43 +157,106 @@ object UpDisseminationScenario {
 
       allNodes = initWorldView.nodes // all are reachable
 
-      nodesToUp <- pickNonEmptySubset(allNodes).arbitrary
-      oldestNode = nodesToUp.head
+      membersToUp <- pickNonEmptySubset(allNodes).arbitrary.map(_.map(_.member))
 
       // Move some random nodes to up.
       // Fix who the oldest node is else we get a cluster with an
       // inconsistent state where the oldest one might not be up.
 
-      (allNodesWithNodesUp, upNumber) = (nodesToUp - oldestNode).foldLeft(
-        (allNodes.diff(nodesToUp), 1) // 0 is for the oldest node
-      ) {
-        case ((allNodesWithNodesUp, upNumber), nodeToUp) =>
-          (allNodesWithNodesUp + nodeToUp.updateMember(_.copyUp(upNumber)), upNumber + 1)
+      allMembersUp = membersToUp.zipWithIndex.map {
+        case (member, upNumber) =>
+          println(s"UP ${member} - $upNumber")
+          member.copyUp(upNumber)
       }
 
-      allNodes0 = NonEmptySet.fromSetUnsafe(
-        allNodesWithNodesUp + oldestNode.updateMember(_.copyUp(0))
-      )
+      //
+      oldestMember = allMembersUp.head // upNumber = 0
+      _ = println(s"OLDEST ${oldestMember}")
+      worldViewWithOldestUp = initWorldView.addOrUpdate(oldestMember)
+      _ = println(s"WV ${worldViewWithOldestUp}")
+      _ = println(s"ALLUP ${allMembersUp}")
 
       // Split the allNodes in `nSubCluster`.
-      partitions <- splitCluster(allNodes0)
+      partitions <- splitCluster(worldViewWithOldestUp.nodes)
 
-      divergedWorldViews <- partitions.zipWithIndex.traverse {
-        case (partition, partitionNumber) =>
-          // So that we do not have `upNumber` collisions.
-          // A partition has at most `allNodes.length` size so it
-          // will never up more than that.
-          val upNumber0 = upNumber + (partitionNumber * allNodes.length)
-
-          divergeWorldView(initWorldView, allNodes0, upNumber0)(partition)
-      }.arbitrary
+      divergedWorldViews <- partitions
+        .traverse(divergeWorldView(worldViewWithOldestUp, allMembersUp))
+        .arbitrary
     } yield
-      UpDisseminationScenario(divergedWorldViews, refineV[Positive](allNodes0.length).right.get)
+      UpDisseminationScenario(
+        divergedWorldViews.toList,
+        refineV[Positive](allNodes.length).right.get
+      )
   }
 }
 
+final case class RemovedDisseminationScenario(
+    worldViews: List[WorldView],
+    clusterSize: Int Refined Positive
+) extends Scenario
+
+object RemovedDisseminationScenario {
+  implicit val arbRemovedDisseminationScenario: Arbitrary[RemovedDisseminationScenario] =
+    Arbitrary {
+
+      /**
+        * Yields a [[WorldView]] that based on `worldView`
+        * that sees all the nodes not in the `partition`
+        * as unreachable and sees some members removed that others
+        * do not see.
+        */
+      def divergeWorldView(
+          worldView: WorldView,
+          allNodes: NonEmptySet[Node],
+          membersToRemove: NonEmptySet[Member]
+      )(
+          partition: NonEmptySet[Node]
+      ): Arbitrary[WorldView] = Arbitrary {
+        val otherNodes = allNodes -- partition
+
+        // Change `self`
+        val worldViewWithChangedSelf = worldView.changeSelf(partition.head.member)
+
+        val worldView0 = otherNodes.foldLeft[WorldView](worldViewWithChangedSelf) {
+          case (worldView, node) =>
+            worldView.addOrUpdate(node.member).withUnreachableNode(node.member.uniqueAddress)
+        }
+
+        def nodesRemoved = membersToRemove.foldLeft(worldView0) {
+          case (worldView, member) => worldView.removeMember(member)
+        }
+
+        def nodesNotRemoved = membersToRemove.foldLeft(worldView0) {
+          case (worldView, member) =>
+            worldView.addOrUpdate(member.copy(Leaving).copy(Exiting))
+        }
+
+        Gen.oneOf(nodesRemoved, nodesNotRemoved)
+      }
+
+      for {
+        initWorldView <- arbAllUpWorldView.arbitrary
+
+        allNodes = initWorldView.nodes // all are reachable
+
+        // Split the allNodes in `nSubCluster`.
+        partitions <- splitCluster(allNodes)
+
+        membersToRemove <- pickNonEmptySubset(allNodes).arbitrary.map(_.map(_.member))
+
+        divergedWorldViews <- partitions
+          .traverse(divergeWorldView(initWorldView, allNodes, membersToRemove))
+          .arbitrary
+      } yield
+        RemovedDisseminationScenario(
+          divergedWorldViews.toList,
+          refineV[Positive](allNodes.length).right.get
+        )
+    }
+}
+
 final case class WithNonCleanPartitions[S <: Scenario](
-    worldViews: NonEmptyList[WorldView],
+    worldViews: List[WorldView],
     clusterSize: Int Refined Positive
 ) extends Scenario
 

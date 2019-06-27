@@ -14,6 +14,10 @@ class KeepMajoritySpec extends SBSpec {
       "handle a split during the oldest-removed scenarios"
     )(_.get)
 
+    simulate[Try, KeepMajority, RemovedDisseminationScenario](
+      "handle a split during the removed-dissemination scenarios"
+    )(_.get)
+
     simulateWithNonCleanPartitions[Try, KeepMajority, CleanPartitionsScenario](
       "handle non-clean partitions"
     )(
@@ -21,7 +25,11 @@ class KeepMajoritySpec extends SBSpec {
     )
 
     simulateWithNonCleanPartitions[Try, KeepMajority, OldestRemovedDisseminationScenario](
-      "handle non-clean partitions during the oldest-removed scenarios..."
+      "handle non-clean partitions during the oldest-removed scenarios"
+    )(_.get)
+
+    simulateWithNonCleanPartitions[Try, KeepMajority, RemovedDisseminationScenario](
+      "handle non-clean partitions during the removed-dissemination scenarios"
     )(_.get)
   }
 }

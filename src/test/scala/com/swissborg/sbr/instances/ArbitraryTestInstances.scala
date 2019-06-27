@@ -8,9 +8,9 @@ import akka.cluster._
 import cats._
 import cats.data._
 import com.swissborg.sbr._
+import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.reachability._
 import com.swissborg.sbr.strategy._
-import com.swissborg.sbr.instances.OrderingInstances._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
@@ -123,10 +123,21 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
 
   implicit val arbAllUpWorldView: Arbitrary[AllUpWorldView] = {
     Arbitrary(for {
-      selfNode <- arbUpMember.arbitrary.map(ReachableNode(_))
-      nodes <- arbitrary[SortedSet[Member @@ LeavingTag]].map(_.map(ReachableNode(_)))
-      nodes0 = nodes - selfNode
-      worldView = WorldView.fromNodes(selfNode, nodes0.map(identity))
+      weaklyUpMembers <- arbNonEmptySet[Member @@ WeaklyUpTag].arbitrary
+
+      // The head of the sorted set has the highest up-number
+      // so it's not the oldest member. This creates problems
+      // in the `OldestRemovedScenario` as removing the
+      count = weaklyUpMembers.length
+//      _ = println(weaklyUpMembers)
+      upMembers = weaklyUpMembers.zipWithIndex.map {
+        case (member, ix) => member.copyUp(count - ix)
+      }
+//      _ = println("...")
+//      _ = println(upMembers)
+
+      worldView = WorldView
+        .fromNodes(ReachableNode(upMembers.head), upMembers.tail.map(ReachableNode(_)))
     } yield tag[AllUpTag][WorldView](worldView))
   }
 
