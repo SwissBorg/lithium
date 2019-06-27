@@ -25,7 +25,7 @@ trait SBSpec
       maxDiscardedFactor = PosZDouble(5),
       minSize = PosZInt(0),
       sizeRange = PosZInt(100),
-      workers = PosInt(1)
+      workers = PosInt(8)
     )
 
   /**
@@ -46,7 +46,6 @@ trait SBSpec
   ): Unit =
     name in {
       forAll { simulation: Simulation[F, Strat, S] =>
-        println("------------------------------------")
         run(simulation.splitBrainResolved.map(_ shouldBe true))
       }
     }
