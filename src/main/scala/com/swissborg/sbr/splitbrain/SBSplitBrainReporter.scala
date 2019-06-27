@@ -117,7 +117,6 @@ private[sbr] class SBSplitBrainReporter(
         else resetClusterIsStable
 
       for {
-        _ <- SyncIO(log.debug("DIFF {}", diff))
         _ <- if (downAllWhenUnstable.isDefined)
           clusterIsUnstableIsActive.ifM(
             // When the timer is running it should not be interfered
