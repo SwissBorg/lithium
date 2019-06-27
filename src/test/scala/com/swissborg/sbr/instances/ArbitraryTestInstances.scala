@@ -1,4 +1,5 @@
-package com.swissborg.sbr.instances
+package com.swissborg.sbr
+package instances
 
 import akka.actor.Address
 import akka.cluster.ClusterEvent._
@@ -7,8 +8,7 @@ import akka.cluster.swissborg.AkkaArbitraryInstances._
 import akka.cluster._
 import cats._
 import cats.data._
-import com.swissborg.sbr._
-import com.swissborg.sbr.testImplicits._
+import com.swissborg.sbr.instances.OrderInstances._
 import com.swissborg.sbr.reachability._
 import com.swissborg.sbr.strategy._
 import eu.timepit.refined.api.Refined
@@ -150,15 +150,6 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
         )
     )
 
-  implicit val arbNode: Arbitrary[Node] =
-    Arbitrary(
-      Gen.oneOf(
-        arbReachableNode.arbitrary,
-        arbUnreachableNode.arbitrary,
-        arbIndirectlyConnectedNode.arbitrary
-      )
-    )
-
   implicit val arbReachableNode: Arbitrary[ReachableNode] =
     Arbitrary(arbMember.arbitrary.map(ReachableNode(_)))
 
@@ -167,6 +158,15 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
 
   implicit val arbIndirectlyConnectedNode: Arbitrary[IndirectlyConnectedNode] =
     Arbitrary(arbMember.arbitrary.map(IndirectlyConnectedNode(_)))
+
+  implicit val arbNode: Arbitrary[Node] =
+    Arbitrary(
+      Gen.oneOf(
+        arbReachableNode.arbitrary,
+        arbUnreachableNode.arbitrary,
+        arbIndirectlyConnectedNode.arbitrary
+      )
+    )
 
   implicit val arbUniqueAddress: Arbitrary[UniqueAddress] =
     Arbitrary(for {

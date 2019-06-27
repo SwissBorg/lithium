@@ -4,4 +4,4 @@ trait AllInstances
     extends EncoderInstances
     with EqInstances
     with OrderInstances
-    with TypeClassTagging
+    with OrderingInstances

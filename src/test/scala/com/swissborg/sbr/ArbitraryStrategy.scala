@@ -2,7 +2,6 @@ package com.swissborg.sbr
 
 import cats.effect.Sync
 import cats.{Applicative, ApplicativeError, Functor, Semigroupal}
-import com.swissborg.sbr.scenarios.Scenario
 import com.swissborg.sbr.instances.ArbitraryTestInstances._
 import com.swissborg.sbr.strategy._
 import eu.timepit.refined.auto._

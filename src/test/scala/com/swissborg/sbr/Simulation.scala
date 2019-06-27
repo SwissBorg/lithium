@@ -2,7 +2,6 @@ package com.swissborg.sbr
 
 import cats.implicits._
 import cats._
-import com.swissborg.sbr.scenarios._
 import com.swissborg.sbr.strategy._
 import com.swissborg.sbr.utils._
 import org.scalacheck.Arbitrary

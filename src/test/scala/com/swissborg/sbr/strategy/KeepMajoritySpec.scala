@@ -2,7 +2,6 @@ package com.swissborg.sbr
 package strategy
 
 import cats.implicits._
-import com.swissborg.sbr.scenarios._
 
 import scala.util.Try
 
