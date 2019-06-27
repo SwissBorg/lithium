@@ -1,4 +1,5 @@
-package com.swissborg.sbr.reachability
+package com.swissborg.sbr
+package reachability
 
 import akka.actor.Address
 import akka.cluster.UniqueAddress

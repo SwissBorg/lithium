@@ -1,12 +1,11 @@
 package com.swissborg.sbr
-package scenarios
 
 import akka.cluster.Member
 import akka.cluster.MemberStatus.{Exiting, Leaving, Removed}
 import cats.data.NonEmptySet
 import cats.implicits._
-import com.swissborg.sbr.utils._
 import com.swissborg.sbr.testImplicits._
+import com.swissborg.sbr.utils._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV

@@ -2,7 +2,6 @@ package com.swissborg.sbr
 package strategy
 
 import cats.effect.SyncIO
-import com.swissborg.sbr.scenarios._
 
 class StaticQuorumSpec extends SBSpec {
   "StaticQuorum" must {
