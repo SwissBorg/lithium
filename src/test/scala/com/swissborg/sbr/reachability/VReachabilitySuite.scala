@@ -3,7 +3,7 @@ package com.swissborg.sbr.reachability
 import akka.actor.Address
 import akka.cluster.UniqueAddress
 import cats.data.NonEmptyMap
-import com.swissborg.sbr.implicits._
+import com.swissborg.sbr.testImplicits._
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.collection.immutable.SortedMap

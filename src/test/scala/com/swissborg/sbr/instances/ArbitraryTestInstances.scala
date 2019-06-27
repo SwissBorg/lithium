@@ -8,7 +8,7 @@ import akka.cluster._
 import cats._
 import cats.data._
 import com.swissborg.sbr._
-import com.swissborg.sbr.implicits._
+import com.swissborg.sbr.testImplicits._
 import com.swissborg.sbr.reachability._
 import com.swissborg.sbr.strategy._
 import eu.timepit.refined.api.Refined
@@ -309,6 +309,7 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
       role <- arbitrary[String]
     } yield UnreachableQuorum(worldView, quorumSize, role)
   )
+
 }
 
 trait ArbitraryInstances0 {
@@ -325,6 +326,11 @@ trait ArbitraryInstances0 {
       implicitly[Arbitrary[SortedSet[A]]].arbitrary
         .flatMap(fa => A.arbitrary.map(a => NonEmptySet(a, fa)))
     )
+
+  implicit def arbNonEmptyList[A](implicit A: Arbitrary[A]): Arbitrary[NonEmptyList[A]] = Arbitrary(
+    implicitly[Arbitrary[List[A]]].arbitrary
+      .flatMap(as => A.arbitrary.map(a => NonEmptyList(a, as)))
+  )
 
   implicit def arbNonEmptyMap[K, A](
       implicit O: Order[K],
