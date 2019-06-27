@@ -165,16 +165,12 @@ object UpDisseminationScenario {
 
       allMembersUp = membersToUp.zipWithIndex.map {
         case (member, upNumber) =>
-          println(s"UP ${member} - $upNumber")
           member.copyUp(upNumber)
       }
 
       //
       oldestMember = allMembersUp.head // upNumber = 0
-      _ = println(s"OLDEST ${oldestMember}")
       worldViewWithOldestUp = initWorldView.addOrUpdate(oldestMember)
-      _ = println(s"WV ${worldViewWithOldestUp}")
-      _ = println(s"ALLUP ${allMembersUp}")
 
       // Split the allNodes in `nSubCluster`.
       partitions <- splitCluster(worldViewWithOldestUp.nodes)

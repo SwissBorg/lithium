@@ -129,12 +129,9 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
       // so it's not the oldest member. This creates problems
       // in the `OldestRemovedScenario` as removing the
       count = weaklyUpMembers.length
-//      _ = println(weaklyUpMembers)
       upMembers = weaklyUpMembers.zipWithIndex.map {
         case (member, ix) => member.copyUp(count - ix)
       }
-//      _ = println("...")
-//      _ = println(upMembers)
 
       worldView = WorldView
         .fromNodes(ReachableNode(upMembers.head), upMembers.tail.map(ReachableNode(_)))
