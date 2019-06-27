@@ -20,11 +20,14 @@ import scala.concurrent.duration._
   *
   * @param splitBrainResolver the actor that resolves the split-brain scenarios.
   * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
+  * @param downAllWhenUnstable downs the current partition if it takes longer than the duration. Otherwise nothing.
+  * @param trackIndirectlyConnectedNodes detects indirectly-connected nodes when enabled.
   */
 private[sbr] class SBSplitBrainReporter(
     private val splitBrainResolver: ActorRef,
     private val stableAfter: FiniteDuration,
-    private val downAllWhenUnstable: Option[FiniteDuration]
+    private val downAllWhenUnstable: Option[FiniteDuration],
+    private val trackIndirectlyConnectedNodes: Boolean
 ) extends Actor
     with Stash
     with ActorLogging
@@ -34,7 +37,8 @@ private[sbr] class SBSplitBrainReporter(
   private val cluster = Cluster(context.system)
   private val selfMember = cluster.selfMember
 
-  discard(context.actorOf(SBReachabilityReporter.props(self), "sb-reachability-reporter"))
+  if (trackIndirectlyConnectedNodes)
+    discard(context.actorOf(SBReachabilityReporter.props(self), "sb-reachability-reporter"))
 
   override def receive: Receive = initializing
 
@@ -49,8 +53,8 @@ private[sbr] class SBSplitBrainReporter(
 
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
   private def active(state: SBSplitBrainReporterState): Receive = {
-    case e: MemberEvent =>
-      context.become(active(updateMember(e).runS(state).unsafeRunSync()))
+
+    // Only received when `trackIndirectlyConnectedNodes` is true.
 
     case NodeReachable(node) =>
       context.become(active(withReachableNode(node).runS(state).unsafeRunSync()))
@@ -60,6 +64,21 @@ private[sbr] class SBSplitBrainReporter(
 
     case NodeIndirectlyConnected(node) =>
       context.become(active(withIndirectlyConnectedNode(node).runS(state).unsafeRunSync()))
+
+    // ---
+
+    // Only received when `trackIndirectlyConnectedNodes` is false.
+
+    case ReachableMember(member) =>
+      context.become(active(withReachableNode(member.uniqueAddress).runS(state).unsafeRunSync()))
+
+    case UnreachableMember(member) =>
+      context.become(active(withUnreachableNode(member.uniqueAddress).runS(state).unsafeRunSync()))
+
+    // ---
+
+    case e: MemberEvent =>
+      context.become(active(updateMember(e).runS(state).unsafeRunSync()))
 
     case ClusterIsStable =>
       context.become(active(handleSplitBrain.runS(state).unsafeRunSync()))
@@ -193,7 +212,17 @@ private[sbr] class SBSplitBrainReporter(
     worldView.unreachableNodes.nonEmpty || worldView.indirectlyConnectedNodes.nonEmpty
 
   override def preStart(): Unit = {
-    cluster.subscribe(self, InitialStateAsSnapshot, classOf[akka.cluster.ClusterEvent.MemberEvent])
+    if (trackIndirectlyConnectedNodes) {
+      cluster.subscribe(self, InitialStateAsSnapshot, classOf[ClusterEvent.MemberEvent])
+    } else {
+      cluster.subscribe(
+        self,
+        InitialStateAsSnapshot,
+        classOf[ClusterEvent.MemberEvent],
+        classOf[ClusterEvent.ReachabilityEvent]
+      )
+    }
+
     scheduleClusterIsStable.unsafeRunSync()
   }
 
@@ -210,9 +239,12 @@ private[sbr] object SBSplitBrainReporter {
   def props(
       downer: ActorRef,
       stableAfter: FiniteDuration,
-      downAllWhenUnstable: Option[FiniteDuration]
+      downAllWhenUnstable: Option[FiniteDuration],
+      trackIndirectlyConnected: Boolean
   ): Props =
-    Props(new SBSplitBrainReporter(downer, stableAfter, downAllWhenUnstable))
+    Props(
+      new SBSplitBrainReporter(downer, stableAfter, downAllWhenUnstable, trackIndirectlyConnected)
+    )
 
   final private case object ClusterIsStable
   final private case object ClusterIsUnstable
