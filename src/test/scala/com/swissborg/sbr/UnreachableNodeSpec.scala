@@ -1,7 +1,7 @@
 package com.swissborg.sbr
 
 import cats.implicits._
-import com.swissborg.sbr.implicits._
+import com.swissborg.sbr.testImplicits._
 
 class UnreachableNodeSpec extends SBSpec {
   "UnreachableNode" must {
