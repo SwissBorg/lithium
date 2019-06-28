@@ -35,16 +35,19 @@ import scala.concurrent.duration._
   * @param _strategy the strategy with which to resolved the split-brain.
   * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
   * @param downAllWhenUnstable down the partition if the cluster has been unstable for longer than `stableAfter + 3/4 * stableAfter`.
+  * @param trackIndirectlyConnectedNodes downs the detected indirectly-connected nodes when enabled.
   */
 private[sbr] class SBResolver(
     private val _strategy: Strategy[SyncIO],
     private val stableAfter: FiniteDuration,
-    private val downAllWhenUnstable: Option[FiniteDuration]
+    private val downAllWhenUnstable: Option[FiniteDuration],
+    private val trackIndirectlyConnectedNodes: Boolean
 ) extends Actor
     with ActorLogging {
   discard(
     context.actorOf(
-      SBSplitBrainReporter.props(self, stableAfter, downAllWhenUnstable),
+      SBSplitBrainReporter
+        .props(self, stableAfter, downAllWhenUnstable, trackIndirectlyConnectedNodes),
       "splitbrain-reporter"
     )
   )
@@ -128,9 +131,10 @@ object SBResolver {
   def props(
       strategy: Strategy[SyncIO],
       stableAfter: FiniteDuration,
-      downAllWhenUnstable: Option[FiniteDuration]
+      downAllWhenUnstable: Option[FiniteDuration],
+      trackIndirectlyConnectedNodes: Boolean
   ): Props =
-    Props(new SBResolver(strategy, stableAfter, downAllWhenUnstable))
+    Props(new SBResolver(strategy, stableAfter, downAllWhenUnstable, trackIndirectlyConnectedNodes))
 
   private[sbr] sealed trait Event {
     def worldView: WorldView

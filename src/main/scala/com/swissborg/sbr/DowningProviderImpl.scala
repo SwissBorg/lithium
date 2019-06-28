@@ -38,7 +38,12 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
     val downAll = DownAll.name
 
     def sbResolver(strategy: Strategy[SyncIO]): Props =
-      SBResolver.props(strategy, config.stableAfter, config.downAllWhenUnstable)
+      SBResolver.props(
+        strategy,
+        config.stableAfter,
+        config.downAllWhenUnstable,
+        config.trackIndirectlyConnectdeNodes
+      )
 
     val strategy = config.activeStrategy match {
       case `keepMajority` =>
@@ -74,13 +79,17 @@ object DowningProviderImpl {
   sealed abstract case class Config(
       activeStrategy: String,
       stableAfter: FiniteDuration,
-      downAllWhenUnstable: Option[FiniteDuration]
+      downAllWhenUnstable: Option[FiniteDuration],
+      trackIndirectlyConnectdeNodes: Boolean
   )
 
   object Config {
-    private final val activeStrategyPath: String = "com.swissborg.sbr.active-strategy"
-    private final val stableAfterPath: String = "com.swissborg.sbr.stable-after"
-    private final val downAllWhenUnstablePath: String = "com.swissborg.sbr.down-all-when-unstable"
+    private final val prefix: String = "com.swissborg.sbr"
+    private final val activeStrategyPath: String = s"$prefix.active-strategy"
+    private final val stableAfterPath: String = s"$prefix.stable-after"
+    private final val downAllWhenUnstablePath: String = s"$prefix.down-all-when-unstable"
+    private final val trackIndirectlyConnectedNodesPath: String =
+      s"$prefix.track-indirectly-connected"
 
     // TODO handle errors
     @SuppressWarnings(Array("org.wartremover.warts.TryPartial"))
@@ -124,7 +133,10 @@ object DowningProviderImpl {
           Some(stableAfter + (stableAfter.toMillis * 0.75).millis)
         }
 
-      new Config(activeStrategy, stableAfter, downAllWhenUnstable) {}
+      val trackIndirectlyConnectedNodes =
+        system.settings.config.getBoolean(trackIndirectlyConnectedNodesPath)
+
+      new Config(activeStrategy, stableAfter, downAllWhenUnstable, trackIndirectlyConnectedNodes) {}
     }
   }
 }
