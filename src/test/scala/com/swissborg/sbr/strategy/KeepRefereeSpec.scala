@@ -2,7 +2,6 @@ package com.swissborg.sbr
 package strategy
 
 import cats.Id
-import com.swissborg.sbr.scenarios._
 
 class KeepRefereeSpec extends SBSpec {
   "KeepReferee" must {
