@@ -2,7 +2,6 @@ package com.swissborg.sbr
 package strategy
 
 import cats.effect.SyncIO
-import com.swissborg.sbr.scenarios._
 
 class StaticQuorumSpec extends SBSpec {
   "StaticQuorum" must {
@@ -20,6 +19,12 @@ class StaticQuorumSpec extends SBSpec {
       _.unsafeRunSync()
     )
 
+    simulate[SyncIO, StaticQuorum, RemovedDisseminationScenario](
+      "handle split during removed-dissemination"
+    )(
+      _.unsafeRunSync()
+    )
+
     simulateWithNonCleanPartitions[SyncIO, StaticQuorum, CleanPartitionsScenario](
       "handle non-clean partitions"
     )(
@@ -34,6 +39,12 @@ class StaticQuorumSpec extends SBSpec {
 
     simulateWithNonCleanPartitions[SyncIO, StaticQuorum, UpDisseminationScenario](
       "handle non-clean partitions during up-dissemination scenarios"
+    )(
+      _.unsafeRunSync()
+    )
+
+    simulateWithNonCleanPartitions[SyncIO, StaticQuorum, RemovedDisseminationScenario](
+      "handle non-clean partitions during removed-dissemination scenarios"
     )(
       _.unsafeRunSync()
     )

@@ -3,7 +3,6 @@ package strategy
 
 import cats.Id
 import cats.implicits._
-import com.swissborg.sbr.scenarios._
 
 class DownAllSpec extends SBSpec {
   "DownAll" must {

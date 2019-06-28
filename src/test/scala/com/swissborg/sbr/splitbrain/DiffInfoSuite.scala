@@ -1,4 +1,5 @@
-package com.swissborg.sbr.splitbrain
+package com.swissborg.sbr
+package splitbrain
 
 import akka.actor.Address
 import akka.cluster.ClusterEvent.CurrentClusterState
