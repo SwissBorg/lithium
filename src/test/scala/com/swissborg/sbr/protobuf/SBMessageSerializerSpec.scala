@@ -1,4 +1,5 @@
-package com.swissborg.sbr.protobuf
+package com.swissborg.sbr
+package protobuf
 
 import akka.actor.ActorSystem
 import akka.serialization.SerializationExtension
