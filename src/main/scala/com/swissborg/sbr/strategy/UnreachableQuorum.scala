@@ -13,7 +13,7 @@ private[sbr] object UnreachableQuorum {
       quorumSize: Int Refined Positive,
       role: String
   ): UnreachableQuorum = {
-    val unreachableNodes = worldView.nonJoiningUnreachableNodesWithRole(role)
+    val unreachableNodes = worldView.consideredUnreachableNodesWithRole(role)
 
     if (unreachableNodes.isEmpty) None
     else {

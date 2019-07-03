@@ -21,7 +21,7 @@ private[sbr] class StaticQuorum[F[_]](config: StaticQuorum.Config)(implicit val 
   import config._
 
   override def takeDecision(worldView: WorldView): F[Decision] =
-    if (worldView.nonJoiningNonICNodesWithRole(role).size > quorumSize * 2 - 1) {
+    if (worldView.consideredNonICNodesWithRole(role).size > quorumSize * 2 - 1) {
       // The quorumSize is too small for the cluster size,
       // more than one side might be a quorum and create
       // a split-brain. In this case we down the cluster.

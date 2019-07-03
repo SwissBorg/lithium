@@ -19,10 +19,10 @@ private[sbr] class KeepReferee[F[_]: Applicative](config: KeepReferee.Config) ex
   import config._
 
   override def takeDecision(worldView: WorldView): F[Decision] =
-    worldView.nonJoiningReachableNodes
+    worldView.consideredReachableNodes
       .find(_.member.address.toString === address.value)
       .fold(Decision.downReachable(worldView)) { _ =>
-        if (worldView.nonJoiningReachableNodes.size < downAllIfLessThanNodes)
+        if (worldView.consideredReachableNodes.size < downAllIfLessThanNodes)
           Decision.downReachable(worldView)
         else
           Decision.downUnreachable(worldView)

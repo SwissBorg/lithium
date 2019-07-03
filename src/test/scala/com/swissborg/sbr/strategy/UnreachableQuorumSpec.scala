@@ -10,13 +10,13 @@ class UnreachableQuorumSpec extends SBSpec {
       forAll { (worldView: WorldView, quorumSize: Int Refined Positive, role: String) =>
         UnreachableQuorum(worldView, quorumSize, role) match {
           case UnreachableQuorum.None =>
-            worldView.nonJoiningUnreachableNodesWithRole(role) shouldBe empty
+            worldView.consideredUnreachableNodesWithRole(role) shouldBe empty
 
           case UnreachableQuorum.PotentialQuorum =>
-            worldView.nonJoiningUnreachableNodesWithRole(role).size should be >= quorumSize.value
+            worldView.consideredUnreachableNodesWithRole(role).size should be >= quorumSize.value
 
           case UnreachableQuorum.SubQuorum =>
-            worldView.nonJoiningUnreachableNodesWithRole(role).size should be < quorumSize.value
+            worldView.consideredUnreachableNodesWithRole(role).size should be < quorumSize.value
         }
       }
     }

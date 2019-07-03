@@ -13,8 +13,6 @@ import org.scalacheck.Arbitrary._
 import org.scalacheck.Gen.someOf
 import org.scalacheck.{Arbitrary, Gen}
 
-import scala.collection.immutable.SortedSet
-
 sealed abstract class Scenario {
   def worldViews: List[WorldView]
   def clusterSize: Int Refined Positive
@@ -177,7 +175,7 @@ object RemovedDisseminationScenario {
     /**
       * Yields a [[WorldView]] that based on `worldView`
       * that sees all the nodes not in the `partition`
-      * as unreachable and sees some members removed that others
+      * as unreachable and sees some members as "exiting" that others
       * do not see.
       */
     def divergeWorldView(
@@ -195,11 +193,11 @@ object RemovedDisseminationScenario {
         )
 
       pickNonEmptySubset(membersToRemove).map { ms =>
-        ms.foldLeft(baseWorldView) {
-          case (worldView, member) => worldView.removeMember(member)
+        val worldView0 = ms.foldLeft(baseWorldView) {
+          case (worldView, member) => worldView.addOrUpdate(member.copy(Leaving))
         }
 
-        (membersToRemove -- ms).foldLeft(baseWorldView) {
+        (membersToRemove -- ms).foldLeft(worldView0) {
           case (worldView, member) => worldView.addOrUpdate(member.copy(Leaving).copy(Exiting))
         }
       }

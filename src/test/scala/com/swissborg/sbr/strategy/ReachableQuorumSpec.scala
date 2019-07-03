@@ -10,10 +10,10 @@ class ReachableQuorumSpec extends SBSpec {
       forAll { (worldView: WorldView, quorumSize: Int Refined Positive, role: String) =>
         ReachableQuorum(worldView, quorumSize, role) match {
           case ReachableQuorum.Quorum =>
-            worldView.nonJoiningReachableNodesWithRole(role).size should be >= quorumSize.value
+            worldView.consideredReachableNodesWithRole(role).size should be >= quorumSize.value
 
           case ReachableQuorum.NoQuorum =>
-            worldView.nonJoiningReachableNodesWithRole(role).size should be < quorumSize.value
+            worldView.consideredReachableNodesWithRole(role).size should be < quorumSize.value
         }
       }
     }

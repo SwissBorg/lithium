@@ -2,8 +2,10 @@ package com.swissborg.sbr
 package strategy
 
 import akka.cluster.Member
+import akka.cluster.MemberStatus.Leaving
 import cats._
 import cats.implicits._
+import com.swissborg.sbr.implicits._
 
 /**
   * Split-brain resolver strategy that will keep the partition containing the oldest node and down
@@ -18,7 +20,11 @@ private[sbr] class KeepOldest[F[_]: ApplicativeError[?[_], Throwable]](config: K
   import config._
 
   override def takeDecision(worldView: WorldView): F[Decision] = {
-    val consideredNonICNodes = worldView.nonJoiningNonICNodesWithRole(role)
+    // Leaving nodes are not counted as they might have moved to "removed"
+    // on the other side and thus not considered.
+    val consideredNonICNodes =
+      worldView.consideredNonICNodesWithRole(role).filter(node => node.member.status =!= Leaving)
+
     val allNodesSortedByAge = consideredNonICNodes.toList.sortBy(_.member)(Member.ageOrdering)
 
     // If there are no nodes in the cluster with the given role the current partition is downed.
@@ -26,7 +32,7 @@ private[sbr] class KeepOldest[F[_]: ApplicativeError[?[_], Throwable]](config: K
       .fold(Decision.downReachable(worldView)) {
         case _: ReachableNode =>
           if (downIfAlone) {
-            if (worldView.nonJoiningReachableNodesWithRole(role).size > 1) {
+            if (worldView.consideredReachableNodesWithRole(role).size > 1) {
               // The indirectly-connected nodes are also taken in account
               // as they are seen as unreachable from the other partitions.
               Decision.downUnreachable(worldView)

@@ -9,7 +9,7 @@ sealed abstract private[sbr] class ReachableQuorum extends Product with Serializ
 
 private[sbr] object ReachableQuorum {
   def apply(worldView: WorldView, quorumSize: Int Refined Positive, role: String): ReachableQuorum =
-    if (worldView.nonJoiningReachableNodesWithRole(role).size >= quorumSize) {
+    if (worldView.consideredReachableNodesWithRole(role).size >= quorumSize) {
       Quorum
     } else {
       NoQuorum
