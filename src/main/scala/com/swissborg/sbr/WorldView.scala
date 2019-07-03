@@ -1,7 +1,7 @@
 package com.swissborg.sbr
 
 import akka.cluster.ClusterEvent._
-import akka.cluster.MemberStatus.{Joining, Removed, WeaklyUp}
+import akka.cluster.MemberStatus.{Down, Exiting, Joining, Removed, WeaklyUp}
 import akka.cluster.{Member, UniqueAddress}
 import cats.data.NonEmptySet
 import cats.implicits._
@@ -40,7 +40,7 @@ private[sbr] final case class WorldView private (
 
   assert(
     !otherMembersStatus.contains(selfUniqueAddress),
-    s"The current member  shoud not appear in the other members! $otherMembersStatus <- $selfUniqueAddress"
+    s"The current member should not appear in the other members! $otherMembersStatus <- $selfUniqueAddress"
   )
 
   lazy val selfNode: Node = toNode(selfStatus.member, selfStatus.reachability)
@@ -58,26 +58,26 @@ private[sbr] final case class WorldView private (
 
   lazy val members: NonEmptySet[Member] = nodes.map(_.member)
 
-  lazy val nonJoiningNodes: SortedSet[Node] = nodes.filter(isNonJoining)
+  lazy val consideredNodes: SortedSet[Node] = nodes.filter(isConsideredNode)
 
-  def nonJoiningNodesWithRole(role: String): SortedSet[Node] =
-    if (role.nonEmpty) nonJoiningNodes.filter(_.member.roles.contains(role)) else nonJoiningNodes
+  def consideredNodesWithRole(role: String): SortedSet[Node] =
+    if (role.nonEmpty) consideredNodes.filter(_.member.roles.contains(role)) else consideredNodes
 
-  lazy val nonJoiningNonICNodes: SortedSet[NonIndirectlyConnectedNode] = nodes.collect {
-    case node: NonIndirectlyConnectedNode if isNonJoining(node) => node
+  lazy val consideredNonICNodes: SortedSet[NonIndirectlyConnectedNode] = nodes.collect {
+    case node: NonIndirectlyConnectedNode if isConsideredNode(node) => node
   }
 
-  def nonJoiningNonICNodesWithRole(role: String): SortedSet[NonIndirectlyConnectedNode] =
-    if (role.nonEmpty) nonJoiningNonICNodes.filter(_.member.roles.contains(role))
-    else nonJoiningNonICNodes
+  def consideredNonICNodesWithRole(role: String): SortedSet[NonIndirectlyConnectedNode] =
+    if (role.nonEmpty) consideredNonICNodes.filter(_.member.roles.contains(role))
+    else consideredNonICNodes
 
-  lazy val nonJoiningReachableNodes: SortedSet[ReachableNode] = reachableNodes.collect {
-    case n if isNonJoining(n) => n
+  lazy val consideredReachableNodes: SortedSet[ReachableNode] = reachableNodes.collect {
+    case n if isConsideredNode(n) => n
   }
 
-  def nonJoiningReachableNodesWithRole(role: String): SortedSet[ReachableNode] =
-    if (role.nonEmpty) nonJoiningReachableNodes.filter(_.member.roles.contains(role))
-    else nonJoiningReachableNodes
+  def consideredReachableNodesWithRole(role: String): SortedSet[ReachableNode] =
+    if (role.nonEmpty) consideredReachableNodes.filter(_.member.roles.contains(role))
+    else consideredReachableNodes
 
   /**
     * All the reachable nodes.
@@ -105,17 +105,17 @@ private[sbr] final case class WorldView private (
     case r: IndirectlyConnectedNode => r
   }
 
-  lazy val nonJoiningUnreachableNodes: SortedSet[UnreachableNode] = unreachableNodes.collect {
-    case n if isNonJoining(n) => n
+  lazy val consideredUnreachableNodes: SortedSet[UnreachableNode] = unreachableNodes.collect {
+    case n if isConsideredNode(n) => n
   }
 
   def unreachableNodesWithRole(role: String): SortedSet[UnreachableNode] =
     if (role.nonEmpty) unreachableNodes.filter(_.member.roles.contains(role))
     else unreachableNodes
 
-  def nonJoiningUnreachableNodesWithRole(role: String): SortedSet[UnreachableNode] =
-    if (role.nonEmpty) nonJoiningUnreachableNodes.filter(_.member.roles.contains(role))
-    else nonJoiningUnreachableNodes
+  def consideredUnreachableNodesWithRole(role: String): SortedSet[UnreachableNode] =
+    if (role.nonEmpty) consideredUnreachableNodes.filter(_.member.roles.contains(role))
+    else consideredUnreachableNodes
 
   def addOrUpdate(member: Member): WorldView = sameDataCenter(member) {
     if (member.uniqueAddress === selfUniqueAddress) {
@@ -230,10 +230,24 @@ private[sbr] final case class WorldView private (
     }
 
   /**
-    * True when the node is non-joining.
+    * True if the node is "joining" or "weakly-up".
+    *
+    * Members can still join the cluster during partitions.
     */
-  private def isNonJoining(node: Node): Boolean =
-    node.member.status != Joining && node.member.status != WeaklyUp
+  private def isJoining(node: Node): Boolean =
+    node.member.status === Joining || node.member.status === WeaklyUp
+
+  /**
+    * True if the node can be removed by the leader while it is unreachable.
+    *
+    * Unreachable members that are "exiting" or "down" are removed from the membership
+    * state even during a split.
+    */
+  private def canBeRemoveWhileUnreachable(node: Node): Boolean =
+    node.member.status === Exiting || node.member.status === Down
+
+  private def isConsideredNode(node: Node): Boolean =
+    !isJoining(node) && !canBeRemoveWhileUnreachable(node)
 
   /**
     * Update the world view if and only if the `member` is in the same datacenter.
