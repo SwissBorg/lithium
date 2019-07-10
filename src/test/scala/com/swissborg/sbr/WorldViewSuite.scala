@@ -276,18 +276,6 @@ class WorldViewSuite extends WordSpec with Matchers {
       w.members should ===(Set(aa, bb))
     }
 
-    "consider non-joining, non-unreachable, and non-removed nodes" in {
-      val w = WorldView
-        .fromSnapshot(
-          up,
-          CurrentClusterState(
-            SortedSet(joining, weaklyUp, up, leaving, exiting, down, removed),
-            seenBy = Set.empty
-          )
-        )
-      w.consideredNodes.map(_.member) should ===(Set(up, leaving))
-    }
-
     "update self" in {
       val w = WorldView
         .fromSnapshot(

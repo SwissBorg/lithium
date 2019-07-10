@@ -9,7 +9,7 @@ class WorldViewSpec extends SBSpec {
   "WorldView" must {
     "not have a node simultaneously reachable and unreachable" in {
       forAll { worldView: WorldView =>
-        worldView.consideredReachableNodes
+        worldView.reachableNodes
           .map(_.member)
           .intersect(worldView.unreachableNodes.map(_.member)) shouldBe empty
       }
@@ -53,7 +53,7 @@ class WorldViewSpec extends SBSpec {
 
     "get the considered reachable nodes" in {
       forAll { worldView: WorldView =>
-        assert(worldView.consideredReachableNodes.forall(worldView.nodes.contains))
+        assert(worldView.reachableNodes.forall(worldView.nodes.contains))
       }
     }
 
@@ -64,11 +64,11 @@ class WorldViewSpec extends SBSpec {
       }
     }
 
-    "get the considered nodes" in {
+    "get the non-indirectly-connected nodes" in {
       forAll { worldView: WorldView =>
         assert(
-          worldView.consideredNonICNodes.forall(
-            (worldView.consideredReachableNodes ++ worldView.unreachableNodes).contains
+          worldView.nonICNodes.forall(
+            (worldView.reachableNodes ++ worldView.unreachableNodes).contains
           )
         )
       }
@@ -82,20 +82,19 @@ class WorldViewSpec extends SBSpec {
       }
     }
 
-    "get the considered nodes with a role" in {
+    "get the non-indirectly connected nodes with a role" in {
       forAll { (worldView: WorldView, role: String) =>
         if (role.isEmpty)
-          worldView.consideredNonICNodesWithRole(role) should ===(worldView.consideredNonICNodes)
+          worldView.nonICNodesWithRole(role) should ===(worldView.nonICNodes)
         else
           assert(
             worldView
-              .consideredNonICNodesWithRole(role)
-              .forall(worldView.consideredNonICNodes.contains)
+              .nonICNodesWithRole(role)
+              .forall(worldView.nonICNodes.contains)
           )
 
-        worldView.consideredNonICNodesWithRole(role) should ===(
-          worldView.consideredReachableNodesWithRole(role) ++ worldView
-            .consideredUnreachableNodesWithRole(role)
+        worldView.nonICNodesWithRole(role) should ===(
+          worldView.reachableNodesWithRole(role) ++ worldView.unreachableNodesWithRole(role)
         )
       }
     }
@@ -103,14 +102,14 @@ class WorldViewSpec extends SBSpec {
     "get the considered reachable nodes with a role" in {
       forAll { (worldView: WorldView, role: String) =>
         if (role.isEmpty)
-          worldView.consideredReachableNodesWithRole(role).map(_.member) should ===(
-            worldView.consideredReachableNodes.map(_.member)
+          worldView.reachableNodesWithRole(role).map(_.member) should ===(
+            worldView.reachableNodes.map(_.member)
           )
         else
           assert(
             worldView
-              .consideredReachableNodesWithRole(role)
-              .forall(worldView.consideredReachableNodes.contains)
+              .reachableNodesWithRole(role)
+              .forall(worldView.reachableNodes.contains)
           )
       }
     }

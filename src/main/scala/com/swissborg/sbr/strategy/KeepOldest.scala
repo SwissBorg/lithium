@@ -2,7 +2,7 @@ package com.swissborg.sbr
 package strategy
 
 import akka.cluster.Member
-import akka.cluster.MemberStatus.Leaving
+import akka.cluster.MemberStatus._
 import cats._
 import cats.implicits._
 import com.swissborg.sbr.implicits._
@@ -23,7 +23,9 @@ private[sbr] class KeepOldest[F[_]: ApplicativeError[?[_], Throwable]](config: K
     // Leaving nodes are not counted as they might have moved to "removed"
     // on the other side and thus not considered.
     val consideredNonICNodes =
-      worldView.consideredNonICNodesWithRole(role).filter(node => node.member.status =!= Leaving)
+      worldView
+        .nonICNodesWithRole(role)
+        .filter(_.status === Up)
 
     val allNodesSortedByAge = consideredNonICNodes.toList.sortBy(_.member)(Member.ageOrdering)
 
@@ -32,9 +34,13 @@ private[sbr] class KeepOldest[F[_]: ApplicativeError[?[_], Throwable]](config: K
       .fold(Decision.downReachable(worldView)) {
         case _: ReachableNode =>
           if (downIfAlone) {
-            if (worldView.consideredReachableNodesWithRole(role).size > 1) {
-              // The indirectly-connected nodes are also taken in account
-              // as they are seen as unreachable from the other partitions.
+            val nbrOfConsideredReachableNodes =
+              consideredNonICNodes.count {
+                case _: ReachableNode => true
+                case _                => false
+              }
+
+            if (nbrOfConsideredReachableNodes > 1) {
               Decision.downUnreachable(worldView)
             } else {
               Decision.downReachable(worldView)
@@ -45,16 +51,9 @@ private[sbr] class KeepOldest[F[_]: ApplicativeError[?[_], Throwable]](config: K
 
         case _: UnreachableNode =>
           if (downIfAlone) {
-            if (worldView.unreachableNodesWithRole(role).size > 1) {
-              // The oldest node is not alone.
-              //
-              // Also looks at joining nodes. If one of the unreachable
-              // nodes moved to up during the partition and the change
-              // was not seen by this partition the strategy might create
-              // a split-brain. By assuming it was the problem is solved.
-              // However, this can lead to the cluster being downed
-              // unnecessarily if the unreachable joining nodes did
-              // not move to up.
+            val nbrOfConsideredUnreachableNodes = worldView.unreachableNodesWithRole(role).size
+
+            if (nbrOfConsideredUnreachableNodes > 1) {
               Decision.downReachable(worldView)
             } else {
               Decision.downUnreachable(worldView)

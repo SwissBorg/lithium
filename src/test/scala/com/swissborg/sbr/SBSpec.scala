@@ -20,7 +20,7 @@ trait SBSpec
     with ArbitraryTestInstances {
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(
-      minSuccessful = PosInt(10000),
+      minSuccessful = PosInt(1000),
       maxDiscardedFactor = PosZDouble(5),
       minSize = PosZInt(0),
       sizeRange = PosZInt(100),

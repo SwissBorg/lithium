@@ -2,7 +2,7 @@ package com.swissborg.sbr
 package strategy
 
 import akka.cluster.Member
-import akka.cluster.MemberStatus.Leaving
+import akka.cluster.MemberStatus._
 import cats.ApplicativeError
 import cats.implicits._
 import com.swissborg.sbr.implicits._
@@ -23,21 +23,18 @@ private[sbr] class KeepMajority[F[_]: ApplicativeError[?[_], Throwable]](
     // Leaving nodes are ignored as they might have changed to
     // to "exiting" on the non-reachable side.
 
-    val totalNodes =
-      worldView
-        .consideredNonICNodesWithRole(role)
-        .count(node => node.member.status =!= Leaving)
+    val allNodes = worldView.nonICNodesWithRole(role).filter(_.member.status === Up)
+    val totalNodes = allNodes.size
 
     val majority = Math.max(totalNodes / 2 + 1, 1)
 
-    val reachableConsideredNodes = worldView
-      .consideredReachableNodesWithRole(role)
-      .filter(_.member.status =!= Leaving)
+    val reachableConsideredNodes = allNodes.collect {
+      case node: ReachableNode => node
+    }
 
-    val unreachableConsideredNodes =
-      worldView
-        .consideredUnreachableNodesWithRole(role)
-        .filter(_.member.status =!= Leaving)
+    val unreachableConsideredNodes = allNodes.collect {
+      case node: UnreachableNode => node
+    }
 
     if (reachableConsideredNodes.size >= majority) {
       Decision.downUnreachable(worldView).pure[F]
@@ -45,9 +42,7 @@ private[sbr] class KeepMajority[F[_]: ApplicativeError[?[_], Throwable]](
       Decision.downReachable(worldView).pure[F]
     else if (totalNodes > 0 && reachableConsideredNodes.size === unreachableConsideredNodes.size) {
       // check if the node with the lowest address is in this partition
-      worldView
-        .consideredNonICNodesWithRole(role)
-        .toList
+      allNodes.toList
         .sortBy(_.member.address)(Member.addressOrdering)
         .headOption
         .fold(KeepMajority.NoMajority.raiseError[F, Decision]) {
