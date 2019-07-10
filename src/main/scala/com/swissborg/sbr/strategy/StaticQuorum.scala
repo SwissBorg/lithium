@@ -1,8 +1,10 @@
 package com.swissborg.sbr
 package strategy
 
+import akka.cluster.MemberStatus.{Leaving, Up}
 import cats.effect.Sync
 import cats.implicits._
+import com.swissborg.sbr.implicits._
 import com.typesafe.scalalogging.StrictLogging
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric._
@@ -20,8 +22,12 @@ private[sbr] class StaticQuorum[F[_]](config: StaticQuorum.Config)(implicit val 
     with StrictLogging {
   import config._
 
-  override def takeDecision(worldView: WorldView): F[Decision] =
-    if (worldView.nonJoiningNonICNodesWithRole(role).size > quorumSize * 2 - 1) {
+  override def takeDecision(worldView: WorldView): F[Decision] = {
+    val nbrOfConsideredNonICNodes = worldView.nonICNodesWithRole(role).count { node =>
+      node.status === Up || node.status === Leaving
+    }
+
+    if (nbrOfConsideredNonICNodes > quorumSize * 2 - 1) {
       // The quorumSize is too small for the cluster size,
       // more than one side might be a quorum and create
       // a split-brain. In this case we down the cluster.
@@ -74,6 +80,7 @@ private[sbr] class StaticQuorum[F[_]](config: StaticQuorum.Config)(implicit val 
         case (ReachableQuorum.NoQuorum, _) => Decision.downReachable(worldView)
       }
     }.pure[F]
+  }
 
   override def toString: String = s"StaticQuorum($config)"
 }

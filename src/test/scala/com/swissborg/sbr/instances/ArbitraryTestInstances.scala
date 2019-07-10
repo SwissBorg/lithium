@@ -1,4 +1,5 @@
-package com.swissborg.sbr.instances
+package com.swissborg.sbr
+package instances
 
 import akka.actor.Address
 import akka.cluster.ClusterEvent._
@@ -7,10 +8,9 @@ import akka.cluster.swissborg.AkkaArbitraryInstances._
 import akka.cluster._
 import cats._
 import cats.data._
-import com.swissborg.sbr._
+import com.swissborg.sbr.instances.OrderInstances._
 import com.swissborg.sbr.reachability._
 import com.swissborg.sbr.strategy._
-import com.swissborg.sbr.instances.OrderingInstances._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
@@ -123,10 +123,18 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
 
   implicit val arbAllUpWorldView: Arbitrary[AllUpWorldView] = {
     Arbitrary(for {
-      selfNode <- arbUpMember.arbitrary.map(ReachableNode(_))
-      nodes <- arbitrary[SortedSet[Member @@ LeavingTag]].map(_.map(ReachableNode(_)))
-      nodes0 = nodes - selfNode
-      worldView = WorldView.fromNodes(selfNode, nodes0.map(identity))
+      weaklyUpMembers <- arbNonEmptySet[Member @@ WeaklyUpTag].arbitrary
+
+      // The head of the sorted set has the highest up-number
+      // so it's not the oldest member. This creates problems
+      // in the `OldestRemovedScenario` as removing the
+      count = weaklyUpMembers.length
+      upMembers = weaklyUpMembers.zipWithIndex.map {
+        case (member, ix) => member.copyUp(count - ix)
+      }
+
+      worldView = WorldView
+        .fromNodes(ReachableNode(upMembers.head), upMembers.tail.map(ReachableNode(_)))
     } yield tag[AllUpTag][WorldView](worldView))
   }
 
@@ -142,15 +150,6 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
         )
     )
 
-  implicit val arbNode: Arbitrary[Node] =
-    Arbitrary(
-      Gen.oneOf(
-        arbReachableNode.arbitrary,
-        arbUnreachableNode.arbitrary,
-        arbIndirectlyConnectedNode.arbitrary
-      )
-    )
-
   implicit val arbReachableNode: Arbitrary[ReachableNode] =
     Arbitrary(arbMember.arbitrary.map(ReachableNode(_)))
 
@@ -159,6 +158,15 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
 
   implicit val arbIndirectlyConnectedNode: Arbitrary[IndirectlyConnectedNode] =
     Arbitrary(arbMember.arbitrary.map(IndirectlyConnectedNode(_)))
+
+  implicit val arbNode: Arbitrary[Node] =
+    Arbitrary(
+      Gen.oneOf(
+        arbReachableNode.arbitrary,
+        arbUnreachableNode.arbitrary,
+        arbIndirectlyConnectedNode.arbitrary
+      )
+    )
 
   implicit val arbUniqueAddress: Arbitrary[UniqueAddress] =
     Arbitrary(for {
@@ -301,6 +309,7 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
       role <- arbitrary[String]
     } yield UnreachableQuorum(worldView, quorumSize, role)
   )
+
 }
 
 trait ArbitraryInstances0 {
@@ -317,6 +326,11 @@ trait ArbitraryInstances0 {
       implicitly[Arbitrary[SortedSet[A]]].arbitrary
         .flatMap(fa => A.arbitrary.map(a => NonEmptySet(a, fa)))
     )
+
+  implicit def arbNonEmptyList[A](implicit A: Arbitrary[A]): Arbitrary[NonEmptyList[A]] = Arbitrary(
+    implicitly[Arbitrary[List[A]]].arbitrary
+      .flatMap(as => A.arbitrary.map(a => NonEmptyList(a, as)))
+  )
 
   implicit def arbNonEmptyMap[K, A](
       implicit O: Order[K],

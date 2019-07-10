@@ -13,6 +13,17 @@ import scala.collection.immutable.SortedSet
 package object utils {
 
   /**
+    * Split the `as` into n non-empty lists, where `1 <= n <= as.size`.
+    */
+  def split[A](as: NonEmptySet[A]): Arbitrary[NonEmptyList[NonEmptySet[A]]] = Arbitrary {
+    for {
+      // Split the allNodes in `nSubCluster`.
+      nSubClusters <- chooseNum(1, as.length).map(refineV[Positive](_).right.get) // always > 1
+      subClusters <- splitIn(nSubClusters, as).arbitrary
+    } yield subClusters
+  }
+
+  /**
     * Splits `as` in `parts` parts of arbitrary sizes.
     * If `parts` is less than or more than the size of `as` it will return `NonEmptySet(as)`.
     */
