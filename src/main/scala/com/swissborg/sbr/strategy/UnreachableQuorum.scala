@@ -1,6 +1,9 @@
 package com.swissborg.sbr
 package strategy
 
+import akka.cluster.MemberStatus.{Leaving, Up}
+import cats.implicits._
+import com.swissborg.sbr.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric._
@@ -13,11 +16,13 @@ private[sbr] object UnreachableQuorum {
       quorumSize: Int Refined Positive,
       role: String
   ): UnreachableQuorum = {
-    val unreachableNodes = worldView.nonJoiningUnreachableNodesWithRole(role)
+    val nbrOfConsideredUnreachableNodes = worldView.unreachableNodesWithRole(role).count { node =>
+      node.status === Up || node.status === Leaving
+    }
 
-    if (unreachableNodes.isEmpty) None
+    if (nbrOfConsideredUnreachableNodes === 0) None
     else {
-      if (unreachableNodes.size >= quorumSize)
+      if (nbrOfConsideredUnreachableNodes >= quorumSize)
         PotentialQuorum
       else
         SubQuorum

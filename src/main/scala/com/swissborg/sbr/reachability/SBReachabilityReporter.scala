@@ -360,19 +360,6 @@ private[sbr] object SBReachabilityReporter {
 
   def props(sendTo: ActorRef): Props = Props(new SBReachabilityReporter(sendTo))
 
-//  /**
-//    * Key for the timer related to the at-least-once delivery resend for the contention
-//    * of the observation of `observer` of `subject` as unreachable.
-//    *
-//    * Warning: `to` must containing the address!
-//    */
-//  private final case class ContentionKey(to: UniqueAddress, observer: Observer, subject: Subject)
-//
-//  private object ContentionKey {
-//    def fromAck(ack: ContentionAck): ContentionKey =
-//      ContentionKey(ack.from, ack.observer, ack.subject)
-//  }
-
   /**
     * Send `message` to `addressee`. If the message is not acknowledged it is resent after `timeout`. The retry can
     * be cancelled using the timer `key`.

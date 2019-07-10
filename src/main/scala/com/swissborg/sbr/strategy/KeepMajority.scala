@@ -2,8 +2,10 @@ package com.swissborg.sbr
 package strategy
 
 import akka.cluster.Member
+import akka.cluster.MemberStatus._
 import cats.ApplicativeError
 import cats.implicits._
+import com.swissborg.sbr.implicits._
 
 /**
   * Split-brain resolver strategy that will keep the partition containing more than half of the nodes and down the other
@@ -18,12 +20,21 @@ private[sbr] class KeepMajority[F[_]: ApplicativeError[?[_], Throwable]](
   import config._
 
   override def takeDecision(worldView: WorldView): F[Decision] = {
-    val totalNodes = worldView.nonJoiningNonICNodesWithRole(role).size
+    // Leaving nodes are ignored as they might have changed to
+    // to "exiting" on the non-reachable side.
+
+    val allNodes = worldView.nonICNodesWithRole(role).filter(_.member.status === Up)
+    val totalNodes = allNodes.size
 
     val majority = Math.max(totalNodes / 2 + 1, 1)
 
-    val reachableConsideredNodes = worldView.nonJoiningReachableNodesWithRole(role)
-    val unreachableConsideredNodes = worldView.nonJoiningUnreachableNodesWithRole(role)
+    val reachableConsideredNodes = allNodes.collect {
+      case node: ReachableNode => node
+    }
+
+    val unreachableConsideredNodes = allNodes.collect {
+      case node: UnreachableNode => node
+    }
 
     if (reachableConsideredNodes.size >= majority) {
       Decision.downUnreachable(worldView).pure[F]
@@ -31,17 +42,12 @@ private[sbr] class KeepMajority[F[_]: ApplicativeError[?[_], Throwable]](
       Decision.downReachable(worldView).pure[F]
     else if (totalNodes > 0 && reachableConsideredNodes.size === unreachableConsideredNodes.size) {
       // check if the node with the lowest address is in this partition
-      worldView
-        .nonJoiningNonICNodesWithRole(role)
-        .toList
+      allNodes.toList
         .sortBy(_.member.address)(Member.addressOrdering)
         .headOption
         .fold(KeepMajority.NoMajority.raiseError[F, Decision]) {
-          case _: ReachableNode =>
-            Decision.downUnreachable(worldView).pure[F]
-
-          case _: UnreachableNode =>
-            Decision.downReachable(worldView).pure[F]
+          case _: ReachableNode   => Decision.downUnreachable(worldView).pure[F]
+          case _: UnreachableNode => Decision.downReachable(worldView).pure[F]
         }
     } else {
       // There are no nodes with the configured role in the cluster so

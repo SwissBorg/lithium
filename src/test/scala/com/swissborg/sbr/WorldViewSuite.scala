@@ -5,7 +5,7 @@ import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus._
 import akka.cluster.swissborg.TestMember
 import com.swissborg.sbr.WorldView.Status
-import com.swissborg.sbr.implicits._
+import com.swissborg.sbr.testImplicits._
 import com.swissborg.sbr.reachability._
 import org.scalatest.{Matchers, WordSpec}
 
@@ -274,18 +274,6 @@ class WorldViewSuite extends WordSpec with Matchers {
         .removeMember(removed)
 
       w.members should ===(Set(aa, bb))
-    }
-
-    "consider non-joining, non-unreachable, and non-removed nodes" in {
-      val w = WorldView
-        .fromSnapshot(
-          up,
-          CurrentClusterState(
-            SortedSet(joining, weaklyUp, up, leaving, exiting, down, removed),
-            seenBy = Set.empty
-          )
-        )
-      w.nonJoiningNodes.map(_.member) should ===(Set(up, leaving, exiting, down))
     }
 
     "update self" in {

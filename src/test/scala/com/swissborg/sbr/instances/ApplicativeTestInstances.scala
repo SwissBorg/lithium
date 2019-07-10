@@ -1,4 +1,5 @@
-package com.swissborg.sbr.instances
+package com.swissborg.sbr
+package instances
 
 import cats.Applicative
 import org.scalacheck.{Arbitrary, Gen}

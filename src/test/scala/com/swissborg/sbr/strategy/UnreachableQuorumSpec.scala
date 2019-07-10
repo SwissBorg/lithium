@@ -1,6 +1,7 @@
 package com.swissborg.sbr
 package strategy
 
+import akka.cluster.MemberStatus.{Leaving, Up}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 
@@ -8,15 +9,20 @@ class UnreachableQuorumSpec extends SBSpec {
   "UnreachableQuorum" must {
     "instantiate the correct instance" in {
       forAll { (worldView: WorldView, quorumSize: Int Refined Positive, role: String) =>
+        val nbrOfConsideredUnreachableNodes = worldView.unreachableNodesWithRole(role).count {
+          node =>
+            node.status == Up || node.status == Leaving
+        }
+
         UnreachableQuorum(worldView, quorumSize, role) match {
           case UnreachableQuorum.None =>
-            worldView.nonJoiningUnreachableNodesWithRole(role) shouldBe empty
+            nbrOfConsideredUnreachableNodes shouldBe 0
 
           case UnreachableQuorum.PotentialQuorum =>
-            worldView.nonJoiningUnreachableNodesWithRole(role).size should be >= quorumSize.value
+            nbrOfConsideredUnreachableNodes should be >= quorumSize.value
 
           case UnreachableQuorum.SubQuorum =>
-            worldView.nonJoiningUnreachableNodesWithRole(role).size should be < quorumSize.value
+            nbrOfConsideredUnreachableNodes should be < quorumSize.value
         }
       }
     }

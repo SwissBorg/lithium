@@ -2,7 +2,6 @@ package com.swissborg.sbr
 package strategy
 
 import cats.Id
-import com.swissborg.sbr.scenarios._
 
 class KeepRefereeSpec extends SBSpec {
   "KeepReferee" must {
@@ -11,6 +10,10 @@ class KeepRefereeSpec extends SBSpec {
     simulate[Id, KeepReferee, UpDisseminationScenario]("handle split during up-dissemination")(
       identity
     )
+
+    simulate[Id, KeepReferee, RemovedDisseminationScenario](
+      "handle a split during the removed-dissemination scenarios"
+    )(identity)
 
     simulate[Id, KeepReferee, OldestRemovedDisseminationScenario](
       "handle a split during the oldest-removed scenarios"
@@ -30,6 +33,10 @@ class KeepRefereeSpec extends SBSpec {
 
     simulateWithNonCleanPartitions[Id, KeepReferee, OldestRemovedDisseminationScenario](
       "handle non-clean partitions during oldest-removed scenarios"
+    )(identity)
+
+    simulateWithNonCleanPartitions[Id, KeepReferee, RemovedDisseminationScenario](
+      "handle a non-clean partition during the removed-dissemination scenarios"
     )(identity)
   }
 }
