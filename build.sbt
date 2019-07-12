@@ -39,7 +39,6 @@ val pureConfigVersion = "0.11.1"
 val scalacheckShapelessVersion = "1.1.8"
 val refinedScalacheckVersion = "0.9.8"
 val protobufJavaVersion = "3.8.0"
-val scalaPBVersion = "0.9.0"
 val typesafeConfigVersion = "1.3.4"
 val logbackVersion = "1.2.3"
 val circeVersion = "0.11.1"
@@ -105,8 +104,8 @@ libraryDependencies ++= Seq(
 )
 // protobuf
 libraryDependencies ++= Seq(
-  "com.thesamet.scalapb" %% "scalapb-runtime" % scalaPBVersion % "protobuf",
-  "com.thesamet.scalapb" %% "lenses" % scalaPBVersion,
+  "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf",
+  "com.thesamet.scalapb" %% "lenses" % scalapb.compiler.Version.scalapbVersion,
   "com.google.protobuf" % "protobuf-java" % protobufJavaVersion
 )
 
