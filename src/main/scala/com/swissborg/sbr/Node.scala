@@ -1,6 +1,6 @@
 package com.swissborg.sbr
 
-import akka.cluster.{Member, MemberStatus}
+import akka.cluster.{Member, MemberStatus, UniqueAddress}
 import cats.Order
 
 /**
@@ -11,6 +11,7 @@ private[sbr] sealed abstract class Node extends Product with Serializable {
   val member: Member
 
   val status: MemberStatus = member.status
+  val uniqueAddress: UniqueAddress = member.uniqueAddress
 
   /**
     * Replace the current member by `member`.

@@ -110,7 +110,7 @@ private[sbr] class SBSplitBrainReporter(
         else cancelClusterIsUnstable
 
       def scheduleClusterIsUnstableIfSplitBrainWorsened: SyncIO[Unit] =
-        if (diff.hasNewUnreachableOrIndirectlyConnected) scheduleClusterIsUnstable
+        if (diff.hasAdditionalNonReachableNodes) scheduleClusterIsUnstable
         else SyncIO.unit
 
       val resetClusterIsStableIfUnstable: SyncIO[Unit] =
@@ -264,39 +264,36 @@ private[sbr] object SBSplitBrainReporter {
     * Information on the difference between two world views.
     *
     * @param changeIsStable true if both world views are the same ignoring `Joining` and `WeaklyUp` members.
-    * @param hasNewUnreachableOrIndirectlyConnected true if the updated world view has more unreachable or indirectly
+    * @param hasAdditionalNonReachableNodes true if the updated world view has more unreachable or indirectly
     *                                               connected nodes.
     */
   private[splitbrain] sealed abstract case class DiffInfo(
       changeIsStable: Boolean,
-      hasNewUnreachableOrIndirectlyConnected: Boolean
+      hasAdditionalNonReachableNodes: Boolean
   )
 
   private[splitbrain] object DiffInfo {
     def apply(oldWorldView: WorldView, updatedWorldView: WorldView): DiffInfo = {
+      def isJoining(node: Node): Boolean = node.status === Joining || node.status === WeaklyUp
+
       // Only consider members that are not reachable joining or weakly-up.
       // Unreachable or indirectly-connected joining or weakly-up nodes are counted
       // as they also impact the duties of the leader.
-      def isConsidered(member: Member): Boolean = {
-        lazy val isReachable = updatedWorldView.status(member.uniqueAddress).exists(_ === Reachable)
+      def isConsidered(node: Node): Boolean = {
+        lazy val isReachable = updatedWorldView.status(node.uniqueAddress).exists(_ === Reachable)
 
-        !((member.status === Joining || member.status === WeaklyUp) && isReachable)
+        !(isJoining(node) && isReachable)
       }
 
       // Remove members that are `Joining` or `WeaklyUp` as they
       // can appear during a split-brain.
-      def considered[N <: Node](nodes: SortedSet[N]): SortedSet[Member] =
-        nodes.collect {
-          case ReachableNode(member) if isConsidered(member)           => member
-          case UnreachableNode(member) if isConsidered(member)         => member
-          case IndirectlyConnectedNode(member) if isConsidered(member) => member
-        }
+      def considered[N <: Node](nodes: SortedSet[N]): SortedSet[N] = nodes.filter(isConsidered)
 
       /**
-        * True if the both sets contain the same members with the same status.
+        * True if the both sets contain the same nodes with the same status.
         **/
-      def noChange(members1: SortedSet[Member], members2: SortedSet[Member]): Boolean =
-        members1.size === members2.size && members1.iterator.zip(members2.iterator).forall {
+      def noChange[N1 <: Node, N2 <: Node](nodes1: SortedSet[N1], nodes2: SortedSet[N2]): Boolean =
+        nodes1.size === nodes2.size && nodes1.iterator.zip(nodes2.iterator).forall {
           case (member1, member2) =>
             member1.uniqueAddress === member2.uniqueAddress && member1.status === member2.status
         }
@@ -313,10 +310,13 @@ private[sbr] object SBSplitBrainReporter {
       val stableIndirectlyConnected = noChange(oldIndirectlyConnected, updatedIndirectlyConnected)
       val stableUnreachable = noChange(oldUnreachable, updatedUnreachable)
 
-      val increase =
-        oldIndirectlyConnected.size < updatedIndirectlyConnected.size || oldUnreachable.size < updatedUnreachable.size
+      val hasAdditionalNonReachableNodes =
+        (oldUnreachable ++ oldIndirectlyConnected).subsetOf(
+          updatedUnreachable ++ updatedIndirectlyConnected
+        )
 
-      new DiffInfo(stableReachable && stableIndirectlyConnected && stableUnreachable, increase) {}
+      new DiffInfo(stableReachable && stableIndirectlyConnected && stableUnreachable,
+                   hasAdditionalNonReachableNodes) {}
     }
   }
 }

@@ -38,7 +38,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val diff = DiffInfo(w, w)
 
       diff.changeIsStable shouldBe true
-      diff.hasNewUnreachableOrIndirectlyConnected shouldBe false
+      diff.hasAdditionalNonReachableNodes shouldBe false
     }
 
     "detect a new indirectly connected node" in {
@@ -52,7 +52,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasNewUnreachableOrIndirectlyConnected shouldBe true
+      diff.hasAdditionalNonReachableNodes shouldBe true
     }
 
     "detect a new unreachable node" in {
@@ -66,7 +66,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasNewUnreachableOrIndirectlyConnected shouldBe true
+      diff.hasAdditionalNonReachableNodes shouldBe true
     }
 
     "detect a exiting member" in {
@@ -80,7 +80,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasNewUnreachableOrIndirectlyConnected shouldBe false
+      diff.hasAdditionalNonReachableNodes shouldBe false
     }
 
     "detect a downed member" in {
@@ -94,7 +94,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasNewUnreachableOrIndirectlyConnected shouldBe false
+      diff.hasAdditionalNonReachableNodes shouldBe false
     }
 
     "detect a leaving member" in {
@@ -108,7 +108,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasNewUnreachableOrIndirectlyConnected shouldBe false
+      diff.hasAdditionalNonReachableNodes shouldBe false
     }
 
     "ignore change from indirectly connected to unreachable" in {
@@ -124,7 +124,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasNewUnreachableOrIndirectlyConnected shouldBe true
+      diff.hasAdditionalNonReachableNodes shouldBe true
     }
 
     "ignore change from unreachable to indirectly connected" in {
@@ -140,7 +140,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasNewUnreachableOrIndirectlyConnected shouldBe true
+      diff.hasAdditionalNonReachableNodes shouldBe true
     }
 
     "ignore reachable joining members" in {
@@ -155,7 +155,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe true
-      diff.hasNewUnreachableOrIndirectlyConnected shouldBe false
+      diff.hasAdditionalNonReachableNodes shouldBe false
     }
 
     "ignore indirectly connected joining members" in {
@@ -166,7 +166,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe true
-      diff.hasNewUnreachableOrIndirectlyConnected shouldBe false
+      diff.hasAdditionalNonReachableNodes shouldBe false
     }
 
     "ignore unreachable joining members" in {
@@ -181,7 +181,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe true
-      diff.hasNewUnreachableOrIndirectlyConnected shouldBe false
+      diff.hasAdditionalNonReachableNodes shouldBe false
     }
 
     "ignore reachable weakly-up members" in {
@@ -196,7 +196,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe true
-      diff.hasNewUnreachableOrIndirectlyConnected shouldBe false
+      diff.hasAdditionalNonReachableNodes shouldBe false
     }
 
     "ignore indirectly connected weakly-up members" in {
@@ -211,7 +211,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe true
-      diff.hasNewUnreachableOrIndirectlyConnected shouldBe false
+      diff.hasAdditionalNonReachableNodes shouldBe false
     }
 
     "ignore unreachable weakly-up members" in {
@@ -226,7 +226,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe true
-      diff.hasNewUnreachableOrIndirectlyConnected shouldBe false
+      diff.hasAdditionalNonReachableNodes shouldBe false
     }
   }
 }
