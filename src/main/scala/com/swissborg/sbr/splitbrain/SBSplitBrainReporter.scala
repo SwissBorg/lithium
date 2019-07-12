@@ -9,6 +9,7 @@ import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.sbr._
 import com.swissborg.sbr.implicits._
+import com.swissborg.sbr.reachability.SBReachabilityStatus.Reachable
 import com.swissborg.sbr.reachability._
 import com.swissborg.sbr.resolver._
 
@@ -273,16 +274,22 @@ private[sbr] object SBSplitBrainReporter {
 
   private[splitbrain] object DiffInfo {
     def apply(oldWorldView: WorldView, updatedWorldView: WorldView): DiffInfo = {
-      def isNonJoining(member: Member): Boolean =
-        member.status =!= Joining && member.status =!= WeaklyUp
+      // Only consider members that are not reachable joining or weakly-up.
+      // Unreachable or indirectly-connected joining or weakly-up nodes are counted
+      // as they also impact the duties of the leader.
+      def isConsidered(member: Member): Boolean = {
+        lazy val isReachable = updatedWorldView.status(member.uniqueAddress).exists(_ === Reachable)
+
+        !((member.status === Joining || member.status === WeaklyUp) && isReachable)
+      }
 
       // Remove members that are `Joining` or `WeaklyUp` as they
       // can appear during a split-brain.
-      def nonJoining[N <: Node](nodes: SortedSet[N]): SortedSet[Member] =
+      def considered[N <: Node](nodes: SortedSet[N]): SortedSet[Member] =
         nodes.collect {
-          case ReachableNode(member) if isNonJoining(member)           => member
-          case UnreachableNode(member) if isNonJoining(member)         => member
-          case IndirectlyConnectedNode(member) if isNonJoining(member) => member
+          case ReachableNode(member) if isConsidered(member)           => member
+          case UnreachableNode(member) if isConsidered(member)         => member
+          case IndirectlyConnectedNode(member) if isConsidered(member) => member
         }
 
       /**
@@ -294,13 +301,13 @@ private[sbr] object SBSplitBrainReporter {
             member1.uniqueAddress === member2.uniqueAddress && member1.status === member2.status
         }
 
-      val oldReachable = nonJoining(oldWorldView.reachableNodes)
-      val oldIndirectlyConnected = nonJoining(oldWorldView.indirectlyConnectedNodes)
-      val oldUnreachable = nonJoining(oldWorldView.unreachableNodes)
+      val oldReachable = considered(oldWorldView.reachableNodes)
+      val oldIndirectlyConnected = considered(oldWorldView.indirectlyConnectedNodes)
+      val oldUnreachable = considered(oldWorldView.unreachableNodes)
 
-      val updatedReachable = nonJoining(updatedWorldView.reachableNodes)
-      val updatedIndirectlyConnected = nonJoining(updatedWorldView.indirectlyConnectedNodes)
-      val updatedUnreachable = nonJoining(updatedWorldView.unreachableNodes)
+      val updatedReachable = considered(updatedWorldView.reachableNodes)
+      val updatedIndirectlyConnected = considered(updatedWorldView.indirectlyConnectedNodes)
+      val updatedUnreachable = considered(updatedWorldView.unreachableNodes)
 
       val stableReachable = noChange(oldReachable, updatedReachable)
       val stableIndirectlyConnected = noChange(oldIndirectlyConnected, updatedIndirectlyConnected)
