@@ -36,6 +36,7 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
   private val failureDetector = cluster.failureDetector
 
   final private val ackTimeout: FiniteDuration = 1.second
+  final private val maxRetries: Int = 10
 
   override def receive: Receive = initializing
 
@@ -65,8 +66,10 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
     case ack: ContentionAck =>
       context.become(active(registerContentionAck(ack).runS(state).unsafeRunSync()))
 
-    case SendWithRetry(message, to, key, timeout) =>
-      context.become(active(sendWithRetry(message, to, key, timeout).runS(state).unsafeRunSync()))
+    case SendWithRetry(message, to, key, timeout, maxRetries) =>
+      context.become(
+        active(sendWithRetry(message, to, key, timeout, maxRetries - 1).runS(state).unsafeRunSync())
+      )
   }
 
   /**
@@ -108,7 +111,13 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
     ): Res[Unit] =
       for {
         _ <- StateT.modify[SyncIO, SBReachabilityReporterState](_.expectContentionAck(expectedAck))
-        _ <- sendWithRetry(contention, sbReachabilityReporterOnNode(to), expectedAck, ackTimeout)
+        _ <- sendWithRetry(
+          contention,
+          sbReachabilityReporterOnNode(to),
+          expectedAck,
+          ackTimeout,
+          maxRetries
+        )
       } yield ()
 
     /**
@@ -318,24 +327,40 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
       message: M,
       to: ActorPath,
       cancellationKey: K,
-      timeout: FiniteDuration
+      timeout: FiniteDuration,
+      maxRetries: Int
   ): Res[Unit] = {
-    def retryAfter(timeout: FiniteDuration): SyncIO[Unit] =
+    val retryIfNotAcked: SyncIO[Unit] =
       SyncIO(
         timers.startSingleTimer(
           cancellationKey,
-          SendWithRetry(message, to, cancellationKey, timeout),
+          SendWithRetry(message, to, cancellationKey, timeout, maxRetries),
           timeout
         )
       )
 
-    StateT.liftF(
-      for {
-        _ <- SyncIO(context.system.actorSelection(to) ! message)
-        _ <- SyncIO(log.debug("Attempting to send {} to {}", message, to))
-        _ <- retryAfter(timeout)
-      } yield ()
-    )
+    StateT.liftF {
+      if (maxRetries < 0) {
+        SyncIO(
+          log
+            .warning("Failed to send {} to {} after {} attempts!", message, to, this.maxRetries + 1)
+        )
+      } else {
+        for {
+          _ <- SyncIO(context.system.actorSelection(to) ! message)
+          _ <- SyncIO(
+            log.debug(
+              "Attempting to send {} to {} (Attempt {}/{})",
+              message,
+              to,
+              this.maxRetries - maxRetries + 1,
+              this.maxRetries + 1
+            )
+          )
+          _ <- retryIfNotAcked
+        } yield ()
+      }
+    }
   }
 
   private def cancelContentionResend(ack: ContentionAck): SyncIO[Unit] = SyncIO(timers.cancel(ack))
@@ -368,7 +393,8 @@ private[sbr] object SBReachabilityReporter {
       message: M,
       addressee: ActorPath,
       key: K,
-      timeout: FiniteDuration
+      timeout: FiniteDuration,
+      maxRetries: Int
   )
 
   sealed abstract private class LocalReachability
