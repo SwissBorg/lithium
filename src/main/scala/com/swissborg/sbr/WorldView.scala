@@ -100,6 +100,13 @@ private[sbr] final case class WorldView private (
     if (role.nonEmpty) unreachableNodes.filter(_.member.roles.contains(role))
     else unreachableNodes
 
+  def status(node: UniqueAddress): Option[SBReachabilityStatus] =
+    if (node === selfUniqueAddress) {
+      Some(selfStatus.reachability)
+    } else {
+      otherMembersStatus.get(node).map(_.reachability)
+    }
+
   def addOrUpdate(member: Member): WorldView = sameDataCenter(member) {
     if (member.uniqueAddress === selfUniqueAddress) {
       copy(selfStatus = selfStatus.withMember(member))
