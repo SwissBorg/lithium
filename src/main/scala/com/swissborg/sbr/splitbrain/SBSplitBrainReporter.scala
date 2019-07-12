@@ -310,13 +310,20 @@ private[sbr] object SBSplitBrainReporter {
       val stableIndirectlyConnected = noChange(oldIndirectlyConnected, updatedIndirectlyConnected)
       val stableUnreachable = noChange(oldUnreachable, updatedUnreachable)
 
-      val hasAdditionalNonReachableNodes =
-        (oldUnreachable ++ oldIndirectlyConnected).subsetOf(
-          updatedUnreachable ++ updatedIndirectlyConnected
-        )
+      val oldNonReachable = oldIndirectlyConnected.map(_.uniqueAddress) ++
+        oldUnreachable.map(_.uniqueAddress)
 
-      new DiffInfo(stableReachable && stableIndirectlyConnected && stableUnreachable,
-                   hasAdditionalNonReachableNodes) {}
+      val updatedNonReachable = updatedIndirectlyConnected.map(_.uniqueAddress) ++
+        updatedUnreachable.map(_.uniqueAddress)
+
+      val hasAdditionalNonReachableNodes =
+        !oldNonReachable.sameElements(updatedNonReachable) &&
+          oldNonReachable.subsetOf(updatedNonReachable)
+
+      new DiffInfo(
+        stableReachable && stableIndirectlyConnected && stableUnreachable,
+        hasAdditionalNonReachableNodes
+      ) {}
     }
   }
 }

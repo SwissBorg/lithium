@@ -124,7 +124,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasAdditionalNonReachableNodes shouldBe true
+      diff.hasAdditionalNonReachableNodes shouldBe false
     }
 
     "ignore change from unreachable to indirectly connected" in {
@@ -140,7 +140,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasAdditionalNonReachableNodes shouldBe true
+      diff.hasAdditionalNonReachableNodes shouldBe false
     }
 
     "ignore reachable joining members" in {
@@ -158,18 +158,18 @@ class DiffInfoSuite extends WordSpec with Matchers {
       diff.hasAdditionalNonReachableNodes shouldBe false
     }
 
-    "ignore indirectly connected joining members" in {
+    "consider indirectly connected joining members" in {
       val oldW = WorldView.fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb, cc)))
 
       val updatedW = oldW.addOrUpdate(joining).withIndirectlyConnectedNode(joining.uniqueAddress)
 
       val diff = DiffInfo(oldW, updatedW)
 
-      diff.changeIsStable shouldBe true
-      diff.hasAdditionalNonReachableNodes shouldBe false
+      diff.changeIsStable shouldBe false
+      diff.hasAdditionalNonReachableNodes shouldBe true
     }
 
-    "ignore unreachable joining members" in {
+    "consider unreachable joining members" in {
       val oldW = WorldView
         .fromSnapshot(
           aa,
@@ -180,8 +180,8 @@ class DiffInfoSuite extends WordSpec with Matchers {
 
       val diff = DiffInfo(oldW, updatedW)
 
-      diff.changeIsStable shouldBe true
-      diff.hasAdditionalNonReachableNodes shouldBe false
+      diff.changeIsStable shouldBe false
+      diff.hasAdditionalNonReachableNodes shouldBe true
     }
 
     "ignore reachable weakly-up members" in {
@@ -199,7 +199,7 @@ class DiffInfoSuite extends WordSpec with Matchers {
       diff.hasAdditionalNonReachableNodes shouldBe false
     }
 
-    "ignore indirectly connected weakly-up members" in {
+    "consider indirectly connected weakly-up members" in {
       val oldW = WorldView
         .fromSnapshot(
           aa,
@@ -210,11 +210,11 @@ class DiffInfoSuite extends WordSpec with Matchers {
 
       val diff = DiffInfo(oldW, updatedW)
 
-      diff.changeIsStable shouldBe true
-      diff.hasAdditionalNonReachableNodes shouldBe false
+      diff.changeIsStable shouldBe false
+      diff.hasAdditionalNonReachableNodes shouldBe true
     }
 
-    "ignore unreachable weakly-up members" in {
+    "consider unreachable weakly-up members" in {
       val oldW = WorldView
         .fromSnapshot(
           aa,
@@ -225,8 +225,8 @@ class DiffInfoSuite extends WordSpec with Matchers {
 
       val diff = DiffInfo(oldW, updatedW)
 
-      diff.changeIsStable shouldBe true
-      diff.hasAdditionalNonReachableNodes shouldBe false
+      diff.changeIsStable shouldBe false
+      diff.hasAdditionalNonReachableNodes shouldBe true
     }
   }
 }
