@@ -167,7 +167,7 @@ class KeepOldestSuite extends WordSpec with Matchers {
 
     "down the reachable nodes when the oldest is unreachable and not alone (with role)" in {
       val w = WorldView.fromSnapshot(
-        dd,
+        ee,
         CurrentClusterState(SortedSet(aa, bb, cc, dd, ee), Set(cc, dd), seenBy = Set.empty)
       )
 
@@ -176,6 +176,7 @@ class KeepOldestSuite extends WordSpec with Matchers {
         .get should ===(
         Decision.DownReachable(w)
       )
+
       new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = false, role = "role"))
         .takeDecision(w)
         .get should ===(

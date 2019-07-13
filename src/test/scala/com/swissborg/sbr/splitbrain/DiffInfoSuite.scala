@@ -6,7 +6,7 @@ import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.MemberStatus._
 import akka.cluster.swissborg.TestMember
 import com.swissborg.sbr.WorldView
-import com.swissborg.sbr.splitbrain.SBSplitBrainReporter.DiffInfo
+import com.swissborg.sbr.splitbrain.SplitBrainReporter.DiffInfo
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.collection.immutable.SortedSet

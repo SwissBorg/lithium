@@ -7,7 +7,7 @@ import akka.cluster.DowningProvider
 import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.sbr
-import com.swissborg.sbr.resolver.SBResolver
+import com.swissborg.sbr.resolver.Resolver
 import com.swissborg.sbr.strategy.Strategy
 import com.swissborg.sbr.strategy.StrategyReader.UnknownStrategy
 import com.swissborg.sbr.strategy._
@@ -18,7 +18,7 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
 /**
-  * Implementation of a DowningProvider building a [[SBResolver]].
+  * Implementation of a DowningProvider building a [[Resolver]].
   *
   * @param system the current actor system.
   */
@@ -38,7 +38,7 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
     val downAll = DownAll.name
 
     def sbResolver(strategy: Strategy[SyncIO]): Props =
-      SBResolver.props(
+      Resolver.props(
         strategy,
         config.stableAfter,
         config.downAllWhenUnstable,

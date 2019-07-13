@@ -1,12 +1,13 @@
 package com.swissborg.sbr
 
 import akka.cluster.ClusterEvent._
-import akka.cluster.MemberStatus.{Down, Exiting, Joining, Removed, WeaklyUp}
+import akka.cluster.MemberStatus._
 import akka.cluster.{Member, UniqueAddress}
 import cats.data.NonEmptySet
 import cats.implicits._
 import cats.kernel.Eq
-import com.swissborg.sbr.WorldView.Status
+import com.swissborg.sbr.WorldView.OtherStatus.OtherStatus
+import com.swissborg.sbr.WorldView.SelfStatus.SelfStatus
 import com.swissborg.sbr.implicits._
 import com.swissborg.sbr.reachability._
 import io.circe.Encoder
@@ -23,7 +24,7 @@ import scala.collection.immutable.SortedSet
   */
 private[sbr] final case class WorldView private (
     selfUniqueAddress: UniqueAddress,
-    selfStatus: Status,
+    selfStatus: SelfStatus,
     /**
       * The ordering on nodes is defined on their unique address,
       * ignoring for instance the status.
@@ -34,7 +35,7 @@ private[sbr] final case class WorldView private (
       * then added. Only adding it will not override the value as they
       * are equal given the ordering.
       */
-    otherMembersStatus: Map[UniqueAddress, Status]
+    otherMembersStatus: Map[UniqueAddress, OtherStatus]
 ) {
   import WorldView._
 
@@ -100,7 +101,7 @@ private[sbr] final case class WorldView private (
     if (role.nonEmpty) unreachableNodes.filter(_.member.roles.contains(role))
     else unreachableNodes
 
-  def status(node: UniqueAddress): Option[SBReachabilityStatus] =
+  def status(node: UniqueAddress): Option[ReachabilityStatus] =
     if (node === selfUniqueAddress) {
       Some(selfStatus.reachability)
     } else {
@@ -118,7 +119,7 @@ private[sbr] final case class WorldView private (
           copy(
             otherMembersStatus = otherMembersStatus + (member.uniqueAddress -> Status(
               member,
-              SBReachabilityStatus.Reachable
+              ReachabilityStatus.Reachable
             ))
           )
         )(
@@ -147,19 +148,19 @@ private[sbr] final case class WorldView private (
     * Change the `node`'s state to `Reachable`.
     */
   def withReachableNode(node: UniqueAddress): WorldView =
-    changeReachability(node, SBReachabilityStatus.Reachable)
+    changeReachability(node, ReachabilityStatus.Reachable)
 
   /**
     * Change the `node`'s status to `Unreachable`.
     */
   def withUnreachableNode(node: UniqueAddress): WorldView =
-    changeReachability(node, SBReachabilityStatus.Unreachable)
+    changeReachability(node, ReachabilityStatus.Unreachable)
 
   /**
     * Change the `node`'s status to `IndirectlyConnected`.
     */
   def withIndirectlyConnectedNode(node: UniqueAddress): WorldView =
-    changeReachability(node, SBReachabilityStatus.IndirectlyConnected)
+    changeReachability(node, ReachabilityStatus.IndirectlyConnected)
 
   /**
     * Replace the `selfMember` with `member`.
@@ -167,12 +168,15 @@ private[sbr] final case class WorldView private (
     * Used in tests.
     */
   private[sbr] def changeSelf(member: Member): WorldView = sameDataCenter(member) {
-    val newSelfStatus = otherMembersStatus
+    val newSelfStatus: SelfStatus = otherMembersStatus
       .get(member.uniqueAddress)
-      .fold(Status(member, SBReachabilityStatus.Reachable)) { m =>
-        m.withMember(member)
+      .fold(SelfStatus(member, ReachabilityStatus.Reachable)) { m =>
+        m.reachability match {
+          case reachability: SelfReachabilityStatus => SelfStatus(member, reachability)
+          case _                                    => SelfStatus(member, ReachabilityStatus.Reachable)
+        }
       }
-      .withReachability(SBReachabilityStatus.Reachable)
+      .withReachability(ReachabilityStatus.Reachable)
 
     selfStatus.member.status match {
       case Removed =>
@@ -183,11 +187,9 @@ private[sbr] final case class WorldView private (
         )
 
       case _ =>
-        val maybeOldSelf = if (selfUniqueAddress === member.uniqueAddress) {
-          Map.empty
-        } else {
-          Map(selfUniqueAddress -> selfStatus)
-        }
+        val maybeOldSelf: Map[UniqueAddress, OtherStatus] =
+          if (selfUniqueAddress === member.uniqueAddress) Map.empty
+          else Map(selfUniqueAddress -> selfStatus.widen)
 
         val updatedOtherMembersStatus = otherMembersStatus - member.uniqueAddress ++ maybeOldSelf
 
@@ -204,10 +206,14 @@ private[sbr] final case class WorldView private (
     */
   private def changeReachability(
       node: UniqueAddress,
-      reachability: SBReachabilityStatus
+      reachability: ReachabilityStatus
   ): WorldView =
     if (node === selfUniqueAddress) {
-      copy(selfUniqueAddress, selfStatus = selfStatus.withReachability(reachability))
+      reachability match {
+        case reachability: SelfReachabilityStatus =>
+          copy(selfUniqueAddress, selfStatus = selfStatus.withReachability(reachability))
+        case _ => this // TODO is it safe to ignore?
+      }
     } else {
       otherMembersStatus
         .get(node)
@@ -262,7 +268,7 @@ private[sbr] object WorldView {
   def init(selfMember: Member): WorldView =
     new WorldView(
       selfMember.uniqueAddress,
-      Status(selfMember, SBReachabilityStatus.Reachable),
+      Status(selfMember, ReachabilityStatus.Reachable),
       Map.empty
     )
 
@@ -313,42 +319,76 @@ private[sbr] object WorldView {
   def fromNodes(selfNode: Node, otherNodes: SortedSet[Node]): WorldView = {
     val sameDCOtherNodes = otherNodes.filter(_.member.dataCenter == selfNode.member.dataCenter)
 
-    def convert(node: Node): (UniqueAddress, Status) =
-      node.member.uniqueAddress -> (node match {
-        case _: UnreachableNode => Status(node.member, SBReachabilityStatus.Unreachable)
-        case _: ReachableNode   => Status(node.member, SBReachabilityStatus.Reachable)
-        case _: IndirectlyConnectedNode =>
-          Status(node.member, SBReachabilityStatus.IndirectlyConnected)
+    def convertSelf(selfNode: Node): (UniqueAddress, SelfStatus) =
+      selfNode.uniqueAddress -> (selfNode match {
+        case ReachableNode(member) =>
+          SelfStatus(member, ReachabilityStatus.Reachable)
+
+        case IndirectlyConnectedNode(member) =>
+          SelfStatus(member, ReachabilityStatus.IndirectlyConnected)
+
+        case UnreachableNode(member) =>
+          SelfStatus(member, ReachabilityStatus.Reachable) // TODO is this a good default?
+      })
+
+    def convertOther(node: Node): (UniqueAddress, OtherStatus) =
+      node.uniqueAddress -> (node match {
+        case UnreachableNode(member) =>
+          OtherStatus(member, ReachabilityStatus.Unreachable)
+
+        case ReachableNode(member) =>
+          OtherStatus(member, ReachabilityStatus.Reachable)
+
+        case IndirectlyConnectedNode(member) =>
+          OtherStatus(member, ReachabilityStatus.IndirectlyConnected)
       })
 
     assert(!sameDCOtherNodes.contains(selfNode))
 
-    val (selfUniqueAddress, selfStatus) = convert(selfNode)
+    val (selfUniqueAddress, selfStatus) = convertSelf(selfNode)
 
     val (_, others) = sameDCOtherNodes.partition(_.member.status === Removed)
 
     WorldView(
       selfUniqueAddress,
       selfStatus,
-      others.filterNot(_.member.status === Removed).map(convert)(collection.breakOut)
+      others.filterNot(_.member.status === Removed).map(convertOther)(collection.breakOut)
     )
   }
 
   /**
     * Convert the `member` and its `reachability` to a [[Node]].
     */
-  private def toNode(member: Member, reachability: SBReachabilityStatus): Node =
+  private def toNode[R <: ReachabilityStatus](member: Member, reachability: R): Node =
     reachability match {
-      case SBReachabilityStatus.Reachable           => ReachableNode(member)
-      case SBReachabilityStatus.Unreachable         => UnreachableNode(member)
-      case SBReachabilityStatus.IndirectlyConnected => IndirectlyConnectedNode(member)
+      case ReachabilityStatus.Reachable           => ReachableNode(member)
+      case ReachabilityStatus.Unreachable         => UnreachableNode(member)
+      case ReachabilityStatus.IndirectlyConnected => IndirectlyConnectedNode(member)
     }
 
-  final case class Status(member: Member, reachability: SBReachabilityStatus) {
-    def withReachability(updatedReachability: SBReachabilityStatus): Status =
+  final case class Status[R <: ReachabilityStatus](member: Member, reachability: R) {
+    def withReachability[R0 <: R](updatedReachability: R0): Status[R0] =
       copy(reachability = updatedReachability)
 
-    def withMember(updatedMember: Member): Status = copy(member = updatedMember)
+    def withMember(updatedMember: Member): Status[R] =
+      Status(updatedMember, reachability)
+
+    @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
+    def widen[R0 >: R <: ReachabilityStatus]: Status[R0] = this.asInstanceOf[Status[R0]]
+  }
+
+  object SelfStatus {
+    type SelfStatus = Status[SelfReachabilityStatus]
+
+    def apply(member: Member, reachability: SelfReachabilityStatus): SelfStatus =
+      Status(member, reachability)
+  }
+
+  object OtherStatus {
+    type OtherStatus = Status[ReachabilityStatus]
+
+    def apply(member: Member, reachability: ReachabilityStatus): OtherStatus =
+      Status(member, reachability)
   }
 
   /**

@@ -9,7 +9,7 @@ import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.sbr._
 import com.swissborg.sbr.implicits._
-import com.swissborg.sbr.reachability.SBReachabilityStatus.Reachable
+import com.swissborg.sbr.reachability.ReachabilityStatus.Reachable
 import com.swissborg.sbr.reachability._
 import com.swissborg.sbr.resolver._
 
@@ -24,7 +24,7 @@ import scala.concurrent.duration._
   * @param downAllWhenUnstable downs the current partition if it takes longer than the duration. Otherwise nothing.
   * @param trackIndirectlyConnectedNodes detects indirectly-connected nodes when enabled.
   */
-private[sbr] class SBSplitBrainReporter(
+private[sbr] class SplitBrainReporter(
     private val splitBrainResolver: ActorRef,
     private val stableAfter: FiniteDuration,
     private val downAllWhenUnstable: Option[FiniteDuration],
@@ -33,13 +33,13 @@ private[sbr] class SBSplitBrainReporter(
     with Stash
     with ActorLogging
     with Timers {
-  import SBSplitBrainReporter._
+  import SplitBrainReporter._
 
   private val cluster = Cluster(context.system)
   private val selfMember = cluster.selfMember
 
   if (trackIndirectlyConnectedNodes)
-    discard(context.actorOf(SBReachabilityReporter.props(self), "sb-reachability-reporter"))
+    discard(context.actorOf(ReachabilityReporter.props(self), "sb-reachability-reporter"))
 
   override def receive: Receive = initializing
 
@@ -47,13 +47,13 @@ private[sbr] class SBSplitBrainReporter(
   private def initializing: Receive = {
     case snapshot: CurrentClusterState =>
       unstashAll()
-      context.become(active(SBSplitBrainReporterState.fromSnapshot(selfMember, snapshot)))
+      context.become(active(SplitBrainReporterState.fromSnapshot(selfMember, snapshot)))
 
     case _ => stash()
   }
 
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
-  private def active(state: SBSplitBrainReporterState): Receive = {
+  private def active(state: SplitBrainReporterState): Receive = {
 
     // Only received when `trackIndirectlyConnectedNodes` is true.
 
@@ -98,7 +98,7 @@ private[sbr] class SBSplitBrainReporter(
     * partition worsened and the timer is not running, it is started.
     */
   private def modifyAndManageStability(
-      f: SBSplitBrainReporterState => SBSplitBrainReporterState
+      f: SplitBrainReporterState => SplitBrainReporterState
   ): Res[Unit] =
     StateT.modifyF { state =>
       val updatedState = f(state)
@@ -188,18 +188,18 @@ private[sbr] class SBSplitBrainReporter(
     for {
       // Cancel else the partition will be downed if it takes too long for
       // the split-brain to be resolved after `SBResolver` downs the nodes.
-      _ <- StateT.liftF[SyncIO, SBSplitBrainReporterState, Unit](cancelClusterIsUnstable)
-      _ <- ifSplitBrain(SBResolver.HandleSplitBrain(_))
+      _ <- StateT.liftF[SyncIO, SplitBrainReporterState, Unit](cancelClusterIsUnstable)
+      _ <- ifSplitBrain(Resolver.HandleSplitBrain(_))
       _ <- StateT.liftF(scheduleClusterIsStable)
     } yield ()
 
   private val downAll: Res[Unit] = for {
-    _ <- StateT.liftF[SyncIO, SBSplitBrainReporterState, Unit](cancelClusterIsStable)
-    _ <- ifSplitBrain(SBResolver.DownAll)
+    _ <- StateT.liftF[SyncIO, SplitBrainReporterState, Unit](cancelClusterIsStable)
+    _ <- ifSplitBrain(Resolver.DownAll)
     _ <- StateT.liftF(scheduleClusterIsStable)
   } yield ()
 
-  private def ifSplitBrain(event: WorldView => SBResolver.Event): Res[Unit] =
+  private def ifSplitBrain(event: WorldView => Resolver.Event): Res[Unit] =
     StateT.inspectF { state =>
       if (hasSplitBrain(state.worldView)) {
         SyncIO(splitBrainResolver ! event(state.worldView))
@@ -233,8 +233,8 @@ private[sbr] class SBSplitBrainReporter(
   }
 }
 
-private[sbr] object SBSplitBrainReporter {
-  private type Res[A] = StateT[SyncIO, SBSplitBrainReporterState, A]
+private[sbr] object SplitBrainReporter {
+  private type Res[A] = StateT[SyncIO, SplitBrainReporterState, A]
 
   def props(
       downer: ActorRef,
@@ -243,7 +243,7 @@ private[sbr] object SBSplitBrainReporter {
       trackIndirectlyConnected: Boolean
   ): Props =
     Props(
-      new SBSplitBrainReporter(downer, stableAfter, downAllWhenUnstable, trackIndirectlyConnected)
+      new SplitBrainReporter(downer, stableAfter, downAllWhenUnstable, trackIndirectlyConnected)
     )
 
   final private case object ClusterIsStable

@@ -84,17 +84,6 @@ class StaticQuorumSuite extends WordSpec with Matchers {
         .unsafeRunSync() should ===(
         Decision.DownReachable(w)
       )
-
-      val w1 = WorldView.fromSnapshot(
-        cc,
-        CurrentClusterState(SortedSet(aa, bb, cc), Set(bb, cc), seenBy = Set.empty)
-      )
-
-      new strategy.StaticQuorum[SyncIO](StaticQuorum.Config("", 2))
-        .takeDecision(w1)
-        .unsafeRunSync() should ===(
-        Decision.DownReachable(w1)
-      )
     }
 
     "down the unreachable nodes when the reachable nodes form a quorum and there are no unreachable nodes" in {

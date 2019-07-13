@@ -109,24 +109,31 @@ class WorldViewSuite extends WordSpec with Matchers {
       val w = WorldView
         .fromSnapshot(
           aa,
-          CurrentClusterState(SortedSet(aa, bb), seenBy = Set(aa.address, bb.address))
+          CurrentClusterState(SortedSet(aa, bb), seenBy = Set.empty)
         )
-
-      // todo should selfMember really become unreachable
-      val w1 = w.withUnreachableNode(aa.uniqueAddress)
-      w1.reachableNodes.map(_.member) should ===(Set(bb))
-      w1.unreachableNodes.map(_.member) should ===(Set(aa))
 
       val w2 = w.withUnreachableNode(bb.uniqueAddress)
       w2.reachableNodes.map(_.member) should ===(Set(aa))
       w2.unreachableNodes.map(_.member) should ===(Set(bb))
     }
 
+    "self member must not become unreachable" in {
+      val w = WorldView
+        .fromSnapshot(
+          aa,
+          CurrentClusterState(SortedSet(aa, bb), seenBy = Set.empty)
+        )
+
+      val w1 = w.withUnreachableNode(aa.uniqueAddress)
+      w1.reachableNodes.map(_.member) should ===(Set(aa, bb))
+      w1.unreachableNodes.map(_.member) should ===(Set.empty)
+    }
+
     "move a member from unreachable to reachable" in {
       val w1 = WorldView
         .fromSnapshot(
           aa,
-          CurrentClusterState(SortedSet(aa, bb), Set(bb), seenBy = Set(aa.address, bb.address))
+          CurrentClusterState(SortedSet(aa, bb), Set(bb), seenBy = Set.empty)
         )
         .withReachableNode(bb.uniqueAddress)
 
@@ -201,24 +208,13 @@ class WorldViewSuite extends WordSpec with Matchers {
       val w1 = WorldView
         .fromSnapshot(
           aa,
-          CurrentClusterState(SortedSet(aa, bb), seenBy = Set(aa.address, bb.address))
+          CurrentClusterState(SortedSet(aa, bb), seenBy = Set.empty)
         )
         .withIndirectlyConnectedNode(bb.uniqueAddress)
         .withUnreachableNode(bb.uniqueAddress)
 
       w1.reachableNodes.map(_.member) should ===(Set(aa))
       w1.unreachableNodes.map(_.member) should ===(Set(bb))
-
-      val w2 = WorldView
-        .fromSnapshot(
-          aa,
-          CurrentClusterState(SortedSet(aa, bb), Set(aa), seenBy = Set(aa.address, bb.address))
-        )
-        .withIndirectlyConnectedNode(aa.uniqueAddress)
-        .withUnreachableNode(aa.uniqueAddress)
-
-      w2.reachableNodes.map(_.member) should ===(Set(bb))
-      w2.unreachableNodes.map(_.member) should ===(Set(aa))
     }
 
     "remove an unreachable member" in {
@@ -284,7 +280,7 @@ class WorldViewSuite extends WordSpec with Matchers {
         )
         .addOrUpdate(aa.copy(Leaving))
 
-      w.selfStatus should ===(Status(aa.copy(Leaving), SBReachabilityStatus.Reachable))
+      w.selfStatus should ===(Status(aa.copy(Leaving), ReachabilityStatus.Reachable))
     }
 
     "get the latest state of selfMember from the snapshot" in {
