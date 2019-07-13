@@ -2,7 +2,6 @@ package com.swissborg.sbr
 package strategy
 
 import cats._
-import cats.data._
 import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder
 import monocle.Getter
@@ -20,11 +19,11 @@ private[sbr] object Decision {
   /**
     * Decision to down the reachable nodes.
     */
-  sealed abstract case class DownReachable(nodesToDown: NonEmptySet[Node]) extends Decision
+  sealed abstract case class DownReachable(nodesToDown: SortedSet[ReachableNode]) extends Decision
 
   object DownReachable {
     def apply(worldView: WorldView): DownReachable =
-      new DownReachable(worldView.nodes) {}
+      new DownReachable(worldView.reachableNodes) {}
   }
 
   sealed abstract case class DownIndirectlyConnected(
@@ -69,7 +68,7 @@ private[sbr] object Decision {
   val nodesToDown: Getter[Decision, SortedSet[Node]] =
     Getter[Decision, SortedSet[Node]] {
       case DownThese(decision1, decision2)      => decision1.nodesToDown ++ decision2.nodesToDown
-      case DownReachable(nodesToDown)           => nodesToDown.toSortedSet
+      case DownReachable(nodesToDown)           => nodesToDown.map(identity[Node])
       case DownUnreachable(nodesToDown)         => nodesToDown.map(identity[Node])
       case DownIndirectlyConnected(nodesToDown) => nodesToDown.map(identity[Node])
       case _: Idle.type                         => SortedSet.empty

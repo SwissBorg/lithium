@@ -110,8 +110,7 @@ private[sbr] class SBResolver(
   ): SyncIO[Unit] = {
     def execute(decision: Decision): SyncIO[Unit] =
       for {
-        _ <- decision.nodesToDown.toList
-          .traverse_(node => SyncIO(cluster.down(node.member.address)))
+        _ <- decision.nodesToDown.toList.traverse_(node => SyncIO(cluster.down(node.address)))
         _ <- SyncIO(log.info("Downing the nodes: {}", decision.simple.asJson.noSpaces))
 
       } yield ()
