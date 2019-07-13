@@ -3,7 +3,6 @@ package strategy
 
 import cats.Monoid
 import cats.implicits._
-import com.swissborg.sbr.testImplicits._
 
 import scala.collection.immutable.SortedSet
 
@@ -11,13 +10,11 @@ class DecisionSpec extends SBSpec {
   "StrategyDecision" must {
     "extract the correct nodes from the world view" in {
       forAll { worldView: WorldView =>
-        Decision.DownReachable(worldView).nodesToDown.map(_.member) should ===(
-          worldView.nodes.map(_.member)
-        )
+        Decision.DownReachable(worldView).nodesToDown should ===(worldView.reachableNodes)
+        Decision.DownUnreachable(worldView).nodesToDown should ===(worldView.unreachableNodes)
 
-        Decision.DownUnreachable(worldView).nodesToDown.map(_.member) should ===(
-          worldView.unreachableNodes.map(_.member)
-        )
+        Decision.DownIndirectlyConnected(worldView).nodesToDown should
+          ===(worldView.indirectlyConnectedNodes)
       }
     }
 
@@ -25,18 +22,16 @@ class DecisionSpec extends SBSpec {
       forAll { strategyDecision: Decision =>
         strategyDecision match {
           case Decision.DownReachable(nodesToDown) =>
-            strategyDecision.nodesToDown.map(_.member) should ===(
-              nodesToDown.map(_.member).toSortedSet
-            )
+            strategyDecision.nodesToDown should ===(nodesToDown.map(identity[Node]))
 
           case Decision.DownUnreachable(nodesToDown) =>
-            strategyDecision.nodesToDown.map(_.member) should ===(nodesToDown.map(_.member))
+            strategyDecision.nodesToDown should ===(nodesToDown.map(identity[Node]))
 
           case Decision.DownThese(decision1, decision2) =>
             strategyDecision.nodesToDown should ===(decision1.nodesToDown ++ decision2.nodesToDown)
 
           case Decision.DownIndirectlyConnected(nodesToDown) =>
-            strategyDecision.nodesToDown.map(_.member) should ===(nodesToDown.map(_.member))
+            strategyDecision.nodesToDown should ===(nodesToDown.map(identity[Node]))
 
           case Decision.Idle => strategyDecision.nodesToDown.isEmpty shouldBe true
         }

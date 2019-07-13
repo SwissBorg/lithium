@@ -1,5 +1,6 @@
 package com.swissborg.sbr
 
+import akka.actor.Address
 import akka.cluster.{Member, MemberStatus, UniqueAddress}
 import cats.Order
 
@@ -12,6 +13,7 @@ private[sbr] sealed abstract class Node extends Product with Serializable {
 
   val status: MemberStatus = member.status
   val uniqueAddress: UniqueAddress = member.uniqueAddress
+  val address: Address = member.address
 
   /**
     * Replace the current member by `member`.
