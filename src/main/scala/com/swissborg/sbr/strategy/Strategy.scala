@@ -9,7 +9,7 @@ private[sbr] trait Strategy[F[_]] {
   /**
     * The strategy decision given the world view.
     *
-    * @param worldView the world view of the cluster from the callers actor sytem.
+    * @param worldView the view of the cluster from this member.
     */
   def takeDecision(worldView: WorldView): F[Decision]
 }

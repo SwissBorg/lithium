@@ -7,17 +7,17 @@ import cats.data.State
 /**
   * State of the SBRFailureDetector.
   */
-final private[reachability] case class SBReachabilityReporterState private (
+final private[reachability] case class ReachabilityReporterState private (
     selfUniqueAddress: UniqueAddress,
     reachabilities: Map[Subject, VReachability],
-    pendingContentionAcks: Map[UniqueAddress, Set[SBReachabilityReporter.ContentionAck]],
-    receivedAcks: Map[UniqueAddress, Set[SBReachabilityReporter.ContentionAck]]
+    pendingContentionAcks: Map[UniqueAddress, Set[ReachabilityReporter.ContentionAck]],
+    receivedAcks: Map[UniqueAddress, Set[ReachabilityReporter.ContentionAck]]
 ) {
 
   /**
     * Set the `subject` as reachable.
     */
-  private[reachability] def withReachable(subject: Subject): SBReachabilityReporterState =
+  private[reachability] def withReachable(subject: Subject): ReachabilityReporterState =
     _withReachable(subject, tagAsRetrieved = false)
 
   /**
@@ -25,7 +25,7 @@ final private[reachability] case class SBReachabilityReporterState private (
     */
   private[reachability] def withReachableAndSetAsRetrieved(
       subject: Subject
-  ): SBReachabilityReporterState =
+  ): ReachabilityReporterState =
     _withReachable(subject, tagAsRetrieved = true)
 
   /**
@@ -34,7 +34,7 @@ final private[reachability] case class SBReachabilityReporterState private (
   private def _withReachable(
       subject: Subject,
       tagAsRetrieved: Boolean
-  ): SBReachabilityReporterState = {
+  ): ReachabilityReporterState = {
     val reachable = VReachable.notRetrieved
     copy(
       reachabilities = reachabilities + (subject -> (if (tagAsRetrieved) reachable.tagAsRetrieved
@@ -50,7 +50,7 @@ final private[reachability] case class SBReachabilityReporterState private (
       observer: Observer,
       subject: Subject,
       version: Version
-  ): SBReachabilityReporterState = {
+  ): ReachabilityReporterState = {
     val updatedReachability = reachabilities
       .get(subject)
       .fold(VReachability.unreachableFrom(observer, version))(
@@ -69,7 +69,7 @@ final private[reachability] case class SBReachabilityReporterState private (
       observer: Observer,
       subject: Subject,
       version: Version
-  ): SBReachabilityReporterState =
+  ): ReachabilityReporterState =
     copy(
       reachabilities = reachabilities + (subject -> reachabilities
         .get(subject)
@@ -84,7 +84,7 @@ final private[reachability] case class SBReachabilityReporterState private (
       observer: Observer,
       subject: Subject,
       version: Version
-  ): SBReachabilityReporterState = {
+  ): ReachabilityReporterState = {
     val updatedReachabilities = reachabilities + (subject -> reachabilities
       .get(subject)
       .fold(VReachable.notRetrieved)(_.withoutProtest(protester, observer, version)))
@@ -95,7 +95,7 @@ final private[reachability] case class SBReachabilityReporterState private (
   /**
     * Remove the node.
     */
-  private[reachability] def remove(node: UniqueAddress): SBReachabilityReporterState =
+  private[reachability] def remove(node: UniqueAddress): ReachabilityReporterState =
     copy(
       reachabilities = (reachabilities - node).map {
         case (subject, reachability) => subject -> reachability.remove(node)
@@ -105,16 +105,16 @@ final private[reachability] case class SBReachabilityReporterState private (
     )
 
   private[reachability] def expectContentionAck(
-      ack: SBReachabilityReporter.ContentionAck
-  ): SBReachabilityReporterState =
+      ack: ReachabilityReporter.ContentionAck
+  ): ReachabilityReporterState =
     copy(
       pendingContentionAcks = pendingContentionAcks + (ack.from -> (pendingContentionAcks
         .getOrElse(ack.from, Set.empty) + ack))
     )
 
   private[reachability] def registerContentionAck(
-      ack: SBReachabilityReporter.ContentionAck
-  ): SBReachabilityReporterState = {
+      ack: ReachabilityReporter.ContentionAck
+  ): ReachabilityReporterState = {
     val updatedPendingContentionAcks = pendingContentionAcks
       .get(ack.from)
       .fold(pendingContentionAcks) { pendingAcks =>
@@ -133,9 +133,9 @@ final private[reachability] case class SBReachabilityReporterState private (
   }
 }
 
-private[reachability] object SBReachabilityReporterState {
-  def apply(selfUniqueAddress: UniqueAddress): SBReachabilityReporterState =
-    SBReachabilityReporterState(selfUniqueAddress, Map.empty, Map.empty, Map.empty)
+private[reachability] object ReachabilityReporterState {
+  def apply(selfUniqueAddress: UniqueAddress): ReachabilityReporterState =
+    ReachabilityReporterState(selfUniqueAddress, Map.empty, Map.empty, Map.empty)
 
   /**
     * Return the `subject`'s reachability if it has changed since the last time
@@ -145,13 +145,13 @@ private[reachability] object SBReachabilityReporterState {
     */
   private[reachability] def updatedReachability(
       subject: Subject
-  ): State[SBReachabilityReporterState, Option[SBReachabilityStatus]] = State { s =>
+  ): State[ReachabilityReporterState, Option[ReachabilityStatus]] = State { s =>
     s.reachabilities
       .get(subject)
       .fold(
         (
           s.withReachableAndSetAsRetrieved(subject),
-          Option[SBReachabilityStatus](SBReachabilityStatus.Reachable)
+          Option[ReachabilityStatus](ReachabilityStatus.Reachable)
         )
       ) { reachability =>
         if (reachability.hasBeenRetrieved) {
@@ -169,9 +169,9 @@ private[reachability] object SBReachabilityReporterState {
     * Return all the changed reachabilities since the last time this method was called.
     */
   private[reachability] val allUpdatedReachabilies
-      : State[SBReachabilityReporterState, Map[Subject, SBReachabilityStatus]] = State { s =>
+      : State[ReachabilityReporterState, Map[Subject, ReachabilityStatus]] = State { s =>
     s.reachabilities
-      .foldLeft((s, Map.empty[Subject, SBReachabilityStatus])) {
+      .foldLeft((s, Map.empty[Subject, ReachabilityStatus])) {
         case ((s, statuses), (subject, reachability)) =>
           if (reachability.hasBeenRetrieved) {
             (s, statuses)

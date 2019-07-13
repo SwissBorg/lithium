@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package com.swissborg.sbr.reachability.SBReachabilityReporterProtocol;
+package com.swissborg.sbr.reachability.ReachabilityReporterProtocol;
 
 import "scalapb/scalapb.proto";
 import "google/protobuf/wrappers.proto";
@@ -10,7 +10,7 @@ option (scalapb.options) = {
     flat_package: true
 };
 
-message SBReachabilityReporterMsg {
+message ReachabilityReporterMsg {
     oneof Payload {
         Contention contention = 1;
         ContentionAck contentionAck = 2;

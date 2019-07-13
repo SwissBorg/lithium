@@ -264,30 +264,30 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
     )
   )
 
-  implicit val arbSBRReachability: Arbitrary[SBReachabilityStatus] = Arbitrary(
+  implicit val arbSBRReachability: Arbitrary[ReachabilityStatus] = Arbitrary(
     Gen.oneOf(
-      SBReachabilityStatus.Reachable,
-      SBReachabilityStatus.Unreachable,
-      SBReachabilityStatus.IndirectlyConnected
+      ReachabilityStatus.Reachable,
+      ReachabilityStatus.Unreachable,
+      ReachabilityStatus.IndirectlyConnected
     )
   )
 
-  implicit val arbContention: Arbitrary[SBReachabilityReporter.Contention] = Arbitrary(
+  implicit val arbContention: Arbitrary[ReachabilityReporter.Contention] = Arbitrary(
     for {
       protester <- arbitrary[UniqueAddress]
       observer <- arbitrary[UniqueAddress]
       subject <- arbitrary[UniqueAddress]
       version <- arbitrary[Long]
-    } yield SBReachabilityReporter.Contention(protester, observer, subject, version)
+    } yield ReachabilityReporter.Contention(protester, observer, subject, version)
   )
 
-  implicit val arbContentionAck: Arbitrary[SBReachabilityReporter.ContentionAck] = Arbitrary(
+  implicit val arbContentionAck: Arbitrary[ReachabilityReporter.ContentionAck] = Arbitrary(
     for {
       from <- arbitrary[UniqueAddress]
       observer <- arbitrary[UniqueAddress]
       subject <- arbitrary[UniqueAddress]
       version <- arbitrary[Long]
-    } yield SBReachabilityReporter.ContentionAck(from, observer, subject, version)
+    } yield ReachabilityReporter.ContentionAck(from, observer, subject, version)
   )
 
   implicit val arbQuorumSize: Arbitrary[Int Refined Positive] = Arbitrary {

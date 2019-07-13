@@ -22,14 +22,14 @@ import scala.concurrent.duration._
   * This might happen for instance when the link between two nodes is faulty,
   * they cannot directly communicate but can via another node.
   *
-  * @param sbSplitBrainReporter the actor to which the reachability events have to be sent.
+  * @param splitBrainReporter the actor to which the reachability events have to be sent.
   */
-private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: ActorRef)
+private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef)
     extends Actor
     with ActorLogging
     with Stash
     with Timers {
-  import SBReachabilityReporter._
+  import ReachabilityReporter._
 
   private val cluster = Cluster(context.system)
   private val selfUniqueAddress = cluster.selfUniqueAddress
@@ -44,13 +44,13 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
   private def initializing: Receive = {
     case _: CurrentClusterState =>
       unstashAll()
-      context.become(active(SBReachabilityReporterState(selfUniqueAddress)))
+      context.become(active(ReachabilityReporterState(selfUniqueAddress)))
 
     case _ => stash()
   }
 
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
-  private def active(state: SBReachabilityReporterState): Receive = {
+  private def active(state: ReachabilityReporterState): Receive = {
     case SBReachabilityChanged(r) =>
       context.become(active(updateReachabilities(r).runS(state).unsafeRunSync()))
 
@@ -110,7 +110,7 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
         expectedAck: ContentionAck
     ): Res[Unit] =
       for {
-        _ <- StateT.modify[SyncIO, SBReachabilityReporterState](_.expectContentionAck(expectedAck))
+        _ <- StateT.modify[SyncIO, ReachabilityReporterState](_.expectContentionAck(expectedAck))
         _ <- sendWithRetry(
           contention,
           sbReachabilityReporterOnNode(to),
@@ -134,7 +134,7 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
     def broadcastContentionWithRetry(contention: Contention): Res[Unit] =
       for {
         sbFailureDetectors <- sbFailureDetectors
-        state <- StateT.get[SyncIO, SBReachabilityReporterState]
+        state <- StateT.get[SyncIO, ReachabilityReporterState]
         state <- sbFailureDetectors.traverse_[Res, Unit] { to =>
           val expectedAck = ContentionAck.fromContention(contention, to)
 
@@ -144,14 +144,14 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
           val sendingInProgress =
             state.pendingContentionAcks.get(to).exists(_.exists(_ === expectedAck))
 
-          val res: StateT[SyncIO, SBReachabilityReporterState, Unit] =
+          val res: StateT[SyncIO, ReachabilityReporterState, Unit] =
             if (hasBeenAcked || sendingInProgress) {
               // No need to send the broadcast as it was already received.
               StateT.empty
             } else if (to === selfUniqueAddress) {
               // Shortcut
               for {
-                _ <- StateT.modify[SyncIO, SBReachabilityReporterState] {
+                _ <- StateT.modify[SyncIO, ReachabilityReporterState] {
                   _.withContention(
                     contention.protester,
                     contention.observer,
@@ -239,7 +239,7 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
 
       for {
         _ <- cancelContentionResend0
-        _ <- StateT.modify[SyncIO, SBReachabilityReporterState](_.remove(node))
+        _ <- StateT.modify[SyncIO, ReachabilityReporterState](_.remove(node))
         _ <- sendAllChangedReachabilities
       } yield ()
     }
@@ -249,7 +249,7 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
     */
   private def withReachable(node: UniqueAddress): Res[Unit] =
     for {
-      _ <- StateT.modify[SyncIO, SBReachabilityReporterState](_.withReachable(node))
+      _ <- StateT.modify[SyncIO, ReachabilityReporterState](_.withReachable(node))
       _ <- sendReachabilityIfChanged(node)
     } yield ()
 
@@ -261,7 +261,7 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
     */
   private def sendReachabilityIfChanged(subject: Subject): Res[Unit] =
     for {
-      status <- SBReachabilityReporterState.updatedReachability(subject).mapK(evalToSyncIO)
+      status <- ReachabilityReporterState.updatedReachability(subject).mapK(evalToSyncIO)
       _ <- StateT.liftF(status.traverse_(sendReachability(subject, _)))
     } yield ()
 
@@ -272,20 +272,20 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
     * it will do nothing.
     */
   private val sendAllChangedReachabilities: Res[Unit] = for {
-    statuses <- SBReachabilityReporterState.allUpdatedReachabilies.mapK(evalToSyncIO)
+    statuses <- ReachabilityReporterState.allUpdatedReachabilies.mapK(evalToSyncIO)
     _ <- StateT.liftF(statuses.toList.traverse_ { case (k, v) => sendReachability(k, v) })
   } yield ()
 
-  private def sendReachability(subject: Subject, reachability: SBReachabilityStatus): SyncIO[Unit] =
-    SyncIO(sbSplitBrainReporter ! (reachability match {
-      case SBReachabilityStatus.Reachable =>
-        SBSplitBrainReporter.NodeReachable(subject)
+  private def sendReachability(subject: Subject, reachability: ReachabilityStatus): SyncIO[Unit] =
+    SyncIO(splitBrainReporter ! (reachability match {
+      case ReachabilityStatus.Reachable =>
+        SplitBrainReporter.NodeReachable(subject)
 
-      case SBReachabilityStatus.IndirectlyConnected =>
-        SBSplitBrainReporter.NodeIndirectlyConnected(subject)
+      case ReachabilityStatus.IndirectlyConnected =>
+        SplitBrainReporter.NodeIndirectlyConnected(subject)
 
-      case SBReachabilityStatus.Unreachable =>
-        SBSplitBrainReporter.NodeUnreachable(subject)
+      case ReachabilityStatus.Unreachable =>
+        SplitBrainReporter.NodeUnreachable(subject)
     }))
 
   /**
@@ -317,7 +317,7 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
     for {
       _ <- StateT.liftF(SyncIO(log.debug("Received contention ack: {}", ack)))
       _ <- StateT.liftF(cancelContentionResend(ack))
-      _ <- StateT.modify[SyncIO, SBReachabilityReporterState](_.registerContentionAck(ack))
+      _ <- StateT.modify[SyncIO, ReachabilityReporterState](_.registerContentionAck(ack))
     } yield ()
 
   /**
@@ -380,10 +380,10 @@ private[sbr] class SBReachabilityReporter(private val sbSplitBrainReporter: Acto
   }
 }
 
-private[sbr] object SBReachabilityReporter {
-  private type Res[A] = StateT[SyncIO, SBReachabilityReporterState, A]
+private[sbr] object ReachabilityReporter {
+  private type Res[A] = StateT[SyncIO, ReachabilityReporterState, A]
 
-  def props(sendTo: ActorRef): Props = Props(new SBReachabilityReporter(sendTo))
+  def props(sendTo: ActorRef): Props = Props(new ReachabilityReporter(sendTo))
 
   /**
     * Send `message` to `addressee`. If the message is not acknowledged it is resent after `timeout`. The retry can

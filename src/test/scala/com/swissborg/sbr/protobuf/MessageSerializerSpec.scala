@@ -4,10 +4,9 @@ package protobuf
 import akka.actor.ActorSystem
 import akka.serialization.SerializationExtension
 import akka.testkit.TestKit
-import com.swissborg.sbr.SBSpec
-import com.swissborg.sbr.reachability.SBReachabilityReporter.{Contention, ContentionAck}
+import com.swissborg.sbr.reachability.ReachabilityReporter.{Contention, ContentionAck}
 
-class SBMessageSerializerSpec extends TestKit(ActorSystem("test")) with SBSpec {
+class MessageSerializerSpec extends TestKit(ActorSystem("test")) with SBSpec {
   private val contentionSerializer =
     SerializationExtension(system).findSerializerFor(classOf[Contention])
   private val contentionAckSerializer =

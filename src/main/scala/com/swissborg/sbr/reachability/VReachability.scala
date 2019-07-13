@@ -44,10 +44,10 @@ sealed abstract private[reachability] class VReachability {
     */
   def remove(node: UniqueAddress): VReachability
 
-  val toSBReachabilityStatus: SBReachabilityStatus = this match {
-    case _: VReachable           => SBReachabilityStatus.Reachable
-    case _: VIndirectlyConnected => SBReachabilityStatus.IndirectlyConnected
-    case _: VUnreachable         => SBReachabilityStatus.Unreachable
+  val toSBReachabilityStatus: ReachabilityStatus = this match {
+    case _: VReachable           => ReachabilityStatus.Reachable
+    case _: VIndirectlyConnected => ReachabilityStatus.IndirectlyConnected
+    case _: VUnreachable         => ReachabilityStatus.Unreachable
   }
 }
 

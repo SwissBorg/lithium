@@ -21,14 +21,14 @@ import scala.concurrent.duration._
   * It handles two events: `SBResolver.HandleSplitBrain` and `SBResolver.DownAll`,
   * both accompagnied with a `WorldView` describing a partitioned cluster.
   *
-  * The `SBResolver.HandleSplitBrain` event triggers the downing of the members
+  * The `Resolver.HandleSplitBrain` event triggers the downing of the members
   * as described by the decision given by `Union(_strategy, IndirectlyConnected)`.
   * All but the joining/weakly-up members in the cluster will run the strategy.
   * Joining/weakly-up members will not down the nodes as their world view might
   * be wrong. It can happen that they did not see all the reachability contentions
   * and noted some nodes as unreachable that are in fact indirectly-connected.
   *
-  * The `SBResolver.DownAll` event triggers the downing of all the nodes. In contrast
+  * The `Resolver.DownAll` event triggers the downing of all the nodes. In contrast
   * to the event above, joining/weakly-up will also down nodes. To down all the nodes
   * the only information is needed are all the cluster members.
   *
@@ -37,7 +37,7 @@ import scala.concurrent.duration._
   * @param downAllWhenUnstable down the partition if the cluster has been unstable for longer than `stableAfter + 3/4 * stableAfter`.
   * @param trackIndirectlyConnectedNodes downs the detected indirectly-connected nodes when enabled.
   */
-private[sbr] class SBResolver(
+private[sbr] class Resolver(
     private val _strategy: Strategy[SyncIO],
     private val stableAfter: FiniteDuration,
     private val downAllWhenUnstable: Option[FiniteDuration],
@@ -46,7 +46,7 @@ private[sbr] class SBResolver(
     with ActorLogging {
   discard(
     context.actorOf(
-      SBSplitBrainReporter
+      SplitBrainReporter
         .props(self, stableAfter, downAllWhenUnstable, trackIndirectlyConnectedNodes),
       "splitbrain-reporter"
     )
@@ -61,8 +61,8 @@ private[sbr] class SBResolver(
 
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
   override def receive: Receive = {
-    case SBResolver.HandleSplitBrain(worldView) => handleSplitBrain(worldView).unsafeRunSync()
-    case SBResolver.DownAll(worldView)          => downAll(worldView).unsafeRunSync()
+    case Resolver.HandleSplitBrain(worldView) => handleSplitBrain(worldView).unsafeRunSync()
+    case Resolver.DownAll(worldView)          => downAll(worldView).unsafeRunSync()
   }
 
   /**
@@ -126,14 +126,14 @@ private[sbr] class SBResolver(
   )
 }
 
-object SBResolver {
+object Resolver {
   def props(
       strategy: Strategy[SyncIO],
       stableAfter: FiniteDuration,
       downAllWhenUnstable: Option[FiniteDuration],
       trackIndirectlyConnectedNodes: Boolean
   ): Props =
-    Props(new SBResolver(strategy, stableAfter, downAllWhenUnstable, trackIndirectlyConnectedNodes))
+    Props(new Resolver(strategy, stableAfter, downAllWhenUnstable, trackIndirectlyConnectedNodes))
 
   private[sbr] sealed trait Event {
     def worldView: WorldView

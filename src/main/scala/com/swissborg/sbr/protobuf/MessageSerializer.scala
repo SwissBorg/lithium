@@ -6,15 +6,15 @@ import akka.cluster.UniqueAddress
 import akka.serialization._
 import com.google.protobuf.ByteString
 import com.swissborg.sbr.reachability._
-import com.swissborg.sbr.reachability.{SBReachabilityReporterProtocol => rr}
+import com.swissborg.sbr.reachability.{ReachabilityReporterProtocol => rr}
 
 /**
-  * Serializer for [[SBReachabilityReporter.Contention]] and [[SBReachabilityReporter.ContentionAck]]
+  * Serializer for [[ReachabilityReporter.Contention]] and [[ReachabilityReporter.ContentionAck]]
   * messages sent over the network between
-  * [[com.swissborg.sbr.reachability.SBReachabilityReporter]] actors.
+  * [[com.swissborg.sbr.reachability.ReachabilityReporter]] actors.
   */
-class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
-  import SBMessageSerializer._
+class MessageSerializer(system: ExtendedActorSystem) extends Serializer {
+  import MessageSerializer._
 
   override val identifier: Int = 628347598
 
@@ -23,10 +23,10 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
   @SuppressWarnings(Array("org.wartremover.warts.Throw"))
   override def toBinary(o: AnyRef): Array[Byte] =
     o match {
-      case contention: SBReachabilityReporter.Contention =>
+      case contention: ReachabilityReporter.Contention =>
         contentionToProtoByteArray(contention)
 
-      case contentionAck: SBReachabilityReporter.ContentionAck =>
+      case contentionAck: ReachabilityReporter.ContentionAck =>
         contentionAckToProtoByteArray(contentionAck)
 
       case other =>
@@ -34,26 +34,26 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
     }
 
   override def fromBinary(bytes: Array[Byte], manifest: Option[Class[_]]): AnyRef =
-    fromProto(rr.SBReachabilityReporterMsg.parseFrom(bytes))
+    fromProto(rr.ReachabilityReporterMsg.parseFrom(bytes))
 
   @SuppressWarnings(Array("org.wartremover.warts.Throw"))
-  private def fromProto(msg: rr.SBReachabilityReporterMsg): AnyRef = msg match {
+  private def fromProto(msg: rr.ReachabilityReporterMsg): AnyRef = msg match {
     case rr
-          .SBReachabilityReporterMsg(rr.SBReachabilityReporterMsg.Payload.Contention(contention)) =>
+          .ReachabilityReporterMsg(rr.ReachabilityReporterMsg.Payload.Contention(contention)) =>
       contentionFromProto(contention)
 
-    case rr.SBReachabilityReporterMsg(rr.SBReachabilityReporterMsg.Payload.ContentionAck(ack)) =>
+    case rr.ReachabilityReporterMsg(rr.ReachabilityReporterMsg.Payload.ContentionAck(ack)) =>
       contentionAckFromProto(ack)
 
     case other => throw SerializationException(s"Cannot decode $other")
   }
 
   private def contentionToProtoByteArray(
-      contention: SBReachabilityReporter.Contention
+      contention: ReachabilityReporter.Contention
   ): Array[Byte] = {
-    def contentionToProto(contention: SBReachabilityReporter.Contention): rr.Contention =
+    def contentionToProto(contention: ReachabilityReporter.Contention): rr.Contention =
       contention match {
-        case SBReachabilityReporter.Contention(protester, observer, subject, version) =>
+        case ReachabilityReporter.Contention(protester, observer, subject, version) =>
           rr.Contention()
             .withProtester(toAkkaInternalProto(protester))
             .withObserver(toAkkaInternalProto(observer))
@@ -61,14 +61,14 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
             .withVersion(version)
       }
 
-    rr.SBReachabilityReporterMsg().withContention(contentionToProto(contention)).toByteArray
+    rr.ReachabilityReporterMsg().withContention(contentionToProto(contention)).toByteArray
   }
 
   @SuppressWarnings(Array("org.wartremover.warts.Throw"))
-  private def contentionFromProto(contention: rr.Contention): SBReachabilityReporter.Contention =
+  private def contentionFromProto(contention: rr.Contention): ReachabilityReporter.Contention =
     contention match {
       case rr.Contention(Some(protester), Some(observer), Some(subject), Some(version)) =>
-        SBReachabilityReporter.Contention(
+        ReachabilityReporter.Contention(
           toUniqueAddress(protester),
           toUniqueAddress(observer),
           toUniqueAddress(subject),
@@ -79,13 +79,13 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
     }
 
   private def contentionAckToProtoByteArray(
-      contentionAck: SBReachabilityReporter.ContentionAck
+      contentionAck: ReachabilityReporter.ContentionAck
   ): Array[Byte] = {
     def contentionAckToProto(
-        contentionAck: SBReachabilityReporter.ContentionAck
+        contentionAck: ReachabilityReporter.ContentionAck
     ): rr.ContentionAck =
       contentionAck match {
-        case SBReachabilityReporter.ContentionAck(from, observer, subject, version) =>
+        case ReachabilityReporter.ContentionAck(from, observer, subject, version) =>
           rr.ContentionAck()
             .withFrom(toAkkaInternalProto(from))
             .withObserver(toAkkaInternalProto(observer))
@@ -93,7 +93,7 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
             .withVersion(version)
       }
 
-    rr.SBReachabilityReporterMsg()
+    rr.ReachabilityReporterMsg()
       .withContentionAck(contentionAckToProto(contentionAck))
       .toByteArray
   }
@@ -101,10 +101,10 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
   @SuppressWarnings(Array("org.wartremover.warts.Throw"))
   private def contentionAckFromProto(
       contentionAck: rr.ContentionAck
-  ): SBReachabilityReporter.ContentionAck =
+  ): ReachabilityReporter.ContentionAck =
     contentionAck match {
       case rr.ContentionAck(Some(to), Some(observer), Some(subject), Some(version)) =>
-        SBReachabilityReporter.ContentionAck(
+        ReachabilityReporter.ContentionAck(
           toUniqueAddress(to),
           toUniqueAddress(observer),
           toUniqueAddress(subject),
@@ -159,6 +159,6 @@ class SBMessageSerializer(system: ExtendedActorSystem) extends Serializer {
   }
 }
 
-object SBMessageSerializer {
+object MessageSerializer {
   final case class SerializationException(msg: String) extends RuntimeException(msg)
 }
