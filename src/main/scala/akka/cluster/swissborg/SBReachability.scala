@@ -1,7 +1,7 @@
 package akka.cluster.swissborg
 
-import akka.cluster.swissborg.implicits._
 import akka.cluster._
+import akka.cluster.swissborg.implicits._
 import cats.implicits._
 
 /**
@@ -28,4 +28,9 @@ final case class SBReachability(private val r: Reachability) extends AnyVal {
     */
   def observersGroupedByUnreachable: Map[UniqueAddress, Set[UniqueAddress]] =
     r.observersGroupedByUnreachable
+
+  /**
+    * @see [[Reachability.remove()]]
+    */
+  def remove(nodes: Set[UniqueAddress]): SBReachability = SBReachability(r.remove(nodes))
 }

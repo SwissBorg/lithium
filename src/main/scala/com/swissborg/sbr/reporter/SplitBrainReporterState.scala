@@ -1,4 +1,5 @@
-package com.swissborg.sbr.splitbrain
+package com.swissborg.sbr
+package reporter
 
 import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.{Member, MemberStatus, UniqueAddress}
@@ -9,7 +10,7 @@ import com.swissborg.sbr.WorldView
   *
   * @param worldView the view of the cluster from the current cluster node.
   */
-private[splitbrain] final case class SplitBrainReporterState(worldView: WorldView) {
+private[reporter] final case class SplitBrainReporterState(worldView: WorldView) {
   def updatedMember(m: Member): SplitBrainReporterState =
     m.status match {
       case MemberStatus.Removed => copy(worldView = worldView.removeMember(m))
@@ -35,7 +36,7 @@ private[splitbrain] final case class SplitBrainReporterState(worldView: WorldVie
     copy(worldView = worldView.withIndirectlyConnectedNode(node))
 }
 
-private[splitbrain] object SplitBrainReporterState {
+private[reporter] object SplitBrainReporterState {
   def fromSnapshot(selfMember: Member, snapshot: CurrentClusterState): SplitBrainReporterState =
     SplitBrainReporterState(WorldView.fromSnapshot(selfMember, snapshot))
 }

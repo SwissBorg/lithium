@@ -1,4 +1,5 @@
-package com.swissborg.sbr.splitbrain
+package com.swissborg.sbr
+package reporter
 
 import akka.actor._
 import akka.cluster.ClusterEvent._
@@ -267,12 +268,12 @@ private[sbr] object SplitBrainReporter {
     * @param hasAdditionalNonReachableNodes true if the updated world view has more unreachable or indirectly
     *                                               connected nodes.
     */
-  private[splitbrain] sealed abstract case class DiffInfo(
+  private[reporter] sealed abstract case class DiffInfo(
       changeIsStable: Boolean,
       hasAdditionalNonReachableNodes: Boolean
   )
 
-  private[splitbrain] object DiffInfo {
+  private[reporter] object DiffInfo {
     def apply(oldWorldView: WorldView, updatedWorldView: WorldView): DiffInfo = {
       def isJoining(node: Node): Boolean = node.status === Joining || node.status === WeaklyUp
 

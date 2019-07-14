@@ -7,7 +7,7 @@ import akka.cluster._
 import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.sbr.implicits._
-import com.swissborg.sbr.splitbrain._
+import com.swissborg.sbr.reporter._
 import com.swissborg.sbr.strategy._
 import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder
