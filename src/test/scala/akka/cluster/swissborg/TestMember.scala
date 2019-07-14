@@ -25,7 +25,7 @@ object TestMember {
   ): Member =
     withUniqueAddress(UniqueAddress(address, 0L), status, roles, dataCenter)
 
-  private def withUniqueAddress(
+  def withUniqueAddress(
       uniqueAddress: UniqueAddress,
       status: MemberStatus,
       roles: Set[String],

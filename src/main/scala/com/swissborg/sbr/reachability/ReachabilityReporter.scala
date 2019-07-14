@@ -10,7 +10,7 @@ import cats.effect._
 import cats.implicits._
 import cats._
 import com.swissborg.sbr.implicits._
-import com.swissborg.sbr.splitbrain._
+import com.swissborg.sbr.reporter._
 import com.swissborg.sbr.converter._
 
 import scala.concurrent.duration._
@@ -42,9 +42,11 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
 
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
   private def initializing: Receive = {
-    case _: CurrentClusterState =>
+    case snapshot: CurrentClusterState =>
       unstashAll()
-      context.become(active(ReachabilityReporterState(selfUniqueAddress)))
+      context.become(
+        active(ReachabilityReporterState.fromSnapshot(snapshot, cluster.selfDataCenter))
+      )
 
     case _ => stash()
   }
@@ -53,6 +55,9 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
   private def active(state: ReachabilityReporterState): Receive = {
     case SBReachabilityChanged(r) =>
       context.become(active(updateReachabilities(r).runS(state).unsafeRunSync()))
+
+    case MemberJoined(m) =>
+      context.become(active(add(m).runS(state).unsafeRunSync()))
 
     case MemberRemoved(m, _) =>
       context.become(active(remove(m.uniqueAddress).runS(state).unsafeRunSync()))
@@ -82,12 +87,16 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
 
     /**
       * Attempts to find the record of `observer` that describes
-      * `subject` as unreachable.
+      * `subject` as unreachable and return it as a contention.
       *
       * Assumes that there's only one record per observer, subject pair in the
       * `Reachability` data structure.
       */
-    def unreachableRecord(observer: Observer, subject: Subject): Option[Contention] =
+    def unreachableRecord(
+        reachability: SBReachability,
+        observer: Observer,
+        subject: Subject
+    ): Option[Contention] =
       reachability
         .findUnreachableRecord(observer, subject)
         .map(r => Contention(selfUniqueAddress, r.observer, r.subject, r.version))
@@ -199,23 +208,38 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
         }
     }
 
-    reachability.observersGroupedByUnreachable.toList
-      .traverse_ {
-        case (subject, observers) =>
-          observers.toList.traverse_[Res, Unit] { observer =>
-            for {
-              _ <- removeStaleContentions(reachability)
-              _ <- localReachability(subject).flatMap {
-                case LocallyReachable =>
-                  unreachableRecord(observer, subject).traverse_(broadcastContentionWithRetry)
-                case LocallyUnreachable | Unknown =>
-                  unreachableRecord(observer, subject).traverse_(withUnreachableFrom)
-              }
-              _ <- sendReachabilityIfChanged(subject)
-            } yield ()
-          }
-      }
+    def updateReachabilityStatuses(reachability: SBReachability): Res[Unit] =
+      reachability.observersGroupedByUnreachable.toList
+        .traverse_ {
+          case (subject, observers) =>
+            observers.toList.traverse_[Res, Unit] { observer =>
+              for {
+                _ <- localReachability(subject).flatMap {
+                  case LocallyReachable =>
+                    unreachableRecord(reachability, observer, subject).traverse_(
+                      broadcastContentionWithRetry
+                    )
+
+                  case LocallyUnreachable | Unknown =>
+                    unreachableRecord(reachability, observer, subject).traverse_(
+                      withUnreachableFrom
+                    )
+                }
+                _ <- sendReachabilityIfChanged(subject)
+              } yield ()
+            }
+        }
+
+    for {
+      selfDcReachability <- StateT
+        .get[SyncIO, ReachabilityReporterState]
+        .map(s => reachability.remove(s.otherDcMembers))
+      _ <- removeStaleContentions(selfDcReachability)
+      _ <- updateReachabilityStatuses(selfDcReachability)
+    } yield ()
   }
+
+  private def add(member: Member): Res[Unit] = StateT.modify(_.add(member))
 
   /**
     * Register the node as removed.

@@ -1,14 +1,20 @@
 package com.swissborg.sbr
 package reachability
 
-import akka.cluster.UniqueAddress
+import akka.cluster.ClusterEvent.CurrentClusterState
+import akka.cluster.ClusterSettings.DataCenter
+import akka.cluster.{Member, UniqueAddress}
 import cats.data.State
+import cats.implicits._
+
+import scala.collection.immutable.SortedSet
 
 /**
   * State of the SBRFailureDetector.
   */
 final private[reachability] case class ReachabilityReporterState private (
-    selfUniqueAddress: UniqueAddress,
+    selfDataCenter: DataCenter,
+    otherDcMembers: SortedSet[UniqueAddress],
     reachabilities: Map[Subject, VReachability],
     pendingContentionAcks: Map[UniqueAddress, Set[ReachabilityReporter.ContentionAck]],
     receivedAcks: Map[UniqueAddress, Set[ReachabilityReporter.ContentionAck]]
@@ -92,11 +98,19 @@ final private[reachability] case class ReachabilityReporterState private (
     copy(reachabilities = updatedReachabilities)
   }
 
+  private[reachability] def add(member: Member): ReachabilityReporterState =
+    if (member.dataCenter =!= selfDataCenter) {
+      copy(otherDcMembers = otherDcMembers + member.uniqueAddress)
+    } else {
+      this
+    }
+
   /**
     * Remove the node.
     */
   private[reachability] def remove(node: UniqueAddress): ReachabilityReporterState =
     copy(
+      otherDcMembers = otherDcMembers - node, // no need to check DC
       reachabilities = (reachabilities - node).map {
         case (subject, reachability) => subject -> reachability.remove(node)
       },
@@ -134,8 +148,14 @@ final private[reachability] case class ReachabilityReporterState private (
 }
 
 private[reachability] object ReachabilityReporterState {
-  def apply(selfUniqueAddress: UniqueAddress): ReachabilityReporterState =
-    ReachabilityReporterState(selfUniqueAddress, Map.empty, Map.empty, Map.empty)
+  def apply(selfDataCenter: DataCenter): ReachabilityReporterState =
+    ReachabilityReporterState(selfDataCenter, SortedSet.empty, Map.empty, Map.empty, Map.empty)
+
+  def fromSnapshot(
+      snapshot: CurrentClusterState,
+      selfDataCenter: DataCenter
+  ): ReachabilityReporterState =
+    snapshot.members.foldLeft(ReachabilityReporterState(selfDataCenter))(_.add(_))
 
   /**
     * Return the `subject`'s reachability if it has changed since the last time
