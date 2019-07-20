@@ -64,19 +64,19 @@ object OldestRemovedDisseminationScenario {
   }
 }
 
-final case class CleanPartitionsScenario(
+final case class CleanPartitionScenario(
     worldViews: List[WorldView],
     clusterSize: Int Refined Positive
 ) extends Scenario
 
-object CleanPartitionsScenario {
+object CleanPartitionScenario {
 
   /**
     * Generates clean partition scenarios where the allNodes is split
     * in multiple sub-clusters and where each one sees the rest as
     * unreachable.
     */
-  implicit val arbSplitScenario: Arbitrary[CleanPartitionsScenario] = {
+  implicit val arbSplitScenario: Arbitrary[CleanPartitionScenario] = {
     def partitionedWorldView(
         allMembers: NonEmptySet[Member]
     )(partition: NonEmptySet[Member]): WorldView = {
@@ -97,7 +97,7 @@ object CleanPartitionsScenario {
       // Each sub-allNodes sees the other nodes as unreachable.
       partitionedWorldViews = partitions.map(partitionedWorldView(members))
     } yield
-      CleanPartitionsScenario(
+      CleanPartitionScenario(
         partitionedWorldViews.toList,
         refineV[Positive](members.length).right.get
       )

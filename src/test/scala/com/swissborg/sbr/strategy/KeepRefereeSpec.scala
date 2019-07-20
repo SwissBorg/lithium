@@ -5,7 +5,7 @@ import cats.Id
 
 class KeepRefereeSpec extends SBSpec {
   "KeepReferee" must {
-    simulate[Id, KeepReferee, CleanPartitionsScenario]("handle clean partitions")(identity)
+    simulate[Id, KeepReferee, CleanPartitionScenario]("handle clean partitions")(identity)
 
     simulate[Id, KeepReferee, UpDisseminationScenario]("handle split during up-dissemination")(
       identity
@@ -19,7 +19,7 @@ class KeepRefereeSpec extends SBSpec {
       "handle a split during the oldest-removed scenarios"
     )(identity)
 
-    simulateWithNonCleanPartitions[Id, KeepReferee, CleanPartitionsScenario](
+    simulateWithNonCleanPartitions[Id, KeepReferee, CleanPartitionScenario](
       "handle non-clean partitions"
     )(
       identity

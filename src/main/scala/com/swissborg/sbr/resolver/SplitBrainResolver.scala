@@ -25,7 +25,7 @@ import scala.concurrent.duration._
   * as described by the decision given by `Union(_strategy, IndirectlyConnected)`.
   * All but the joining/weakly-up members in the cluster will run the strategy.
   * Joining/weakly-up members will not down the nodes as their world view might
-  * be wrong. It can happen that they did not see all the reachability contentions
+  * be wrong. It can happen that they did not see all the suspicious detections
   * and noted some nodes as unreachable that are in fact indirectly-connected.
   *
   * The `Resolver.DownAll` event triggers the downing of all the nodes. In contrast
@@ -37,7 +37,7 @@ import scala.concurrent.duration._
   * @param downAllWhenUnstable down the partition if the cluster has been unstable for longer than `stableAfter + 3/4 * stableAfter`.
   * @param trackIndirectlyConnectedNodes downs the detected indirectly-connected nodes when enabled.
   */
-private[sbr] class Resolver(
+private[sbr] class SplitBrainResolver(
     private val _strategy: Strategy[SyncIO],
     private val stableAfter: FiniteDuration,
     private val downAllWhenUnstable: Option[FiniteDuration],
@@ -61,15 +61,18 @@ private[sbr] class Resolver(
 
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
   override def receive: Receive = {
-    case Resolver.HandleSplitBrain(worldView) => handleSplitBrain(worldView).unsafeRunSync()
-    case Resolver.DownAll(worldView)          => downAll(worldView).unsafeRunSync()
+    case SplitBrainResolver.ResolveSplitBrain(worldView) =>
+      resolveSplitBrain(worldView).unsafeRunSync()
+
+    case SplitBrainResolver.DownAll(worldView) =>
+      downAll(worldView).unsafeRunSync()
   }
 
   /**
     * Handle the partition using the [[Union]] of the configured
     * strategy and the [[IndirectlyConnected]].
     */
-  private def handleSplitBrain(worldView: WorldView): SyncIO[Unit] =
+  private def resolveSplitBrain(worldView: WorldView): SyncIO[Unit] =
     for {
       _ <- SyncIO(
         log
@@ -126,24 +129,29 @@ private[sbr] class Resolver(
   )
 }
 
-object Resolver {
+object SplitBrainResolver {
   def props(
       strategy: Strategy[SyncIO],
       stableAfter: FiniteDuration,
       downAllWhenUnstable: Option[FiniteDuration],
       trackIndirectlyConnectedNodes: Boolean
   ): Props =
-    Props(new Resolver(strategy, stableAfter, downAllWhenUnstable, trackIndirectlyConnectedNodes))
+    Props(
+      new SplitBrainResolver(
+        strategy,
+        stableAfter,
+        downAllWhenUnstable,
+        trackIndirectlyConnectedNodes
+      )
+    )
 
-  private[sbr] sealed trait Event {
-    def worldView: WorldView
+  private[sbr] sealed trait Event
+
+  private[sbr] final case class ResolveSplitBrain(worldView: WorldView) extends Event {
+    lazy val simple: ResolveSplitBrain.Simple = ResolveSplitBrain.Simple(worldView.simple)
   }
 
-  private[sbr] final case class HandleSplitBrain(worldView: WorldView) extends Event {
-    lazy val simple: HandleSplitBrain.Simple = HandleSplitBrain.Simple(worldView.simple)
-  }
-
-  private[sbr] object HandleSplitBrain {
+  private[sbr] object ResolveSplitBrain {
     final case class Simple(worldView: WorldView.Simple)
 
     object Simple {

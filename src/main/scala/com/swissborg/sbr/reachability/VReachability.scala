@@ -212,7 +212,7 @@ private[reachability] final case class VUnreachable private (
         .fold[Option[DetectionProtest]](Option(DetectionProtest.Protested.one(protester, version))) {
           currentUnprotested =>
             if (currentUnprotested.version == version) {
-              // Also when equal because the contention is against an unreachable
+              // Also when equal because the suspicious detection is against an unreachable
               // detection received previously.
               Some(currentUnprotested.addProtester(protester, version))
             } else if (currentUnprotested.version < version) {

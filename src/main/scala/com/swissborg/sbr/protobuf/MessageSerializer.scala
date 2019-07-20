@@ -9,7 +9,7 @@ import com.swissborg.sbr.reachability._
 import com.swissborg.sbr.reachability.{ReachabilityReporterProtocol => rr}
 
 /**
-  * Serializer for [[ReachabilityReporter.Contention]] and [[ReachabilityReporter.ContentionAck]]
+  * Serializer for [[ReachabilityReporter.SuspiciousDetection]] and [[ReachabilityReporter.SuspiciousDetectionAck]]
   * messages sent over the network between
   * [[com.swissborg.sbr.reachability.ReachabilityReporter]] actors.
   */
@@ -23,11 +23,11 @@ class MessageSerializer(system: ExtendedActorSystem) extends Serializer {
   @SuppressWarnings(Array("org.wartremover.warts.Throw"))
   override def toBinary(o: AnyRef): Array[Byte] =
     o match {
-      case contention: ReachabilityReporter.Contention =>
-        contentionToProtoByteArray(contention)
+      case suspiciousDetection: ReachabilityReporter.SuspiciousDetection =>
+        suspiciousDetectionToProtoByteArray(suspiciousDetection)
 
-      case contentionAck: ReachabilityReporter.ContentionAck =>
-        contentionAckToProtoByteArray(contentionAck)
+      case suspiciousDetectionAck: ReachabilityReporter.SuspiciousDetectionAck =>
+        suspiciousDetectionAckToProtoByteArray(suspiciousDetectionAck)
 
       case other =>
         throw SerializationException(s"Cannot serialize $other")
@@ -39,54 +39,64 @@ class MessageSerializer(system: ExtendedActorSystem) extends Serializer {
   @SuppressWarnings(Array("org.wartremover.warts.Throw"))
   private def fromProto(msg: rr.ReachabilityReporterMsg): AnyRef = msg match {
     case rr
-          .ReachabilityReporterMsg(rr.ReachabilityReporterMsg.Payload.Contention(contention)) =>
-      contentionFromProto(contention)
+          .ReachabilityReporterMsg(
+          rr.ReachabilityReporterMsg.Payload.SuspiciousDetection(suspiciousDetection)
+          ) =>
+      suspiciousDetectionFromProto(suspiciousDetection)
 
-    case rr.ReachabilityReporterMsg(rr.ReachabilityReporterMsg.Payload.ContentionAck(ack)) =>
-      contentionAckFromProto(ack)
+    case rr.ReachabilityReporterMsg(
+        rr.ReachabilityReporterMsg.Payload.SuspiciousDetectionAck(ack)
+        ) =>
+      suspiciousDetectionAckFromProto(ack)
 
     case other => throw SerializationException(s"Cannot decode $other")
   }
 
-  private def contentionToProtoByteArray(
-      contention: ReachabilityReporter.Contention
+  private def suspiciousDetectionToProtoByteArray(
+      suspiciousDetection: ReachabilityReporter.SuspiciousDetection
   ): Array[Byte] = {
-    def contentionToProto(contention: ReachabilityReporter.Contention): rr.Contention =
-      contention match {
-        case ReachabilityReporter.Contention(protester, observer, subject, version) =>
-          rr.Contention()
+    def suspiciousDetectionToProto(
+        suspiciousDetection: ReachabilityReporter.SuspiciousDetection
+    ): rr.SuspiciousDetection =
+      suspiciousDetection match {
+        case ReachabilityReporter.SuspiciousDetection(protester, observer, subject, version) =>
+          rr.SuspiciousDetection()
             .withProtester(toAkkaInternalProto(protester))
             .withObserver(toAkkaInternalProto(observer))
             .withSubject(toAkkaInternalProto(subject))
             .withVersion(version)
       }
 
-    rr.ReachabilityReporterMsg().withContention(contentionToProto(contention)).toByteArray
+    rr.ReachabilityReporterMsg()
+      .withSuspiciousDetection(suspiciousDetectionToProto(suspiciousDetection))
+      .toByteArray
   }
 
   @SuppressWarnings(Array("org.wartremover.warts.Throw"))
-  private def contentionFromProto(contention: rr.Contention): ReachabilityReporter.Contention =
-    contention match {
-      case rr.Contention(Some(protester), Some(observer), Some(subject), Some(version)) =>
-        ReachabilityReporter.Contention(
+  private def suspiciousDetectionFromProto(
+      suspiciousDetection: rr.SuspiciousDetection
+  ): ReachabilityReporter.SuspiciousDetection =
+    suspiciousDetection match {
+      case rr.SuspiciousDetection(Some(protester), Some(observer), Some(subject), Some(version)) =>
+        ReachabilityReporter.SuspiciousDetection(
           toUniqueAddress(protester),
           toUniqueAddress(observer),
           toUniqueAddress(subject),
           version
         )
 
-      case _ => throw SerializationException(s"Missing fields in $contention")
+      case _ => throw SerializationException(s"Missing fields in $suspiciousDetection")
     }
 
-  private def contentionAckToProtoByteArray(
-      contentionAck: ReachabilityReporter.ContentionAck
+  private def suspiciousDetectionAckToProtoByteArray(
+      ack: ReachabilityReporter.SuspiciousDetectionAck
   ): Array[Byte] = {
-    def contentionAckToProto(
-        contentionAck: ReachabilityReporter.ContentionAck
-    ): rr.ContentionAck =
-      contentionAck match {
-        case ReachabilityReporter.ContentionAck(from, observer, subject, version) =>
-          rr.ContentionAck()
+    def suspiciousDetectionAckToProto(
+        ack: ReachabilityReporter.SuspiciousDetectionAck
+    ): rr.SuspiciousDetectionAck =
+      ack match {
+        case ReachabilityReporter.SuspiciousDetectionAck(from, observer, subject, version) =>
+          rr.SuspiciousDetectionAck()
             .withFrom(toAkkaInternalProto(from))
             .withObserver(toAkkaInternalProto(observer))
             .withSubject(toAkkaInternalProto(subject))
@@ -94,24 +104,24 @@ class MessageSerializer(system: ExtendedActorSystem) extends Serializer {
       }
 
     rr.ReachabilityReporterMsg()
-      .withContentionAck(contentionAckToProto(contentionAck))
+      .withSuspiciousDetectionAck(suspiciousDetectionAckToProto(ack))
       .toByteArray
   }
 
   @SuppressWarnings(Array("org.wartremover.warts.Throw"))
-  private def contentionAckFromProto(
-      contentionAck: rr.ContentionAck
-  ): ReachabilityReporter.ContentionAck =
-    contentionAck match {
-      case rr.ContentionAck(Some(to), Some(observer), Some(subject), Some(version)) =>
-        ReachabilityReporter.ContentionAck(
+  private def suspiciousDetectionAckFromProto(
+      suspiciousDetectionAck: rr.SuspiciousDetectionAck
+  ): ReachabilityReporter.SuspiciousDetectionAck =
+    suspiciousDetectionAck match {
+      case rr.SuspiciousDetectionAck(Some(to), Some(observer), Some(subject), Some(version)) =>
+        ReachabilityReporter.SuspiciousDetectionAck(
           toUniqueAddress(to),
           toUniqueAddress(observer),
           toUniqueAddress(subject),
           version
         )
 
-      case _ => throw SerializationException(s"Missing fields in $contentionAck")
+      case _ => throw SerializationException(s"Missing fields in $suspiciousDetectionAck")
     }
 
   private def toAkkaInternalProto[A <: AnyRef](a: A): rr.AkkaInternal = {

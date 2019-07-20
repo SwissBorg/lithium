@@ -5,7 +5,7 @@ import cats.effect.SyncIO
 
 class StaticQuorumSpec extends SBSpec {
   "StaticQuorum" must {
-    simulate[SyncIO, StaticQuorum, CleanPartitionsScenario]("handle clean partitions")(
+    simulate[SyncIO, StaticQuorum, CleanPartitionScenario]("handle clean partitions")(
       _.unsafeRunSync()
     )
 
@@ -25,7 +25,7 @@ class StaticQuorumSpec extends SBSpec {
       _.unsafeRunSync()
     )
 
-    simulateWithNonCleanPartitions[SyncIO, StaticQuorum, CleanPartitionsScenario](
+    simulateWithNonCleanPartitions[SyncIO, StaticQuorum, CleanPartitionScenario](
       "handle non-clean partitions"
     )(
       _.unsafeRunSync()

@@ -16,8 +16,10 @@ final private[reachability] case class ReachabilityReporterState private (
     selfDataCenter: DataCenter,
     otherDcMembers: SortedSet[UniqueAddress],
     reachabilities: Map[Subject, VReachability],
-    pendingContentionAcks: Map[UniqueAddress, Set[ReachabilityReporter.ContentionAck]],
-    receivedAcks: Map[UniqueAddress, Set[ReachabilityReporter.ContentionAck]]
+    pendingSuspiciousDetectionAcks: Map[UniqueAddress, Set[
+      ReachabilityReporter.SuspiciousDetectionAck
+    ]],
+    receivedAcks: Map[UniqueAddress, Set[ReachabilityReporter.SuspiciousDetectionAck]]
 ) {
 
   /**
@@ -67,10 +69,10 @@ final private[reachability] case class ReachabilityReporterState private (
   }
 
   /**
-    * Update the contention of the observation of `subject` by `observer`
+    * Update the suspicious detection of the observation of `subject` by `observer`
     * by the cluster node `node`.
     */
-  private[reachability] def withContention(
+  private[reachability] def withSuspiciousDetection(
       protester: Protester,
       observer: Observer,
       subject: Subject,
@@ -85,7 +87,7 @@ final private[reachability] case class ReachabilityReporterState private (
     )
 
   // TODO need version?
-  private[reachability] def withoutContention(
+  private[reachability] def withoutSuspiciousDetection(
       protester: Protester,
       observer: Observer,
       subject: Subject,
@@ -114,28 +116,28 @@ final private[reachability] case class ReachabilityReporterState private (
       reachabilities = (reachabilities - node).map {
         case (subject, reachability) => subject -> reachability.remove(node)
       },
-      pendingContentionAcks = pendingContentionAcks - node,
+      pendingSuspiciousDetectionAcks = pendingSuspiciousDetectionAcks - node,
       receivedAcks = receivedAcks - node
     )
 
-  private[reachability] def expectContentionAck(
-      ack: ReachabilityReporter.ContentionAck
+  private[reachability] def expectSuspiciousDetectionAck(
+      ack: ReachabilityReporter.SuspiciousDetectionAck
   ): ReachabilityReporterState =
     copy(
-      pendingContentionAcks = pendingContentionAcks + (ack.from -> (pendingContentionAcks
+      pendingSuspiciousDetectionAcks = pendingSuspiciousDetectionAcks + (ack.from -> (pendingSuspiciousDetectionAcks
         .getOrElse(ack.from, Set.empty) + ack))
     )
 
-  private[reachability] def registerContentionAck(
-      ack: ReachabilityReporter.ContentionAck
+  private[reachability] def registerSuspiciousDetectionAck(
+      ack: ReachabilityReporter.SuspiciousDetectionAck
   ): ReachabilityReporterState = {
-    val updatedPendingContentionAcks = pendingContentionAcks
+    val updatedPendingSuspiciousDetectionAcks = pendingSuspiciousDetectionAcks
       .get(ack.from)
-      .fold(pendingContentionAcks) { pendingAcks =>
+      .fold(pendingSuspiciousDetectionAcks) { pendingAcks =>
         val newPendingAcks = pendingAcks - ack
 
-        if (newPendingAcks.isEmpty) pendingContentionAcks - ack.from
-        else pendingContentionAcks + (ack.from -> newPendingAcks)
+        if (newPendingAcks.isEmpty) pendingSuspiciousDetectionAcks - ack.from
+        else pendingSuspiciousDetectionAcks + (ack.from -> newPendingAcks)
       }
 
     val updatedReceivedAcks = receivedAcks + (ack.from -> (receivedAcks.getOrElse(
@@ -143,7 +145,10 @@ final private[reachability] case class ReachabilityReporterState private (
       Set.empty
     ) + ack))
 
-    copy(pendingContentionAcks = updatedPendingContentionAcks, receivedAcks = updatedReceivedAcks)
+    copy(
+      pendingSuspiciousDetectionAcks = updatedPendingSuspiciousDetectionAcks,
+      receivedAcks = updatedReceivedAcks
+    )
   }
 }
 

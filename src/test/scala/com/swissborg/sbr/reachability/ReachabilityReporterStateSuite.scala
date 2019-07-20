@@ -46,7 +46,7 @@ class ReachabilityReporterStateSuite extends WordSpec with Matchers {
       )
     }
 
-    "be unreachable when there is no contention" in {
+    "be unreachable when there is no suspicious detection" in {
       val s = sWithDefaultDc.withUnreachableFrom(aa, bb, 0)
       updatedReachability(bb).runA(s).value should ===(Some(ReachabilityStatus.Unreachable))
 
@@ -54,25 +54,25 @@ class ReachabilityReporterStateSuite extends WordSpec with Matchers {
       updatedReachability(bb).runA(s1).value should ===(Some(ReachabilityStatus.Unreachable))
     }
 
-    "be indirectly connected when there is a contention" in {
-      val s = sWithDefaultDc.withContention(bb, cc, dd, 1)
+    "be indirectly connected when there is a suspicious detection" in {
+      val s = sWithDefaultDc.withSuspiciousDetection(bb, cc, dd, 1)
       updatedReachability(dd).runA(s).value should ===(
         Some(ReachabilityStatus.IndirectlyConnected)
       )
     }
 
-    "be unreachable when a contention is resolved" in {
+    "be unreachable when a suspicious detection is resolved" in {
       val s =
-        sWithDefaultDc.withContention(aa, cc, dd, 1).withUnreachableFrom(aa, dd, 0)
+        sWithDefaultDc.withSuspiciousDetection(aa, cc, dd, 1).withUnreachableFrom(aa, dd, 0)
       updatedReachability(dd).runA(s).value should ===(Some(ReachabilityStatus.Unreachable))
     }
 
-    "be unreachable only when all the contentions are resolved" in {
+    "be unreachable only when all suspicious detections are resolved" in {
       val s =
         sWithDefaultDc
-          .withContention(cc, aa, bb, 1)
-          .withContention(cc, dd, bb, 1)
-          .withContention(ee, aa, bb, 1)
+          .withSuspiciousDetection(cc, aa, bb, 1)
+          .withSuspiciousDetection(cc, dd, bb, 1)
+          .withSuspiciousDetection(ee, aa, bb, 1)
 
       updatedReachability(bb).runA(s).value should ===(
         Some(ReachabilityStatus.IndirectlyConnected)
@@ -93,10 +93,10 @@ class ReachabilityReporterStateSuite extends WordSpec with Matchers {
       } yield status).runA(s).value should ===(Some(ReachabilityStatus.Unreachable))
     }
 
-    "ignore a contention for old versions" in {
+    "ignore a suspicious detection for old versions" in {
       val s = sWithDefaultDc
-        .withContention(ee, aa, bb, 2)
-        .withContention(cc, aa, bb, 1)
+        .withSuspiciousDetection(ee, aa, bb, 2)
+        .withSuspiciousDetection(cc, aa, bb, 1)
 
       (for {
         _ <- modify[ReachabilityReporterState](_.withUnreachableFrom(cc, bb, 1))
@@ -104,10 +104,10 @@ class ReachabilityReporterStateSuite extends WordSpec with Matchers {
       } yield status).runA(s).value should ===(Some(ReachabilityStatus.IndirectlyConnected))
     }
 
-    "reset a contention when there is a new version" in {
+    "reset a suspicious detection when there is a new version" in {
       val s = sWithDefaultDc
-        .withContention(cc, aa, bb, 1)
-        .withContention(ee, aa, bb, 2)
+        .withSuspiciousDetection(cc, aa, bb, 1)
+        .withSuspiciousDetection(ee, aa, bb, 2)
 
       (for {
         _ <- modify[ReachabilityReporterState](_.withUnreachableFrom(ee, bb, 2))
@@ -115,10 +115,10 @@ class ReachabilityReporterStateSuite extends WordSpec with Matchers {
       } yield status).runA(s).value should ===(Some(ReachabilityStatus.Unreachable))
     }
 
-    "update a contention when it is for the current version" in {
+    "update a suspicious detection when it is for the current version" in {
       val s = sWithDefaultDc
-        .withContention(cc, aa, bb, 1)
-        .withContention(ee, aa, bb, 1)
+        .withSuspiciousDetection(cc, aa, bb, 1)
+        .withSuspiciousDetection(ee, aa, bb, 1)
 
       (for {
         _ <- modify[ReachabilityReporterState](_.withUnreachableFrom(cc, bb, 1))
@@ -131,8 +131,8 @@ class ReachabilityReporterStateSuite extends WordSpec with Matchers {
       val s =
         sWithDefaultDc
           .withUnreachableFrom(aa, bb, 0)
-          .withContention(aa, bb, cc, 1)
-          .withContention(dd, bb, cc, 1)
+          .withSuspiciousDetection(aa, bb, cc, 1)
+          .withSuspiciousDetection(dd, bb, cc, 1)
 
       (for {
         _ <- modify[ReachabilityReporterState](_.withReachable(bb))
@@ -145,12 +145,12 @@ class ReachabilityReporterStateSuite extends WordSpec with Matchers {
       } yield status).runA(s).value should ===(Some(ReachabilityStatus.Reachable))
     }
 
-    "update contentions when a node is removed" in {
+    "update suspicious detections when a node is removed" in {
       val s =
         sWithDefaultDc
-          .withContention(aa, bb, cc, 1)
-          .withContention(aa, dd, bb, 2)
-          .withContention(dd, cc, aa, 1)
+          .withSuspiciousDetection(aa, bb, cc, 1)
+          .withSuspiciousDetection(aa, dd, bb, 2)
+          .withSuspiciousDetection(dd, cc, aa, 1)
 
       val removeAA = modify[ReachabilityReporterState](_.remove(aa))
 
@@ -171,72 +171,72 @@ class ReachabilityReporterStateSuite extends WordSpec with Matchers {
       )
     }
 
-    "expect a contention ack" in {
-      val contentionAck = ReachabilityReporter.ContentionAck(bb, cc, dd, 0L)
+    "expect a suspicious detection ack" in {
+      val ack = ReachabilityReporter.SuspiciousDetectionAck(bb, cc, dd, 0L)
 
-      val s = sWithDefaultDc.expectContentionAck(contentionAck)
+      val s = sWithDefaultDc.expectSuspiciousDetectionAck(ack)
 
-      s.pendingContentionAcks.get(bb) should ===(Some(Set(contentionAck)))
+      s.pendingSuspiciousDetectionAcks.get(bb) should ===(Some(Set(ack)))
     }
 
-    "expect multiple contention acks" in {
-      val contentionAck0 = ReachabilityReporter.ContentionAck(bb, cc, dd, 0L)
-      val contentionAck1 = ReachabilityReporter.ContentionAck(bb, cc, ee, 0L)
-      val contentionAck2 = ReachabilityReporter.ContentionAck(bb, cc, dd, 1L)
+    "expect multiple suspicious detection acks" in {
+      val ack0 = ReachabilityReporter.SuspiciousDetectionAck(bb, cc, dd, 0L)
+      val ack1 = ReachabilityReporter.SuspiciousDetectionAck(bb, cc, ee, 0L)
+      val ack2 = ReachabilityReporter.SuspiciousDetectionAck(bb, cc, dd, 1L)
 
       val s = sWithDefaultDc
-        .expectContentionAck(contentionAck0)
-        .expectContentionAck(contentionAck1)
-        .expectContentionAck(contentionAck2)
+        .expectSuspiciousDetectionAck(ack0)
+        .expectSuspiciousDetectionAck(ack1)
+        .expectSuspiciousDetectionAck(ack2)
 
-      s.pendingContentionAcks.get(bb) should ===(
-        Some(Set(contentionAck0, contentionAck1, contentionAck2))
+      s.pendingSuspiciousDetectionAcks.get(bb) should ===(
+        Some(Set(ack0, ack1, ack2))
       )
     }
 
-    "remove the contention ack" in {
-      val contentionAck0 = ReachabilityReporter.ContentionAck(bb, cc, dd, 0L)
-      val contentionAck1 = ReachabilityReporter.ContentionAck(bb, cc, ee, 0L)
-      val contentionAck2 = ReachabilityReporter.ContentionAck(bb, cc, dd, 1L)
+    "remove the suspicious detection ack" in {
+      val ack0 = ReachabilityReporter.SuspiciousDetectionAck(bb, cc, dd, 0L)
+      val ack1 = ReachabilityReporter.SuspiciousDetectionAck(bb, cc, ee, 0L)
+      val ack2 = ReachabilityReporter.SuspiciousDetectionAck(bb, cc, dd, 1L)
 
       val s = sWithDefaultDc
-        .expectContentionAck(contentionAck0)
-        .expectContentionAck(contentionAck1)
-        .expectContentionAck(contentionAck2)
-        .registerContentionAck(contentionAck1)
+        .expectSuspiciousDetectionAck(ack0)
+        .expectSuspiciousDetectionAck(ack1)
+        .expectSuspiciousDetectionAck(ack2)
+        .registerSuspiciousDetectionAck(ack1)
 
-      s.pendingContentionAcks.get(bb) should ===(Some(Set(contentionAck0, contentionAck2)))
+      s.pendingSuspiciousDetectionAcks.get(bb) should ===(Some(Set(ack0, ack2)))
     }
 
-    "remove all contention acks" in {
-      val contentionAck0 = ReachabilityReporter.ContentionAck(bb, cc, dd, 0L)
-      val contentionAck1 = ReachabilityReporter.ContentionAck(bb, cc, ee, 0L)
-      val contentionAck2 = ReachabilityReporter.ContentionAck(bb, cc, dd, 1L)
+    "remove all suspicious detection acks" in {
+      val ack0 = ReachabilityReporter.SuspiciousDetectionAck(bb, cc, dd, 0L)
+      val ack1 = ReachabilityReporter.SuspiciousDetectionAck(bb, cc, ee, 0L)
+      val ack2 = ReachabilityReporter.SuspiciousDetectionAck(bb, cc, dd, 1L)
 
       val s = sWithDefaultDc
-        .expectContentionAck(contentionAck0)
-        .expectContentionAck(contentionAck1)
-        .expectContentionAck(contentionAck2)
+        .expectSuspiciousDetectionAck(ack0)
+        .expectSuspiciousDetectionAck(ack1)
+        .expectSuspiciousDetectionAck(ack2)
         .remove(bb)
 
-      s.pendingContentionAcks.get(bb) should ===(None)
+      s.pendingSuspiciousDetectionAcks.get(bb) should ===(None)
     }
 
-    "become unreachable after removing all the contentions" in {
+    "become unreachable after removing all the suspicious detections" in {
       val s = sWithDefaultDc
-        .withContention(cc, dd, ee, 1)
-        .withContention(aa, dd, ee, 1)
-        .withoutContention(cc, dd, ee, 1)
-        .withoutContention(aa, dd, ee, 1)
+        .withSuspiciousDetection(cc, dd, ee, 1)
+        .withSuspiciousDetection(aa, dd, ee, 1)
+        .withoutSuspiciousDetection(cc, dd, ee, 1)
+        .withoutSuspiciousDetection(aa, dd, ee, 1)
 
       updatedReachability(ee).runA(s).value should ===(Some(ReachabilityStatus.Unreachable))
     }
 
-    "stay indirectly-connected when removing part of the contentions" in {
+    "stay indirectly-connected when removing part of the suspicious detections" in {
       val s = sWithDefaultDc
-        .withContention(cc, dd, ee, 1)
-        .withContention(aa, dd, ee, 1)
-        .withoutContention(aa, dd, ee, 1)
+        .withSuspiciousDetection(cc, dd, ee, 1)
+        .withSuspiciousDetection(aa, dd, ee, 1)
+        .withoutSuspiciousDetection(aa, dd, ee, 1)
 
       updatedReachability(ee).runA(s).value should ===(
         Some(ReachabilityStatus.IndirectlyConnected)
