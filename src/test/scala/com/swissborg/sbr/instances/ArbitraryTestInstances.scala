@@ -272,23 +272,25 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
     )
   )
 
-  implicit val arbContention: Arbitrary[ReachabilityReporter.Contention] = Arbitrary(
-    for {
-      protester <- arbitrary[UniqueAddress]
-      observer <- arbitrary[UniqueAddress]
-      subject <- arbitrary[UniqueAddress]
-      version <- arbitrary[Long]
-    } yield ReachabilityReporter.Contention(protester, observer, subject, version)
-  )
+  implicit val arbSuspiciousDetection: Arbitrary[ReachabilityReporter.SuspiciousDetection] =
+    Arbitrary(
+      for {
+        protester <- arbitrary[UniqueAddress]
+        observer <- arbitrary[UniqueAddress]
+        subject <- arbitrary[UniqueAddress]
+        version <- arbitrary[Long]
+      } yield ReachabilityReporter.SuspiciousDetection(protester, observer, subject, version)
+    )
 
-  implicit val arbContentionAck: Arbitrary[ReachabilityReporter.ContentionAck] = Arbitrary(
-    for {
-      from <- arbitrary[UniqueAddress]
-      observer <- arbitrary[UniqueAddress]
-      subject <- arbitrary[UniqueAddress]
-      version <- arbitrary[Long]
-    } yield ReachabilityReporter.ContentionAck(from, observer, subject, version)
-  )
+  implicit val arbSuspiciousDetectionAck: Arbitrary[ReachabilityReporter.SuspiciousDetectionAck] =
+    Arbitrary(
+      for {
+        from <- arbitrary[UniqueAddress]
+        observer <- arbitrary[UniqueAddress]
+        subject <- arbitrary[UniqueAddress]
+        version <- arbitrary[Long]
+      } yield ReachabilityReporter.SuspiciousDetectionAck(from, observer, subject, version)
+    )
 
   implicit val arbQuorumSize: Arbitrary[Int Refined Positive] = Arbitrary {
     posNum[Int].map(refineV[Positive](_).right.get) // trust me

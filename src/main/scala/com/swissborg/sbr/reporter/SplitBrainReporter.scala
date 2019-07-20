@@ -190,17 +190,17 @@ private[sbr] class SplitBrainReporter(
       // Cancel else the partition will be downed if it takes too long for
       // the split-brain to be resolved after `SBResolver` downs the nodes.
       _ <- StateT.liftF[SyncIO, SplitBrainReporterState, Unit](cancelClusterIsUnstable)
-      _ <- ifSplitBrain(Resolver.HandleSplitBrain(_))
+      _ <- ifSplitBrain(SplitBrainResolver.ResolveSplitBrain(_))
       _ <- StateT.liftF(scheduleClusterIsStable)
     } yield ()
 
   private val downAll: Res[Unit] = for {
     _ <- StateT.liftF[SyncIO, SplitBrainReporterState, Unit](cancelClusterIsStable)
-    _ <- ifSplitBrain(Resolver.DownAll)
+    _ <- ifSplitBrain(SplitBrainResolver.DownAll)
     _ <- StateT.liftF(scheduleClusterIsStable)
   } yield ()
 
-  private def ifSplitBrain(event: WorldView => Resolver.Event): Res[Unit] =
+  private def ifSplitBrain(event: WorldView => SplitBrainResolver.Event): Res[Unit] =
     StateT.inspectF { state =>
       if (hasSplitBrain(state.worldView)) {
         SyncIO(splitBrainResolver ! event(state.worldView))

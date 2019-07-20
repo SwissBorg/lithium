@@ -7,7 +7,7 @@ import scala.util.Try
 
 class KeepOldestSpec extends SBSpec {
   "KeepOldest" must {
-    simulate[Try, KeepOldest, CleanPartitionsScenario]("handle clean partitions")(_.get)
+    simulate[Try, KeepOldest, CleanPartitionScenario]("handle clean partitions")(_.get)
 
     simulate[Try, KeepOldest, UpDisseminationScenario](
       "handle split during up-dissemination scenarios"
@@ -23,7 +23,7 @@ class KeepOldestSpec extends SBSpec {
       "handle split during removed-dissemination scenarios"
     )(_.get)
 
-    simulateWithNonCleanPartitions[Try, KeepOldest, CleanPartitionsScenario](
+    simulateWithNonCleanPartitions[Try, KeepOldest, CleanPartitionScenario](
       "handle non-clean partitions"
     )(
       _.get

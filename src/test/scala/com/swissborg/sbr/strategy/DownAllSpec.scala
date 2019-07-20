@@ -16,7 +16,7 @@ class DownAllSpec extends SBSpec {
       }
     }
 
-    simulate[Id, DownAll, CleanPartitionsScenario]("handle clean partitions")(identity)
+    simulate[Id, DownAll, CleanPartitionScenario]("handle clean partitions")(identity)
 
     simulate[Id, DownAll, UpDisseminationScenario](
       "handle a split during up-dissemination scenarios"
@@ -26,7 +26,7 @@ class DownAllSpec extends SBSpec {
       "handle a split during the oldest-removed scenarios"
     )(identity)
 
-    simulateWithNonCleanPartitions[Id, DownAll, CleanPartitionsScenario](
+    simulateWithNonCleanPartitions[Id, DownAll, CleanPartitionScenario](
       "handle non-clean partitions"
     )(
       identity

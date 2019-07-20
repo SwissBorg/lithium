@@ -7,7 +7,7 @@ import scala.util.Try
 
 class KeepMajoritySpec extends SBSpec {
   "KeepMajority" must {
-    simulate[Try, KeepMajority, CleanPartitionsScenario]("handle clean partitions")(_.get)
+    simulate[Try, KeepMajority, CleanPartitionScenario]("handle clean partitions")(_.get)
 
     simulate[Try, KeepMajority, RemovedDisseminationScenario](
       "handle a split during removed-dissemination scenarios"
@@ -17,7 +17,7 @@ class KeepMajoritySpec extends SBSpec {
       "handle a split during oldest-removed scenarios"
     )(_.get)
 
-    simulateWithNonCleanPartitions[Try, KeepMajority, CleanPartitionsScenario](
+    simulateWithNonCleanPartitions[Try, KeepMajority, CleanPartitionScenario](
       "handle non-clean partitions"
     )(
       _.get

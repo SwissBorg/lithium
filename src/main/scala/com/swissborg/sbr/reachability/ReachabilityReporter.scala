@@ -65,11 +65,11 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
     case ReachableMember(m) =>
       context.become(active(withReachable(m.uniqueAddress).runS(state).unsafeRunSync()))
 
-    case c: Contention =>
-      context.become(active(withContentionFrom(sender(), c).runS(state).unsafeRunSync()))
+    case c: SuspiciousDetection =>
+      context.become(active(withSuspiciousDetectionFrom(sender(), c).runS(state).unsafeRunSync()))
 
-    case ack: ContentionAck =>
-      context.become(active(registerContentionAck(ack).runS(state).unsafeRunSync()))
+    case ack: SuspiciousDetectionAck =>
+      context.become(active(registerSuspiciousDetectionAck(ack).runS(state).unsafeRunSync()))
 
     case SendWithRetry(message, to, key, timeout, maxRetries) =>
       context.become(
@@ -78,16 +78,16 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
   }
 
   /**
-    * Broadcast contentions if the current node sees unreachable nodes as reachable.
+    * Broadcast suspicious detections if the current node sees unreachable nodes as reachable.
     * Otherwise, send the updated reachability to the reporter.
     *
-    * Sends the contentions with at-least-once delivery semantics.
+    * Sends the suspicious detections with at-least-once delivery semantics.
     */
   private def updateReachabilities(reachability: SBReachability): Res[Unit] = {
 
     /**
       * Attempts to find the record of `observer` that describes
-      * `subject` as unreachable and return it as a contention.
+      * `subject` as unreachable and return it as a suspicious detection.
       *
       * Assumes that there's only one record per observer, subject pair in the
       * `Reachability` data structure.
@@ -96,10 +96,10 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
         reachability: SBReachability,
         observer: Observer,
         subject: Subject
-    ): Option[Contention] =
+    ): Option[SuspiciousDetection] =
       reachability
         .findUnreachableRecord(observer, subject)
-        .map(r => Contention(selfUniqueAddress, r.observer, r.subject, r.version))
+        .map(r => SuspiciousDetection(selfUniqueAddress, r.observer, r.subject, r.version))
 
     def localReachability(node: UniqueAddress): Res[LocalReachability] =
       StateT.liftF(SyncIO {
@@ -110,18 +110,20 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
       })
 
     /**
-      * Send the contention to `to` expecting an ack. If an ack is not received in 1 second the actor
+      * Send the suspicious detection to `to` expecting an ack. If an ack is not received in 1 second the actor
       * will retry.
       */
-    def sendContentionWithRetry(
-        contention: Contention,
+    def sendSuspiciousDetectionWithRetry(
+        suspiciousDetection: SuspiciousDetection,
         to: UniqueAddress,
-        expectedAck: ContentionAck
+        expectedAck: SuspiciousDetectionAck
     ): Res[Unit] =
       for {
-        _ <- StateT.modify[SyncIO, ReachabilityReporterState](_.expectContentionAck(expectedAck))
+        _ <- StateT.modify[SyncIO, ReachabilityReporterState](
+          _.expectSuspiciousDetectionAck(expectedAck)
+        )
         _ <- sendWithRetry(
-          contention,
+          suspiciousDetection,
           sbReachabilityReporterOnNode(to),
           expectedAck,
           ackTimeout,
@@ -137,21 +139,21 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
     )
 
     /**
-      * Broadcast with at-least-once delivery the contention to all the `SBFailureDetector`s
+      * Broadcast with at-least-once delivery the suspicious detection to all the `SBFailureDetector`s
       * that exist on the cluster members, including itself.
       */
-    def broadcastContentionWithRetry(contention: Contention): Res[Unit] =
+    def broadcastSuspiciousDetectionWithRetry(suspiciousDetection: SuspiciousDetection): Res[Unit] =
       for {
         sbFailureDetectors <- sbFailureDetectors
         state <- StateT.get[SyncIO, ReachabilityReporterState]
         state <- sbFailureDetectors.traverse_[Res, Unit] { to =>
-          val expectedAck = ContentionAck.fromContention(contention, to)
+          val expectedAck = SuspiciousDetectionAck.fromSuspiciousDetection(suspiciousDetection, to)
 
           val hasBeenAcked =
             state.receivedAcks.get(to).exists(_.exists(_ === expectedAck))
 
           val sendingInProgress =
-            state.pendingContentionAcks.get(to).exists(_.exists(_ === expectedAck))
+            state.pendingSuspiciousDetectionAcks.get(to).exists(_.exists(_ === expectedAck))
 
           val res: StateT[SyncIO, ReachabilityReporterState, Unit] =
             if (hasBeenAcked || sendingInProgress) {
@@ -161,24 +163,24 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
               // Shortcut
               for {
                 _ <- StateT.modify[SyncIO, ReachabilityReporterState] {
-                  _.withContention(
-                    contention.protester,
-                    contention.observer,
-                    contention.subject,
-                    contention.version
-                  ).registerContentionAck(expectedAck) // so it won't be done again in subsequently
+                  _.withSuspiciousDetection(
+                    suspiciousDetection.protester,
+                    suspiciousDetection.observer,
+                    suspiciousDetection.subject,
+                    suspiciousDetection.version
+                  ).registerSuspiciousDetectionAck(expectedAck) // so it won't be done again in subsequently
                 }
 
-                _ <- sendReachabilityIfChanged(contention.subject)
+                _ <- sendReachabilityIfChanged(suspiciousDetection.subject)
               } yield ()
 
             } else {
               for {
-                // Cancel the timer for the previous observer, subject pair contention
+                // Cancel the timer for the previous observer, subject pair suspicious detection
                 // as there is only one timer per such pair. There's no need to make sure
-                // it was delivered, the new contention will override it.
-                _ <- StateT.liftF(cancelContentionResend(expectedAck))
-                _ <- sendContentionWithRetry(contention, to, expectedAck)
+                // it was delivered, the new suspicious detection will override it.
+                _ <- StateT.liftF(cancelSuspiciousDetectionResend(expectedAck))
+                _ <- sendSuspiciousDetectionWithRetry(suspiciousDetection, to, expectedAck)
               } yield ()
             }
 
@@ -187,25 +189,30 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
       } yield state
 
     // TODO directly use the record
-    def withUnreachableFrom(contention: Contention): Res[Unit] =
+    def withUnreachableFrom(suspiciousDetection: SuspiciousDetection): Res[Unit] =
       StateT.modify(
-        _.withUnreachableFrom(contention.observer, contention.subject, contention.version)
+        _.withUnreachableFrom(
+          suspiciousDetection.observer,
+          suspiciousDetection.subject,
+          suspiciousDetection.version
+        )
       )
 
     /**
-      * Remove from the state all the contentions on unreachability detections
+      * Remove from the state all the suspicious detections on unreachability detections
       * that are not part of the state anymore.
       */
-    def removeStaleContentions(reachability: SBReachability): Res[Unit] = StateT.modify { state =>
-      state.receivedAcks.valuesIterator.flatten
-        .filterNot {
-          case ContentionAck(_, observer, subject, version) =>
-            reachability.findUnreachableRecord(observer, subject).exists(_.version == version)
-        }
-        .foldLeft(state) {
-          case (state, ContentionAck(from, observer, subject, version)) =>
-            state.withoutContention(from, observer, subject, version)
-        }
+    def removeStaleSuspiciousDetections(reachability: SBReachability): Res[Unit] = StateT.modify {
+      state =>
+        state.receivedAcks.valuesIterator.flatten
+          .filterNot {
+            case SuspiciousDetectionAck(_, observer, subject, version) =>
+              reachability.findUnreachableRecord(observer, subject).exists(_.version == version)
+          }
+          .foldLeft(state) {
+            case (state, SuspiciousDetectionAck(from, observer, subject, version)) =>
+              state.withoutSuspiciousDetection(from, observer, subject, version)
+          }
     }
 
     def updateReachabilityStatuses(reachability: SBReachability): Res[Unit] =
@@ -217,7 +224,7 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
                 _ <- localReachability(subject).flatMap {
                   case LocallyReachable =>
                     unreachableRecord(reachability, observer, subject).traverse_(
-                      broadcastContentionWithRetry
+                      broadcastSuspiciousDetectionWithRetry
                     )
 
                   case LocallyUnreachable | Unknown =>
@@ -234,7 +241,7 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
       selfDcReachability <- StateT
         .get[SyncIO, ReachabilityReporterState]
         .map(s => reachability.remove(s.otherDcMembers))
-      _ <- removeStaleContentions(selfDcReachability)
+      _ <- removeStaleSuspiciousDetections(selfDcReachability)
       _ <- updateReachabilityStatuses(selfDcReachability)
     } yield ()
   }
@@ -252,17 +259,17 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
       // to stop any further updates.
       StateT.liftF(SyncIO(context.stop(self)))
     } else {
-      val cancelContentionResend0: Res[Unit] = StateT.inspectF {
-        _.pendingContentionAcks
+      val cancelSuspiciousDetectionResend0: Res[Unit] = StateT.inspectF {
+        _.pendingSuspiciousDetectionAcks
           .getOrElse(node, Set.empty)
           .foldLeft(SyncIO.unit) {
-            case (cancelContentionResends, ack) =>
-              cancelContentionResends >> cancelContentionResend(ack)
+            case (cancelSuspiciousDetectionResends, ack) =>
+              cancelSuspiciousDetectionResends >> cancelSuspiciousDetectionResend(ack)
           }
       }
 
       for {
-        _ <- cancelContentionResend0
+        _ <- cancelSuspiciousDetectionResend0
         _ <- StateT.modify[SyncIO, ReachabilityReporterState](_.remove(node))
         _ <- sendAllChangedReachabilities
       } yield ()
@@ -313,35 +320,46 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
     }))
 
   /**
-    * Add the contention and acknowledge the sender that it was received.
+    * Add the suspicious detection and acknowledge the sender that it was received.
     */
-  private def withContentionFrom(sender: ActorRef, contention: Contention): Res[Unit] = {
-    def withContention(contention: Contention): Res[Unit] = StateT.modify(
-      _.withContention(
-        contention.protester,
-        contention.observer,
-        contention.subject,
-        contention.version
+  private def withSuspiciousDetectionFrom(
+      sender: ActorRef,
+      suspiciousDetection: SuspiciousDetection
+  ): Res[Unit] = {
+    def withSuspiciousDetection(suspiciousDetection: SuspiciousDetection): Res[Unit] =
+      StateT.modify(
+        _.withSuspiciousDetection(
+          suspiciousDetection.protester,
+          suspiciousDetection.observer,
+          suspiciousDetection.subject,
+          suspiciousDetection.version
+        )
       )
-    )
 
-    def ackContention(sender: ActorRef, contention: Contention): Res[Unit] = StateT.liftF(
-      SyncIO(sender ! ContentionAck.fromContention(contention, selfUniqueAddress))
-    )
+    def ackSuspiciousDetection(
+        sender: ActorRef,
+        suspiciousDetection: SuspiciousDetection
+    ): Res[Unit] =
+      StateT.liftF(
+        SyncIO(
+          sender ! SuspiciousDetectionAck
+            .fromSuspiciousDetection(suspiciousDetection, selfUniqueAddress)
+        )
+      )
 
     for {
-      _ <- StateT.liftF(SyncIO(log.debug("Received contention: {}", contention)))
-      _ <- withContention(contention)
-      _ <- sendReachabilityIfChanged(contention.subject)
-      _ <- ackContention(sender, contention)
+      _ <- StateT.liftF(SyncIO(log.debug("Received suspicious detection: {}", suspiciousDetection)))
+      _ <- withSuspiciousDetection(suspiciousDetection)
+      _ <- sendReachabilityIfChanged(suspiciousDetection.subject)
+      _ <- ackSuspiciousDetection(sender, suspiciousDetection)
     } yield ()
   }
 
-  private def registerContentionAck(ack: ContentionAck): Res[Unit] =
+  private def registerSuspiciousDetectionAck(ack: SuspiciousDetectionAck): Res[Unit] =
     for {
-      _ <- StateT.liftF(SyncIO(log.debug("Received contention ack: {}", ack)))
-      _ <- StateT.liftF(cancelContentionResend(ack))
-      _ <- StateT.modify[SyncIO, ReachabilityReporterState](_.registerContentionAck(ack))
+      _ <- StateT.liftF(SyncIO(log.debug("Received suspicious detection ack: {}", ack)))
+      _ <- StateT.liftF(cancelSuspiciousDetectionResend(ack))
+      _ <- StateT.modify[SyncIO, ReachabilityReporterState](_.registerSuspiciousDetectionAck(ack))
     } yield ()
 
   /**
@@ -387,7 +405,8 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
     }
   }
 
-  private def cancelContentionResend(ack: ContentionAck): SyncIO[Unit] = SyncIO(timers.cancel(ack))
+  private def cancelSuspiciousDetectionResend(ack: SuspiciousDetectionAck): SyncIO[Unit] =
+    SyncIO(timers.cancel(ack))
 
   private def sbReachabilityReporterOnNode(node: UniqueAddress): ActorPath =
     ActorPath.fromString(s"${node.address.toString}/${self.path.toStringWithoutAddress}")
@@ -427,26 +446,35 @@ private[sbr] object ReachabilityReporter {
   private case object LocallyUnreachable extends LocalReachability
 
   /**
-    * Acknowledgment of a contention message,
+    * Acknowledgment of a suspicious detection message,
     *
     * Warning: `from` must containing the address!
     */
-  final case class ContentionAck(
+  final case class SuspiciousDetectionAck(
       from: UniqueAddress,
       observer: Observer,
       subject: Subject,
       version: Version
   )
 
-  object ContentionAck {
-    def fromContention(contention: Contention, from: UniqueAddress): ContentionAck =
-      ContentionAck(from, contention.observer, contention.subject, contention.version)
+  object SuspiciousDetectionAck {
+    def fromSuspiciousDetection(
+        suspiciousDetection: SuspiciousDetection,
+        from: UniqueAddress
+    ): SuspiciousDetectionAck =
+      SuspiciousDetectionAck(
+        from,
+        suspiciousDetection.observer,
+        suspiciousDetection.subject,
+        suspiciousDetection.version
+      )
 
-    implicit val contentionAckEq: Eq[ContentionAck] = (x: ContentionAck, y: ContentionAck) =>
+    implicit val suspiciousDetectionAckEq
+        : Eq[SuspiciousDetectionAck] = (x: SuspiciousDetectionAck, y: SuspiciousDetectionAck) =>
       x.from === y.from && x.observer === y.observer && x.subject === y.subject && x.version === y.version
   }
 
-  final case class Contention(
+  final case class SuspiciousDetection(
       protester: UniqueAddress,
       observer: Observer,
       subject: Subject,

@@ -12,19 +12,19 @@ option (scalapb.options) = {
 
 message ReachabilityReporterMsg {
     oneof Payload {
-        Contention contention = 1;
-        ContentionAck contentionAck = 2;
+        SuspiciousDetection suspiciousDetection = 1;
+        SuspiciousDetectionAck suspiciousDetectionAck = 2;
     }
 }
 
-message Contention {
+message SuspiciousDetection {
     AkkaInternal protester = 1;
     AkkaInternal observer = 2;
     AkkaInternal subject = 3;
     google.protobuf.Int64Value version = 4;
 }
 
-message ContentionAck {
+message SuspiciousDetectionAck {
     AkkaInternal from = 1;
     AkkaInternal observer = 2;
     AkkaInternal subject = 3;
