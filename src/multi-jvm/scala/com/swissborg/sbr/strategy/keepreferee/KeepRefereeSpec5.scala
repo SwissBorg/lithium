@@ -18,7 +18,8 @@ class KeepRefereeSpec5MultiJvmNode5 extends KeepRefereeSpec5
   * Node4 and node5 should down themselves as they are indirectly connected.
   * The three other nodes survive as they contain the referee.
   */
-class KeepRefereeSpec5 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNodeConfig) {
+sealed abstract class KeepRefereeSpec5
+    extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 5" in within(60 seconds) {
       runOn(node1) {

@@ -20,7 +20,8 @@ class RoleStaticQuorumSpecMultiJvmNode5 extends RoleStaticQuorumSpec
   * (1) should survive as it is a quorum within the nodes with the given role.
   * (2) should down itself as it is not a quorum within the nodes with the given role.
   */
-class RoleStaticQuorumSpec extends FiveNodeSpec("StaticQuorum", RoleStaticQuorumSpecConfig) {
+sealed abstract class RoleStaticQuorumSpec
+    extends FiveNodeSpec("StaticQuorum", RoleStaticQuorumSpecConfig) {
   override def assertions(): Unit =
     "handle scenario 3" in within(60 seconds) {
       runOn(node1) {

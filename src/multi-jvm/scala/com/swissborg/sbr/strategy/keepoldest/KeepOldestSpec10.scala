@@ -22,7 +22,8 @@ class KeepOldestSpec10MultiJvmNode10 extends KeepOldestSpec10
   * Network partition between node1 -...- node8 and node9 - node10.
   * Indirect connections between node7 and node8.
   */
-class KeepOldestSpec10 extends TenNodeSpec("KeepOldest", KeepOldestSpecTenNodeConfig) {
+sealed abstract class KeepOldestSpec10
+    extends TenNodeSpec("KeepOldest", KeepOldestSpecTenNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 10" in within(120 seconds) {
       runOn(node1) {

@@ -18,7 +18,8 @@ class KeepOldestSpec5MultiJvmNode5 extends KeepOldestSpec5
   * Node4 and node5 should down themselves as they are indirectly connected.
   * The three other nodes survive as they can reach the oldest.
   */
-class KeepOldestSpec5 extends FiveNodeSpec("KeepOldest", KeepOldestSpecFiveNodeConfig) {
+sealed abstract class KeepOldestSpec5
+    extends FiveNodeSpec("KeepOldest", KeepOldestSpecFiveNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 5" in within(120 seconds) {
       runOn(node1) {

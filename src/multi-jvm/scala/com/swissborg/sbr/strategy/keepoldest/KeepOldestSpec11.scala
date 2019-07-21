@@ -20,7 +20,8 @@ class KeepOldestSpec11MultiJvmNode5 extends KeepOldestSpec11
   * (1) should down itself because the oldest node (node2) is alone (with the given role).
   * (2) should survive as the oldest node is alone.
   */
-class KeepOldestSpec11 extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecDownAloneConfig) {
+sealed abstract class KeepOldestSpec11
+    extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecDownAloneConfig) {
   override def assertions(): Unit =
     "handle scenario 11" in within(60 seconds) {
       runOn(node1) {

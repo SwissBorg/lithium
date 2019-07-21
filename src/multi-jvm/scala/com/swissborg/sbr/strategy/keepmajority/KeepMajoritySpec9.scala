@@ -21,7 +21,8 @@ class KeepMajoritySpec9MultiJvmNode10 extends KeepMajoritySpec9
   * Node2 and node3 are indirectly connected in a ten node cluster
   * Node9 and node10 are indirectly connected in a ten node cluster
   */
-class KeepMajoritySpec9 extends TenNodeSpec("KeepMajority", KeepMajoritySpecTenNodeConfig) {
+sealed abstract class KeepMajoritySpec9
+    extends TenNodeSpec("KeepMajority", KeepMajoritySpecTenNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 9" in within(120 seconds) {
       runOn(node1) {

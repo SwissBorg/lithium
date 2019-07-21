@@ -17,7 +17,8 @@ class KeepRefereeSpec3MultiJvmNode3 extends KeepRefereeSpec3
   * Node2 should down itself as its indirectly connected.
   * Node3 should down itself as its not the referee.
   */
-class KeepRefereeSpec3 extends ThreeNodeSpec("KeepReferee", KeepRefereeSpecThreeNodeConfig) {
+sealed abstract class KeepRefereeSpec3
+    extends ThreeNodeSpec("KeepReferee", KeepRefereeSpecThreeNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 3" in within(60 seconds) {
       runOn(node1) {
