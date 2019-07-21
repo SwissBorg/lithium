@@ -18,7 +18,8 @@ class KeepRefereeSpecMultiJvmNode3 extends KeepRefereeSpec
   * (1) should survive as it contains the referee.
   * (2) should down itself as it does not contain the referee.
   */
-class KeepRefereeSpec extends ThreeNodeSpec("KeepReferee", KeepRefereeSpecThreeNodeConfig) {
+sealed abstract class KeepRefereeSpec
+    extends ThreeNodeSpec("KeepReferee", KeepRefereeSpecThreeNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 1" in within(60 seconds) {
       runOn(node1) {

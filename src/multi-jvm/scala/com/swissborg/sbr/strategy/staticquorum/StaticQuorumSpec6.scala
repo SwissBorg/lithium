@@ -19,7 +19,8 @@ class StaticQuorumSpec6MultiJvmNode5 extends StaticQuorumSpec6
   * All nodes but node2 downs itself because they are indirectly connected.
   * Node2 downs itself as it does not form a quorum.
   */
-class StaticQuorumSpec6 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Config) {
+sealed abstract class StaticQuorumSpec6
+    extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Config) {
   override def assertions(): Unit =
     "handle scenario 6" in within(120 seconds) {
       runOn(node1) {

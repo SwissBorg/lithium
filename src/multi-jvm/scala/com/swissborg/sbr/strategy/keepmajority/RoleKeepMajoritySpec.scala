@@ -13,7 +13,8 @@ class RoleKeepMajoritySpecMultiJvmNode3 extends RoleKeepMajoritySpec
 class RoleKeepMajoritySpecMultiJvmNode4 extends RoleKeepMajoritySpec
 class RoleKeepMajoritySpecMultiJvmNode5 extends RoleKeepMajoritySpec
 
-class RoleKeepMajoritySpec extends FiveNodeSpec("KeepMajority", RoleKeepMajoritySpecConfig) {
+sealed abstract class RoleKeepMajoritySpec
+    extends FiveNodeSpec("KeepMajority", RoleKeepMajoritySpecConfig) {
 
   override def assertions(): Unit =
     "handle scenario 3" in within(60 seconds) {

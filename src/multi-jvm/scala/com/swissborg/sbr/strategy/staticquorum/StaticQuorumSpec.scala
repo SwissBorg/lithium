@@ -18,7 +18,8 @@ class StaticQuorumSpecMultiJvmNode3 extends StaticQuorumSpec
   * (1) should survive as it is a quorum.
   * (2) should down itself as it is not a quorum.
   */
-class StaticQuorumSpec extends ThreeNodeSpec("StaticQuorum", StaticQuorumSpecConfig) {
+sealed abstract class StaticQuorumSpec
+    extends ThreeNodeSpec("StaticQuorum", StaticQuorumSpecConfig) {
   override def assertions(): Unit =
     "handle scenario 1" in within(60 seconds) {
       runOn(node1) {

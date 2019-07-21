@@ -21,7 +21,8 @@ class KeepOldestSpec8MultiJvmNode10 extends KeepOldestSpec8
   * Node2 and node3 are indirectly connected in a ten node cluster
   * Node9 and node10 are indirectly connected in a ten node cluster
   */
-class KeepOldestSpec8 extends TenNodeSpec("KeepOldest", KeepOldestSpecTenNodeConfig) {
+sealed abstract class KeepOldestSpec8
+    extends TenNodeSpec("KeepOldest", KeepOldestSpecTenNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 8" in within(120 seconds) {
       runOn(node1) {

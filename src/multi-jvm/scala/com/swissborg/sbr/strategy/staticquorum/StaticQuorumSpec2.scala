@@ -22,7 +22,8 @@ class StaticQuorumSpec2MultiJvmNode5 extends StaticQuorumSpec2
   * (2) should down itself as it is not a quorum.
   * (3) should down itself as it is not a quorum.
   */
-class StaticQuorumSpec2 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Config) {
+sealed abstract class StaticQuorumSpec2
+    extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Config) {
   override def assertions(): Unit =
     "handle scenario 2" in within(60 seconds) {
       runOn(node1) {

@@ -20,7 +20,7 @@ class KeepRefereeSpec11MultiJvmNode5 extends KeepRefereeSpec11
   * (1) contains the referee but has less than down-all-if-less-than-nodes so downs itself.
   * (2) downs itself as it doesn't contain the referee.
   */
-class KeepRefereeSpec11
+sealed abstract class KeepRefereeSpec11
     extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNodeLessNodesConfig) {
   override def assertions(): Unit =
     "handle scenario 11" in within(120 seconds) {

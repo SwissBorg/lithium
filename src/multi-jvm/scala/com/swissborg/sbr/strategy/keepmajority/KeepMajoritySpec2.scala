@@ -13,7 +13,8 @@ class KeepMajoritySpec2MultiJvmNode3 extends KeepMajoritySpec2
 class KeepMajoritySpec2MultiJvmNode4 extends KeepMajoritySpec2
 class KeepMajoritySpec2MultiJvmNode5 extends KeepMajoritySpec2
 
-class KeepMajoritySpec2 extends FiveNodeSpec("KeepMajority", KeepMajoritySpecFiveNodeConfig) {
+sealed abstract class KeepMajoritySpec2
+    extends FiveNodeSpec("KeepMajority", KeepMajoritySpecFiveNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 2" in within(60 seconds) {
       runOn(node1) {

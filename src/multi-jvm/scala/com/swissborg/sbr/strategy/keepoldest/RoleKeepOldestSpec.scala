@@ -21,7 +21,8 @@ class RoleKeepOldestSpecMultiJvmNode5 extends RoleKeepOldestSpec
   * (1) should survive as it contains the oldest node within the given role.
   * (2) should down itself as it does not contain the oldest node within the given role.
   */
-class RoleKeepOldestSpec extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecConfig) {
+sealed abstract class RoleKeepOldestSpec
+    extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecConfig) {
   override def assertions(): Unit =
     "handle scenario 3" in within(60 seconds) {
       runOn(node1) {

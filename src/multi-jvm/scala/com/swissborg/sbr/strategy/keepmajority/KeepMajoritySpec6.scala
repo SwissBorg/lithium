@@ -19,7 +19,8 @@ class KeepMajoritySpec6MultiJvmNode5 extends KeepMajoritySpec6
   * All nodes but node1 downs itself because they are indirectly connected.
   * Node1 survives as it is a majority (only node left).
   */
-class KeepMajoritySpec6 extends FiveNodeSpec("KeepMajority", KeepMajoritySpecFiveNodeConfig) {
+sealed abstract class KeepMajoritySpec6
+    extends FiveNodeSpec("KeepMajority", KeepMajoritySpecFiveNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 6" in within(120 seconds) {
       runOn(node1) {

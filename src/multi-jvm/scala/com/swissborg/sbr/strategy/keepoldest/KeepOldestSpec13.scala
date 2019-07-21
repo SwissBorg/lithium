@@ -23,7 +23,8 @@ class KeepOldestSpec13MultiJvmNode5 extends KeepOldestSpec13
   * (based on the role and the fact that node3 and node4 are IC). Partition (2) will down itself and
   * partition (1) will also down itself.
   */
-class KeepOldestSpec13 extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecDownAloneConfig) {
+sealed abstract class KeepOldestSpec13
+    extends FiveNodeSpec("KeepOldest", RoleKeepOldestSpecDownAloneConfig) {
   override def assertions(): Unit =
     "handle scenario 13" in within(60 seconds) {
       runOn(node1) {

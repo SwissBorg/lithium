@@ -23,7 +23,8 @@ class KeepOldestSpec2MultiJvmNode5 extends KeepOldestSpec2
   * (2) should down itself as it does not contain the oldest.
   * (3) should down itself as it does not contain the oldest.
   */
-class KeepOldestSpec2 extends FiveNodeSpec("KeepOldest", KeepOldestSpecFiveNodeConfig) {
+sealed abstract class KeepOldestSpec2
+    extends FiveNodeSpec("KeepOldest", KeepOldestSpecFiveNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 2" in within(120 seconds) {
       runOn(node1) {

@@ -25,7 +25,8 @@ class KeepRefereeSpec2MultiJvmNode5 extends KeepRefereeSpec2
   * (3) should down itself as it does not contain the referee.
   * (4) should down itself as it does not contain the referee.
   */
-class KeepRefereeSpec2 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNodeConfig) {
+sealed abstract class KeepRefereeSpec2
+    extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 2" in within(60 seconds) {
       runOn(node1) {
