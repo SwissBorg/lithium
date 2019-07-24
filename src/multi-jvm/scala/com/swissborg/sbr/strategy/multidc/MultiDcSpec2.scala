@@ -22,10 +22,10 @@ sealed abstract class MultiDcSpec2 extends FiveNodeSpec("MultiDc", MultiDcSpecCo
     "handle scenario 2" in within(60 seconds) {
       runOn(node1) {
         linksToKillForPartitions(
-          List(node1, node2) :: List(node3) :: List(node4) :: List(node5) :: Nil)
-          .foreach {
-            case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
-          }
+          List(node1, node2) :: List(node3) :: List(node4) :: List(node5) :: Nil
+        ).foreach {
+          case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
+        }
       }
 
       enterBarrier("links-failed")
