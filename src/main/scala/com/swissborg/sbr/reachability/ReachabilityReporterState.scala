@@ -4,8 +4,12 @@ package reachability
 import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.ClusterSettings.DataCenter
 import akka.cluster.{Member, UniqueAddress}
-import cats.data.State
+import cats.data.{NonEmptyMap, State}
 import cats.implicits._
+import com.swissborg.sbr.reachability.ReachabilityReporter.{
+  SuspiciousDetection,
+  SuspiciousDetectionAck
+}
 
 import scala.collection.immutable.SortedSet
 
@@ -16,10 +20,7 @@ final private[reachability] case class ReachabilityReporterState private (
     selfDataCenter: DataCenter,
     otherDcMembers: SortedSet[UniqueAddress],
     reachabilities: Map[Subject, VReachability],
-    pendingSuspiciousDetectionAcks: Map[UniqueAddress, Set[
-      ReachabilityReporter.SuspiciousDetectionAck
-    ]],
-    receivedAcks: Map[UniqueAddress, Set[ReachabilityReporter.SuspiciousDetectionAck]]
+    pendingSuspiciousDetectionAcks: Map[UniqueAddress, Set[SuspiciousDetectionAck]]
 ) {
 
   /**
@@ -86,7 +87,6 @@ final private[reachability] case class ReachabilityReporterState private (
         ))
     )
 
-  // TODO need version?
   private[reachability] def withoutSuspiciousDetection(
       protester: Protester,
       observer: Observer,
@@ -116,12 +116,11 @@ final private[reachability] case class ReachabilityReporterState private (
       reachabilities = (reachabilities - node).map {
         case (subject, reachability) => subject -> reachability.remove(node)
       },
-      pendingSuspiciousDetectionAcks = pendingSuspiciousDetectionAcks - node,
-      receivedAcks = receivedAcks - node
+      pendingSuspiciousDetectionAcks = pendingSuspiciousDetectionAcks - node
     )
 
   private[reachability] def expectSuspiciousDetectionAck(
-      ack: ReachabilityReporter.SuspiciousDetectionAck
+      ack: SuspiciousDetectionAck
   ): ReachabilityReporterState =
     copy(
       pendingSuspiciousDetectionAcks = pendingSuspiciousDetectionAcks + (ack.from -> (pendingSuspiciousDetectionAcks
@@ -129,7 +128,7 @@ final private[reachability] case class ReachabilityReporterState private (
     )
 
   private[reachability] def registerSuspiciousDetectionAck(
-      ack: ReachabilityReporter.SuspiciousDetectionAck
+      ack: SuspiciousDetectionAck
   ): ReachabilityReporterState = {
     val updatedPendingSuspiciousDetectionAcks = pendingSuspiciousDetectionAcks
       .get(ack.from)
@@ -139,22 +138,34 @@ final private[reachability] case class ReachabilityReporterState private (
         if (newPendingAcks.isEmpty) pendingSuspiciousDetectionAcks - ack.from
         else pendingSuspiciousDetectionAcks + (ack.from -> newPendingAcks)
       }
-
-    val updatedReceivedAcks = receivedAcks + (ack.from -> (receivedAcks.getOrElse(
-      ack.from,
-      Set.empty
-    ) + ack))
-
     copy(
-      pendingSuspiciousDetectionAcks = updatedPendingSuspiciousDetectionAcks,
-      receivedAcks = updatedReceivedAcks
+      pendingSuspiciousDetectionAcks = updatedPendingSuspiciousDetectionAcks
     )
+  }
+
+  private[reachability] def allSuspiciousDetections: Set[SuspiciousDetection] = {
+    def extractDetections(
+        subject: Subject,
+        detections: NonEmptyMap[Observer, DetectionProtest]
+    ): Iterator[SuspiciousDetection] =
+      detections.toSortedMap.iterator.flatMap {
+        case (observer, DetectionProtest.Protested(protesters, version)) =>
+          protesters.toSortedSet.iterator
+            .map(p => SuspiciousDetection(p, observer, subject, version))
+        case _ => Iterator.empty
+      }
+
+    reachabilities.iterator.flatMap {
+      case (_, VReachable(_))                             => Iterator.empty
+      case (subject, VIndirectlyConnected(detections, _)) => extractDetections(subject, detections)
+      case (subject, VUnreachable(detections, _))         => extractDetections(subject, detections)
+    }.toSet
   }
 }
 
 private[reachability] object ReachabilityReporterState {
   def apply(selfDataCenter: DataCenter): ReachabilityReporterState =
-    ReachabilityReporterState(selfDataCenter, SortedSet.empty, Map.empty, Map.empty, Map.empty)
+    ReachabilityReporterState(selfDataCenter, SortedSet.empty, Map.empty, Map.empty)
 
   def fromSnapshot(
       snapshot: CurrentClusterState,

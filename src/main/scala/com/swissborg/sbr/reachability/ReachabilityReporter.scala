@@ -53,7 +53,7 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
 
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
   private def active(state: ReachabilityReporterState): Receive = {
-    case SBReachabilityChanged(r) =>
+    case ReachabilityDiffChanged(r) =>
       context.become(active(updateReachabilities(r).runS(state).unsafeRunSync()))
 
     case MemberJoined(m) =>
@@ -83,7 +83,7 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
     *
     * Sends the suspicious detections with at-least-once delivery semantics.
     */
-  private def updateReachabilities(reachability: SBReachability): Res[Unit] = {
+  private def updateReachabilities(reachabilityDiff: ReachabilityDiff): Res[Unit] = {
 
     /**
       * Attempts to find the record of `observer` that describes
@@ -93,15 +93,15 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
       * `Reachability` data structure.
       */
     def unreachableRecord(
-        reachability: SBReachability,
+        reachabilityDiff: ReachabilityDiff,
         observer: Observer,
         subject: Subject
     ): Option[SuspiciousDetection] =
-      reachability
+      reachabilityDiff
         .findUnreachableRecord(observer, subject)
         .map(r => SuspiciousDetection(selfUniqueAddress, r.observer, r.subject, r.version))
 
-    def localReachability(node: UniqueAddress): Res[LocalReachability] =
+    def reachabilityFromCurrent(node: UniqueAddress): Res[LocalReachability] =
       StateT.liftF(SyncIO {
         if (failureDetector.isMonitoring(node.address)) {
           if (failureDetector.isAvailable(node.address)) LocallyReachable
@@ -134,7 +134,7 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
     /**
       * All the instances of this actor living on the other cluster nodes.
       */
-    val sbFailureDetectors: Res[List[UniqueAddress]] = StateT.liftF(
+    val reachabilityReporters: Res[List[UniqueAddress]] = StateT.liftF(
       SyncIO(cluster.state.members.toList.map(_.uniqueAddress))
     )
 
@@ -144,47 +144,33 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
       */
     def broadcastSuspiciousDetectionWithRetry(suspiciousDetection: SuspiciousDetection): Res[Unit] =
       for {
-        sbFailureDetectors <- sbFailureDetectors
-        state <- StateT.get[SyncIO, ReachabilityReporterState]
+        sbFailureDetectors <- reachabilityReporters
         state <- sbFailureDetectors.traverse_[Res, Unit] { to =>
           val expectedAck = SuspiciousDetectionAck.fromSuspiciousDetection(suspiciousDetection, to)
 
-          val hasBeenAcked =
-            state.receivedAcks.get(to).exists(_.exists(_ === expectedAck))
+          if (to === selfUniqueAddress) {
+            // Shortcut
+            for {
+              _ <- StateT.modify[SyncIO, ReachabilityReporterState] {
+                _.withSuspiciousDetection(
+                  suspiciousDetection.protester,
+                  suspiciousDetection.observer,
+                  suspiciousDetection.subject,
+                  suspiciousDetection.version
+                ).registerSuspiciousDetectionAck(expectedAck) // so it won't be done again in subsequently
+              }
 
-          val sendingInProgress =
-            state.pendingSuspiciousDetectionAcks.get(to).exists(_.exists(_ === expectedAck))
-
-          val res: StateT[SyncIO, ReachabilityReporterState, Unit] =
-            if (hasBeenAcked || sendingInProgress) {
-              // No need to send the broadcast as it was already received.
-              StateT.empty
-            } else if (to === selfUniqueAddress) {
-              // Shortcut
-              for {
-                _ <- StateT.modify[SyncIO, ReachabilityReporterState] {
-                  _.withSuspiciousDetection(
-                    suspiciousDetection.protester,
-                    suspiciousDetection.observer,
-                    suspiciousDetection.subject,
-                    suspiciousDetection.version
-                  ).registerSuspiciousDetectionAck(expectedAck) // so it won't be done again in subsequently
-                }
-
-                _ <- sendReachabilityIfChanged(suspiciousDetection.subject)
-              } yield ()
-
-            } else {
-              for {
-                // Cancel the timer for the previous observer, subject pair suspicious detection
-                // as there is only one timer per such pair. There's no need to make sure
-                // it was delivered, the new suspicious detection will override it.
-                _ <- StateT.liftF(cancelSuspiciousDetectionResend(expectedAck))
-                _ <- sendSuspiciousDetectionWithRetry(suspiciousDetection, to, expectedAck)
-              } yield ()
-            }
-
-          res
+              _ <- sendReachabilityIfChanged(suspiciousDetection.subject)
+            } yield ()
+          } else {
+            for {
+              // Cancel the timer for the previous observer, subject pair suspicious detection
+              // as there is only one timer per such pair. There's no need to make sure
+              // it was delivered, the new suspicious detection will override it.
+              _ <- StateT.liftF(cancelSuspiciousDetectionResend(expectedAck))
+              _ <- sendSuspiciousDetectionWithRetry(suspiciousDetection, to, expectedAck)
+            } yield ()
+          }
         }
       } yield state
 
@@ -199,36 +185,57 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
       )
 
     /**
-      * Remove from the state all the suspicious detections on unreachability detections
-      * that are not part of the state anymore.
+      *  Remove all suspicious detections based on detections that do not exist anymore.
       */
-    def removeStaleSuspiciousDetections(reachability: SBReachability): Res[Unit] = StateT.modify {
-      state =>
-        state.receivedAcks.valuesIterator.flatten
+    def pruneOutdatedSuspiciousDetections(reachabilityDiff: ReachabilityDiff): Res[Unit] =
+      StateT.modify { state =>
+        state.allSuspiciousDetections.foldLeft(state) {
+          case (state, suspiciousDetection) =>
+            suspiciousDetection match {
+              case SuspiciousDetection(protester, observer, subject, version) =>
+                if (!reachabilityDiff
+                      .findUnreachableRecord(observer, subject)
+                      .exists(_.version == version)) {
+                  state.withoutSuspiciousDetection(protester, observer, subject, version)
+                } else {
+                  state
+                }
+            }
+        }
+      }
+
+    /**
+      * Stop the resending and expecting acks for suspicious detections based on detections
+      * that do not exist anymore.
+      */
+    def cancelOutdatedSuspiciousDetectionResends(reachabilityDiff: ReachabilityDiff): Res[Unit] =
+      StateT.modifyF { state =>
+        state.pendingSuspiciousDetectionAcks.valuesIterator.flatten
           .filterNot {
             case SuspiciousDetectionAck(_, observer, subject, version) =>
-              reachability.findUnreachableRecord(observer, subject).exists(_.version == version)
+              reachabilityDiff.findUnreachableRecord(observer, subject).exists(_.version == version)
           }
-          .foldLeft(state) {
-            case (state, SuspiciousDetectionAck(from, observer, subject, version)) =>
-              state.withoutSuspiciousDetection(from, observer, subject, version)
+          .toList
+          .foldM(state) {
+            case (state, ack) =>
+              cancelSuspiciousDetectionResend(ack).as(state.registerSuspiciousDetectionAck(ack))
           }
-    }
+      }
 
-    def updateReachabilityStatuses(reachability: SBReachability): Res[Unit] =
-      reachability.observersGroupedByUnreachable.toList
+    def updateReachabilityStatuses(reachabilityDiff: ReachabilityDiff): Res[Unit] =
+      reachabilityDiff.newObserversGroupedByUnreachable.toList
         .traverse_ {
           case (subject, observers) =>
             observers.toList.traverse_[Res, Unit] { observer =>
               for {
-                _ <- localReachability(subject).flatMap {
+                _ <- reachabilityFromCurrent(subject).flatMap {
                   case LocallyReachable =>
-                    unreachableRecord(reachability, observer, subject).traverse_(
+                    unreachableRecord(reachabilityDiff, observer, subject).traverse_(
                       broadcastSuspiciousDetectionWithRetry
                     )
 
                   case LocallyUnreachable | Unknown =>
-                    unreachableRecord(reachability, observer, subject).traverse_(
+                    unreachableRecord(reachabilityDiff, observer, subject).traverse_(
                       withUnreachableFrom
                     )
                 }
@@ -240,8 +247,9 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
     for {
       selfDcReachability <- StateT
         .get[SyncIO, ReachabilityReporterState]
-        .map(s => reachability.remove(s.otherDcMembers))
-      _ <- removeStaleSuspiciousDetections(selfDcReachability)
+        .map(s => reachabilityDiff.remove(s.otherDcMembers))
+      _ <- pruneOutdatedSuspiciousDetections(selfDcReachability)
+      _ <- cancelOutdatedSuspiciousDetectionResends(selfDcReachability)
       _ <- updateReachabilityStatuses(selfDcReachability)
     } yield ()
   }
@@ -307,8 +315,11 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
     _ <- StateT.liftF(statuses.toList.traverse_ { case (k, v) => sendReachability(k, v) })
   } yield ()
 
-  private def sendReachability(subject: Subject, reachability: ReachabilityStatus): SyncIO[Unit] =
-    SyncIO(splitBrainReporter ! (reachability match {
+  private def sendReachability(
+      subject: Subject,
+      reachabilityStatus: ReachabilityStatus
+  ): SyncIO[Unit] =
+    SyncIO(splitBrainReporter ! (reachabilityStatus match {
       case ReachabilityStatus.Reachable =>
         SplitBrainReporter.NodeReachable(subject)
 
@@ -413,12 +424,12 @@ private[sbr] class ReachabilityReporter(private val splitBrainReporter: ActorRef
 
   override def preStart(): Unit = {
     cluster.subscribe(self, classOf[MemberEvent], classOf[ReachabilityEvent])
-    discard(Converter(context.system).subscribeToReachabilityChanged(self))
+    discard(ReachabilityDiffPub(context.system).subscribeToReachabilityChanged(self))
   }
 
   override def postStop(): Unit = {
     cluster.unsubscribe(self)
-    Converter(context.system).unsubscribe(self)
+    ReachabilityDiffPub(context.system).unsubscribe(self)
     timers.cancelAll()
   }
 }
