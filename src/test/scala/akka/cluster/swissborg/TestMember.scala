@@ -5,6 +5,7 @@ import akka.cluster.ClusterSettings.DataCenter
 import akka.cluster.{ClusterSettings, Member, MemberStatus, UniqueAddress}
 
 object TestMember {
+
   def apply(address: Address, status: MemberStatus): Member =
     apply(address, status, Set.empty[String], ClusterSettings.DefaultDataCenter)
 
