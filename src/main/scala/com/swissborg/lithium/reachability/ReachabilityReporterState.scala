@@ -65,9 +65,6 @@ private[reachability] object ReachabilityReporterState {
         // in this data-center.
         val reachabilityNoOutsideNodes = reachability.remove(s.otherDcMembers)
 
-//        println(s"--- ${reachabilityNoOutsideNodes.observersGroupedByUnreachable}")
-//        println(s"--- SEEN-BY: ${snapshot.seenBy}")
-
         // Nodes that have seen the current snapshot and were detected as unreachable.
         val suspiciousUnreachableNodes =
           reachabilityNoOutsideNodes.allUnreachable.filter(node => snapshot.seenBy(node.address))
