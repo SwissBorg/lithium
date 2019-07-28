@@ -1,3 +1,3 @@
 package akka.cluster.swissborg
 
-object implicits extends com.swissborg.sbr.implicits with instances.EqInstances
+object implicits extends com.swissborg.lithium.implicits with instances.EqInstances

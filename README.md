@@ -31,10 +31,10 @@ to `off` but this is not recommended.
 
 ```hocon
 akka.cluster {
-  downing-provider-class = "com.swissborg.sbr.DowningProviderImpl"
+  downing-provider-class = "com.swissborg.lithium.DowningProviderImpl"
 }
 
-com.swissborg.sbr {
+com.swissborg.lithium {
   # The name of the strategy to use for split-brain resolution.
   # Available: static-quorum, keep-majority, keep-referee, keep-oldest.
   active-strategy = off
@@ -83,7 +83,7 @@ By design this strategy cannot lead to a split-brain.
 
 #### Configuration
 ```hocon
-com.swissborg.sbr {
+com.swissborg.lithium {
   active-strategy = "static-quorum"
   static-quorum {
     # Minimum number of nodes in the surviving partition.
@@ -112,7 +112,7 @@ as Up while others do not.
 
 #### Configuration
 ```hocon
-com.swissborg.sbr {
+com.swissborg.lithium {
   active-strategy = "keep-majority"
   keep-majority {
     # Only take in account nodes with this role.
@@ -136,7 +136,7 @@ By design this strategy cannot lead to a split-brain.
 
 #### Configuration
 ```hocon
-com.swissborg.sbr {
+com.swissborg.lithium {
   active-strategy = "keep-referee"
   keep-referee {
     # Address of the member in the format "akka.tcp://system@host:port"
@@ -170,7 +170,7 @@ nodes as Removed and selecting the second-oldest as the oldest.
 #### Configuration
 
 ```hocon
-com.swissborg.sbr {
+com.swissborg.lithium {
   active-strategy = "keep-oldest"
   keep-oldest {
     # Down the oldest member when alone.
