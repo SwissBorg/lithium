@@ -46,10 +46,8 @@ abstract class LithiumMultiNodeSpec(val config: MultiNodeConfig)
       role => Cluster(system).state.unreachable.exists(_.address === addressOf(role))
     )
 
-  private def allSurvivors(roleNames: RoleName*): Boolean = {
-    println(Cluster(system).state.members)
+  private def allSurvivors(roleNames: RoleName*): Boolean =
     roleNames.forall(role => Cluster(system).state.members.exists(_.address === addressOf(role)))
-  }
 
   private def allUp(roleNames: RoleName*): Boolean =
     roleNames.forall(
@@ -60,8 +58,6 @@ abstract class LithiumMultiNodeSpec(val config: MultiNodeConfig)
     groups.exists(group => allLeaving(group: _*))
 
   private def downedItself(implicit system: ActorSystem): Boolean = {
-    println("downedItself")
-
     val selfAddress = Cluster(system).selfAddress
     Cluster(system).state.members
       .exists(
@@ -69,8 +65,7 @@ abstract class LithiumMultiNodeSpec(val config: MultiNodeConfig)
       )
   }
 
-  private def allLeaving(roleNames: RoleName*): Boolean = {
-    println("allLeaving")
+  private def allLeaving(roleNames: RoleName*): Boolean =
     roleNames.forall { role =>
       val members     = Cluster(system).state.members
       val unreachable = Cluster(system).state.unreachable
@@ -81,5 +76,4 @@ abstract class LithiumMultiNodeSpec(val config: MultiNodeConfig)
       (members.exists(m => m.address === address && (m.status === Down || m.status === Exiting)) || // member is down
       !members.exists(_.address === address))                                                       // member is not in the cluster
     }
-  }
 }
