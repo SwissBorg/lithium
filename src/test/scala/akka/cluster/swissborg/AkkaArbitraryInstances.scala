@@ -2,7 +2,7 @@ package akka.cluster.swissborg
 
 import akka.actor.{ActorPath, Address, ChildActorPath, RootActorPath}
 import akka.cluster.{Member, UniqueAddress, Reachability => _}
-import com.swissborg.sbr.instances.ArbitraryTestInstances._
+import com.swissborg.lithium.instances.ArbitraryTestInstances._
 import org.scalacheck.Arbitrary._
 import org.scalacheck.{Arbitrary, Gen}
 import shapeless.tag
@@ -27,7 +27,7 @@ object AkkaArbitraryInstances {
 
   def arbChildActorPath(parent: ActorPath): Arbitrary[ChildActorPath] = Arbitrary(
     for {
-      c <- Gen.alphaChar
+      c  <- Gen.alphaChar
       cs <- Gen.alphaStr
       name = s"$c$cs"
     } yield new ChildActorPath(parent, name)
@@ -40,9 +40,9 @@ object AkkaArbitraryInstances {
 
   implicit val arbActorPath0: Arbitrary[ActorPath] = Arbitrary(
     for {
-      depth <- Gen.chooseNum(0, 10)
+      depth  <- Gen.chooseNum(0, 10)
       parent <- arbitrary[RootActorPath]
-      path <- arbActorPath(depth, parent).arbitrary
+      path   <- arbActorPath(depth, parent).arbitrary
     } yield path
   )
 }
