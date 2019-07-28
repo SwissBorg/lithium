@@ -84,7 +84,7 @@ object DowningProviderImpl {
   )
 
   object Config {
-    final private val prefix: String                  = "com.swissborg.sbr"
+    final private val prefix: String                  = "com.swissborg.lithium"
     final private val activeStrategyPath: String      = s"$prefix.active-strategy"
     final private val stableAfterPath: String         = s"$prefix.stable-after"
     final private val downAllWhenUnstablePath: String = s"$prefix.down-all-when-unstable"
