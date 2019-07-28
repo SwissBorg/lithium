@@ -27,7 +27,7 @@ private[lithium] trait StrategyReader[A] {
     */
   def load(config: Config)(implicit R: Derivation[ConfigReader[A]]): Either[ConfigReaderError, A] =
     pureconfig
-      .loadConfig[A](config, s"com.swissborg.sbr.$name")
+      .loadConfig[A](config, s"com.swissborg.lithium.$name")
       .leftMap(ConfigReaderError)
 }
 
