@@ -140,7 +140,7 @@ com.swissborg.lithium {
   active-strategy = "keep-referee"
   keep-referee {
     # Address of the member in the format "akka.tcp://system@host:port"
-    address = undefined
+    referee = undefined
     
     # Minimum number of nodes in the surviving partition.
     down-all-if-less-than-nodes = 1
