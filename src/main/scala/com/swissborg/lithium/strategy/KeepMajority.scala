@@ -15,9 +15,10 @@ import com.swissborg.lithium.implicits._
   *
   * This strategy is useful when the cluster is dynamic.
   */
-private[lithium] class KeepMajority[F[_]: ApplicativeError[?[_], Throwable]](
+private[lithium] class KeepMajority[F[_]: ApplicativeError[*[_], Throwable]](
     config: KeepMajority.Config
 ) extends Strategy[F] {
+
   import config._
 
   override def takeDecision(worldView: WorldView): F[Decision] = {
@@ -42,10 +43,8 @@ private[lithium] class KeepMajority[F[_]: ApplicativeError[?[_], Throwable]](
     } else if (unreachableConsideredNodes.size >= majority)
       Decision.downReachable(worldView).pure[F]
     else if (totalNodes > 0 && reachableConsideredNodes.size === unreachableConsideredNodes.size) {
-      // check if the node with the lowest address is in this partition
-      allNodes.toList
-        .sortBy(_.member.address)(Member.addressOrdering)
-        .headOption
+      // check if the node with the lowest unique address is in this partition
+      allNodes.toList.sorted.headOption
         .fold(KeepMajority.NoMajority.raiseError[F, Decision]) {
           case _: ReachableNode   => Decision.downUnreachable(worldView).pure[F]
           case _: UnreachableNode => Decision.downReachable(worldView).pure[F]
@@ -75,4 +74,5 @@ private[lithium] object KeepMajority {
   }
 
   case object NoMajority extends Throwable
+
 }
