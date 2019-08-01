@@ -15,6 +15,7 @@ import org.scalacheck.{Arbitrary, Gen}
 
 sealed abstract class Scenario {
   def worldViews: List[WorldView]
+
   def clusterSize: Int Refined Positive
 }
 
@@ -191,11 +192,11 @@ object RemovedDisseminationScenario {
 
       pickNonEmptySubset(membersToRemove).map { ms =>
         val worldView0 = ms.foldLeft(baseWorldView) {
-          case (worldView, member) => worldView.addOrUpdate(member.copy(Leaving))
+          case (worldView, member) => worldView.addOrUpdate(member.copy(Leaving).copy(Exiting))
         }
 
         (membersToRemove -- ms).foldLeft(worldView0) {
-          case (worldView, member) => worldView.addOrUpdate(member.copy(Leaving).copy(Exiting))
+          case (worldView, member) => worldView.addOrUpdate(member.copy(Removed))
         }
       }
     }
