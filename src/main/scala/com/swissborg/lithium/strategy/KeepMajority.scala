@@ -2,7 +2,6 @@ package com.swissborg.lithium
 
 package strategy
 
-import akka.cluster.Member
 import akka.cluster.MemberStatus._
 import cats.ApplicativeError
 import cats.implicits._
@@ -25,7 +24,7 @@ private[lithium] class KeepMajority[F[_]: ApplicativeError[*[_], Throwable]](
     // Leaving nodes are ignored as they might have changed to
     // to "exiting" on the non-reachable side.
 
-    val allNodes   = worldView.nonICNodesWithRole(role).filter(_.member.status === Up)
+    val allNodes   = worldView.nonICNodesWithRole(role).filter(n => n.status === Up || n.status === Leaving)
     val totalNodes = allNodes.size
 
     val majority = Math.max(totalNodes / 2 + 1, 1)

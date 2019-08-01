@@ -19,6 +19,7 @@ import com.swissborg.lithium.implicits._
 private[lithium] class KeepOldest[F[_]: ApplicativeError[?[_], Throwable]](
     config: KeepOldest.Config
 ) extends Strategy[F] {
+
   import config._
 
   override def takeDecision(worldView: WorldView): F[Decision] = {
@@ -27,7 +28,7 @@ private[lithium] class KeepOldest[F[_]: ApplicativeError[?[_], Throwable]](
     val consideredNonICNodes =
       worldView
         .nonICNodesWithRole(role)
-        .filter(_.status === Up)
+        .filter(n => n.status === Up || n.status === Leaving)
 
     val allNodesSortedByAge = consideredNonICNodes.toList.sortBy(_.member)(Member.ageOrdering)
 
@@ -76,11 +77,12 @@ private[lithium] object KeepOldest {
     * [[KeepOldest]] configuration.
     *
     * @param downIfAlone down the oldest node if it is cutoff from all the nodes with the given role.
-    * @param role the role of the nodes to take in account.
+    * @param role        the role of the nodes to take in account.
     */
   final case class Config(downIfAlone: Boolean, role: String)
 
   object Config extends StrategyReader[Config] {
     override val name: String = "keep-oldest"
   }
+
 }

@@ -21,11 +21,12 @@ import eu.timepit.refined.auto._
 private[lithium] class StaticQuorum[F[_]](config: StaticQuorum.Config)(implicit val F: Sync[F])
     extends Strategy[F]
     with StrictLogging {
+
   import config._
 
   override def takeDecision(worldView: WorldView): F[Decision] = {
-    val nbrOfConsideredNonICNodes = worldView.nonICNodesWithRole(role).count { node =>
-      node.status === Up || node.status === Leaving
+    val nbrOfConsideredNonICNodes = worldView.nonICNodesWithRole(role).count { n =>
+      n.status === Up || n.status === Leaving
     }
 
     if (nbrOfConsideredNonICNodes > quorumSize * 2 - 1) {
@@ -92,12 +93,13 @@ private[lithium] object StaticQuorum {
     * [[StaticQuorum]] config.
     *
     * @param quorumSize the minimum number of nodes the surviving partition must contain.
-    *                    The size must be chosen as more than `number-of-nodes / 2 + 1`.
-    * @param role the role of the nodes to take in account.
+    *                   The size must be chosen as more than `number-of-nodes / 2 + 1`.
+    * @param role       the role of the nodes to take in account.
     */
   final case class Config(role: String, quorumSize: Int Refined Positive)
 
   object Config extends StrategyReader[Config] {
     override val name: String = "static-quorum"
   }
+
 }
