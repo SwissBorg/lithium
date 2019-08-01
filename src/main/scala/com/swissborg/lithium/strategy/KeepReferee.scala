@@ -19,12 +19,12 @@ import eu.timepit.refined.numeric._
   * This strategy is useful when the cluster has a node that is critical to its operation.
   */
 private[lithium] class KeepReferee[F[_]: Applicative](config: KeepReferee.Config) extends Strategy[F] {
+
   import config._
 
   override def takeDecision(worldView: WorldView): F[Decision] =
-//    worldView.consideredReachableNodes
     worldView.reachableNodes
-      .find(_.member.address.toString === address.value)
+      .find(_.member.address.toString === referee.value)
       .fold(Decision.downReachable(worldView)) { _ =>
         val nbrOfConsideredReachableNodes = worldView.reachableNodes.count { node =>
           Set[MemberStatus](Up, Leaving).contains(node.member.status)
@@ -45,16 +45,17 @@ private[lithium] object KeepReferee {
   /**
     * [[KeepReferee]] config.
     *
-    * @param address the address of the referee.
+    * @param referee                the address of the referee.
     * @param downAllIfLessThanNodes the minimum number of nodes that should be remaining in the cluster.
-    *                                 Else the cluster gets downed.
+    *                               Else the cluster gets downed.
     */
   final case class Config(
-      address: String Refined SBAddress,
+      referee: String Refined SBAddress,
       downAllIfLessThanNodes: Int Refined Positive
   )
 
   object Config extends StrategyReader[Config] {
     override val name: String = "keep-referee"
   }
+
 }
