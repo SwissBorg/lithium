@@ -7,7 +7,6 @@ import akka.cluster.Cluster
 import akka.cluster._
 import cats.effect.SyncIO
 import cats.implicits._
-import com.swissborg.lithium.implicits._
 import com.swissborg.lithium.reporter._
 import com.swissborg.lithium.strategy._
 import io.circe.Encoder
@@ -24,18 +23,12 @@ import scala.concurrent.duration._
   *
   * The `Resolver.HandleSplitBrain` event triggers the downing of the members
   * as described by the decision given by `Union(_strategy, IndirectlyConnected)`.
-  * All but the joining/weakly-up members in the cluster will run the strategy.
-  * Joining/weakly-up members will not down the nodes as their world view might
-  * be wrong. It can happen that they did not see all the suspicious detections
-  * and noted some nodes as unreachable that are in fact indirectly-connected.
   *
-  * The `Resolver.DownAll` event triggers the downing of all the nodes. In contrast
-  * to the event above, joining/weakly-up will also down nodes. To down all the nodes
-  * the only information is needed are all the cluster members.
+  * The `Resolver.DownAll` event triggers the downing of all the nodes.
   *
-  * @param _strategy the strategy with which to resolved the split-brain.
-  * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
-  * @param downAllWhenUnstable down the partition if the cluster has been unstable for longer than `stableAfter + 3/4 * stableAfter`.
+  * @param _strategy                     the strategy with which to resolved the split-brain.
+  * @param stableAfter                   duration during which a cluster has to be stable before attempting to resolve a split-brain.
+  * @param downAllWhenUnstable           down the partition if the cluster has been unstable for longer than `stableAfter + 3/4 * stableAfter`.
   * @param trackIndirectlyConnectedNodes downs the detected indirectly-connected nodes when enabled.
   */
 private[lithium] class SplitBrainResolver(
@@ -49,7 +42,7 @@ private[lithium] class SplitBrainResolver(
     context.actorOf(
       SplitBrainReporter
         .props(self, stableAfter, downAllWhenUnstable, trackIndirectlyConnectedNodes),
-      "splitbrain-reporter"
+      "split-brain-reporter"
     )
   )
 
@@ -84,16 +77,7 @@ private[lithium] class SplitBrainResolver(
                 worldView.simple.asJson.noSpaces
               )
           )
-
-      // A member that joined during a split-brain might not be aware of all the
-      // indirectly-connected nodes and so should not take a decision.
-      _ <- isNonJoining.ifM(
-            runStrategy(strategy, worldView),
-            SyncIO(
-              log
-                .info("[{}] is joining/weakly-up. Cannot resolve the split-brain.", selfUniqueAddress)
-            )
-          )
+      _ <- runStrategy(strategy, worldView)
     } yield ()
 
   /**
@@ -138,10 +122,6 @@ private[lithium] class SplitBrainResolver(
         err => SyncIO(log.error(err, "[{}] An error occurred during the resolution.", selfUniqueAddress))
       )
   }
-
-  private val isNonJoining: SyncIO[Boolean] = SyncIO(
-    cluster.selfMember.status =!= MemberStatus.Joining && cluster.selfMember.status =!= MemberStatus.WeaklyUp
-  )
 }
 
 object SplitBrainResolver {
@@ -168,12 +148,15 @@ object SplitBrainResolver {
   }
 
   private[lithium] object ResolveSplitBrain {
+
     final case class Simple(worldView: WorldView.Simple)
 
     object Simple {
       implicit val simpleHandleSplitBrainEncoder: Encoder[Simple] = deriveEncoder
     }
+
   }
 
   final private[lithium] case class DownAll(worldView: WorldView) extends Event
+
 }
