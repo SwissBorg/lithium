@@ -7,7 +7,7 @@ import cats.implicits._
 
 import scala.collection.immutable.SortedSet
 
-class DecisionSpec extends SBSpec {
+class DecisionSpec extends LithiumSpec {
   "StrategyDecision" must {
     "extract the correct nodes from the world view" in {
       forAll { worldView: WorldView =>

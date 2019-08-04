@@ -5,7 +5,7 @@ import akka.cluster.Member
 import com.swissborg.lithium.testImplicits._
 import cats.implicits._
 
-class WorldViewSpec extends SBSpec {
+class WorldViewSpec extends LithiumSpec {
   "WorldView" must {
     "not have a node simultaneously reachable and unreachable" in {
       forAll { worldView: WorldView =>

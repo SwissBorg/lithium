@@ -5,7 +5,7 @@ package strategy
 import cats.Id
 import cats.implicits._
 
-class IndirectlyConnectedSpec extends SBSpec {
+class IndirectlyConnectedSpec extends LithiumSpec {
   private val indirectlyConnected: IndirectlyConnected[Id] = new strategy.IndirectlyConnected[Id]
 
   "IndirectlyConnected" must {

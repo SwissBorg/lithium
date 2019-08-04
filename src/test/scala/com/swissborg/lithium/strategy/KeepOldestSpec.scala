@@ -6,7 +6,7 @@ import cats.implicits._
 
 import scala.util.Try
 
-class KeepOldestSpec extends SBSpec {
+class KeepOldestSpec extends LithiumSpec {
   "KeepOldest" must {
     simulate[Try, KeepOldest, CleanPartitionScenario]("handle clean partitions")(_.get)
 

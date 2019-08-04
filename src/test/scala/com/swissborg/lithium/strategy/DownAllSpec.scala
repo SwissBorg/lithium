@@ -5,7 +5,7 @@ package strategy
 import cats.Id
 import cats.implicits._
 
-class DownAllSpec extends SBSpec {
+class DownAllSpec extends LithiumSpec {
   "DownAll" must {
     "always down nodes" in {
       val downAll: DownAll[Id] = new strategy.DownAll[Id]
