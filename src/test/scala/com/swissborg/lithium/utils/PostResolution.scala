@@ -63,7 +63,7 @@ object PostResolution {
         PostResolution.one(nodesAfterDowning)
     }
 
-  implicit val remainingPartitionsMonoid: Monoid[PostResolution] = new Monoid[PostResolution] {
+  implicit val postResolutionMonoid: Monoid[PostResolution] = new Monoid[PostResolution] {
     override def empty: PostResolution = PostResolution.empty
 
     override def combine(x: PostResolution, y: PostResolution): PostResolution =
