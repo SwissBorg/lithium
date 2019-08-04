@@ -1,6 +1,6 @@
 package com.swissborg.lithium
 
-class HealthyWorldViewSpec extends SBSpec {
+class HealthyWorldViewSpec extends LithiumSpec {
   "HealthyWorldView" must {
     "not have unreachable nodes" in {
       forAll { worldView: HealthyWorldView =>

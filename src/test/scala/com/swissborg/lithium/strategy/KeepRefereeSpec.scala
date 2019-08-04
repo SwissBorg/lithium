@@ -4,7 +4,7 @@ package strategy
 
 import cats.Id
 
-class KeepRefereeSpec extends SBSpec {
+class KeepRefereeSpec extends LithiumSpec {
   "KeepReferee" must {
     simulate[Id, KeepReferee, CleanPartitionScenario]("handle clean partitions")(identity)
 

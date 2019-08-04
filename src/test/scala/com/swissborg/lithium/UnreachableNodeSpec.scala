@@ -3,7 +3,7 @@ package com.swissborg.lithium
 import cats.implicits._
 import com.swissborg.lithium.testImplicits._
 
-class UnreachableNodeSpec extends SBSpec {
+class UnreachableNodeSpec extends LithiumSpec {
   "UnreachableNode" must {
     "not affect the order" in {
       forAll { unreachableNodes: List[UnreachableNode] =>

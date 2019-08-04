@@ -4,7 +4,7 @@ package strategy
 
 import cats.effect.SyncIO
 
-class StaticQuorumSpec extends SBSpec {
+class StaticQuorumSpec extends LithiumSpec {
   "StaticQuorum" must {
     simulate[SyncIO, StaticQuorum, CleanPartitionScenario]("handle clean partitions")(
       _.unsafeRunSync()

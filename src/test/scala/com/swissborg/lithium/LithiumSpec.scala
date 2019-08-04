@@ -12,7 +12,7 @@ import org.scalactic.anyvals._
 import org.scalatest.{Assertion, Matchers, WordSpecLike}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
-trait SBSpec
+trait LithiumSpec
     extends WordSpecLike
     with Matchers
     with ScalaCheckPropertyChecks
@@ -31,10 +31,10 @@ trait SBSpec
     * Checks that the strategy can handle the given scenario.
     *
     * @param name the name of the test.
-    * @param run run the effect to get assertion result.
-    * @tparam F the effect in which the simulation is run.
+    * @param run  run the effect to get assertion result.
+    * @tparam F     the effect in which the simulation is run.
     * @tparam Strat the strategy to use.
-    * @tparam S the scenario.
+    * @tparam S     the scenario.
     */
   final def simulate[F[_]: Functor, Strat[_[_]], S <: Scenario: Arbitrary](
       name: String

@@ -6,7 +6,7 @@ import cats.implicits._
 
 import scala.util.Try
 
-class KeepMajoritySpec extends SBSpec {
+class KeepMajoritySpec extends LithiumSpec {
   "KeepMajority" must {
     simulate[Try, KeepMajority, CleanPartitionScenario]("handle clean partitions")(_.get)
 

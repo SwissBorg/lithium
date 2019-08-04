@@ -6,7 +6,7 @@ import akka.cluster.MemberStatus.{Leaving, Up}
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 
-class ReachableQuorumSpec extends SBSpec {
+class ReachableQuorumSpec extends LithiumSpec {
   "ReachableQuorum" must {
     "instantiate the correct instance" in {
       forAll { (worldView: WorldView, quorumSize: Int Refined Positive, role: String) =>
