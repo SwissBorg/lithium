@@ -12,7 +12,7 @@ import scala.collection.SortedSet
   */
 final case class PostResolution(
     /**
-      * The nodes in each partition.
+      * The nodes as seen by each partition.
       */
     partitions: List[SortedSet[Node]]
 ) {
