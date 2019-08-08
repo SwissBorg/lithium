@@ -1,6 +1,6 @@
 package com.swissborg.lithium
 
-package converter
+package internals
 
 import akka.cluster.swissborg._
 
