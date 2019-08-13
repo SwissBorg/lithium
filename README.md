@@ -1,14 +1,14 @@
-# SwissBorg Split-brain Resolver for Akka Clusters
+# Lithium - A Split-Brain Resolver for Akka-Cluster
 
 When a cluster member becomes unreachable the leader cannot perform its 
 duties anymore. Members cannot change state, singletons cannot be moved
 to a different member. In such situations the cluster administrator has
 to manually down members so the leader can continue its duties. This 
-library provides a few strategies that can automatically down members 
-without user intervention. 
+library provides a few strategies that will automatically down members 
+without needing any intervention.
 
-## Stable After
-Split-brain resolution is only run after the cluster has been stable for 
+## Stable-After
+The strategy is run only after the cluster has been stable for 
 a configured amount of time. The stability is affected by members changing
 state and failure detections. However, the stability is not affected by
 members becoming "joining" or "weakly-up" as they are not counted in decisions.
@@ -18,10 +18,12 @@ partitions and as result potentially not be seen by all the partitions.
 The `stable-after` duration should be chosen longer than the time it takes
 to gossip cluster membership changes. Additionally, since a partition cannot
 communicate together, the duration should be large enough so that persistent
-actor have the time to stop in one partition before being instantiated on
-the surviving partition.
+actor have the time to stop in one partition before being instantiated somewhere 
+on the surviving partition.
 
-The `down-all-when-unstable` flag different from `off` will down the partition 
+## Down-when-unstable
+
+The `down-all-when-unstable` flag when not set to `off` will down the partition 
 if the cluster has been unstable for longer than `stable-after + 3/4 * stable-after`.
 This stops the situation where a persistent actor is started in the surviving 
 partition before being stopped in its original partition because the `stable-after`
@@ -37,7 +39,7 @@ akka.cluster {
 com.swissborg.lithium {
   # The name of the strategy to use for split-brain resolution.
   # Available: static-quorum, keep-majority, keep-referee, keep-oldest.
-  active-strategy = off
+  active-strategy = null
 
   # Duration during which the cluster must be stable before taking
   # action on the network-partition. The duration must chose large
@@ -59,7 +61,7 @@ com.swissborg.lithium {
 ## Strategies
 
 
-### Static Quorum
+### Static-Quorum
 Keeps the partition that contains at least `quorum-size` nodes and downs
 all the other partitions.
 
@@ -87,7 +89,7 @@ com.swissborg.lithium {
   active-strategy = "static-quorum"
   static-quorum {
     # Minimum number of nodes in the surviving partition.
-    quorum-size = undefined
+    quorum-size = null
     
     # Only take in account nodes with this role.
     role = ""
@@ -95,7 +97,7 @@ com.swissborg.lithium {
 }
 ```
 
-### Keep Majority
+### Keep-Majority
 Keeps the side of partition that contains the majority of nodes and downs
 the other partitions. In the case where they have the same size the one 
 containing the member with the lowest address is kept.
@@ -121,7 +123,7 @@ com.swissborg.lithium {
 }
 ```
 
-### Keep Referee
+### Keep-Referee
 Keeps the partition that can contains the specified member and downs the other
 partitions.
 
@@ -140,7 +142,7 @@ com.swissborg.lithium {
   active-strategy = "keep-referee"
   keep-referee {
     # Address of the member in the format "akka.tcp://system@host:port"
-    referee = undefined
+    referee = null
     
     # Minimum number of nodes in the surviving partition.
     down-all-if-less-than-nodes = 1
@@ -148,7 +150,7 @@ com.swissborg.lithium {
 }
 ```
 
-### Keep Oldest
+### Keep-Oldest
 Keeps the partition that can contains the oldest member in the cluster and downs 
 the other partitions.
 
@@ -182,10 +184,12 @@ com.swissborg.lithium {
 }
 ```
 
-## Indirectly Connected Members
-An indirectly connected member is a cluster member that has a mix of nodes
-that can reach and not reach it. Such members are downed in combination 
-with the ones downed by the configured strategy. 
+## Indirectly-Connected Members
+An indirectly-connected member is one that has been detected or has detected 
+another member as unreachable but that is still connected to via some other nodes.
+
+These nodes will always be downed in combination with the ones downed by the 
+configured strategy.
 
 Indirectly connected nodes are downed as they sit on the intersection of two 
 partitions. As result both partitions will assume it is in theirs leading to
@@ -193,4 +197,4 @@ all sorts of trouble. By downing them the partitions become clean partitions
 that do not overlap.
 
 # License
-The SwissBorg Split-Brain Resolver is Open Source and available under the Apache 2 License.
+Lithium is Open Source and available under the Apache 2 License.
