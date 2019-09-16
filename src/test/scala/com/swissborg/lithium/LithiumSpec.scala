@@ -1,7 +1,6 @@
 package com.swissborg.lithium
 
 import cats.implicits._
-import cats.tests.StrictCatsEquality
 import cats.{Applicative, Functor, Monoid}
 import com.swissborg.lithium.ArbitraryStrategy._
 import com.swissborg.lithium.instances.ArbitraryTestInstances
@@ -9,15 +8,11 @@ import com.swissborg.lithium.strategy._
 import com.swissborg.lithium.utils.PostResolution
 import org.scalacheck.Arbitrary
 import org.scalactic.anyvals._
-import org.scalatest.{Assertion, Matchers, WordSpecLike}
+import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.{Assertion, Matchers}
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
-trait LithiumSpec
-    extends WordSpecLike
-    with Matchers
-    with ScalaCheckPropertyChecks
-    with StrictCatsEquality
-    with ArbitraryTestInstances {
+trait LithiumSpec extends AnyWordSpecLike with Matchers with ScalaCheckPropertyChecks with ArbitraryTestInstances {
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(
       minSuccessful = PosInt(1000),

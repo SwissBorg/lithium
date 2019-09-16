@@ -7,12 +7,13 @@ import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.MemberStatus.{Joining, Up}
 import akka.cluster.swissborg.TestMember
 import cats.effect.SyncIO
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 import eu.timepit.refined.auto._
 
 import scala.collection.immutable.SortedSet
 
-class StaticQuorumSuite extends WordSpec with Matchers {
+class StaticQuorumSuite extends AnyWordSpecLike with Matchers {
   val aa = TestMember(Address("akka.tcp", "sys", "a", 2552), Up)
   val bb = TestMember(Address("akka.tcp", "sys", "b", 2552), Up)
   val cc = TestMember(Address("akka.tcp", "sys", "c", 2552), Up, Set("role"))

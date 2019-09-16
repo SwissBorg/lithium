@@ -4,7 +4,7 @@ import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 organization := "com.swissborg"
 name := "lithium"
 
-scalaVersion := "2.12.8"
+scalaVersion := "2.12.10"
 
 scalacOptions ++=
   Seq(
@@ -28,23 +28,23 @@ scalacOptions ++=
     "-deprecation"
   )
 
-val akkaVersion                = "2.5.23"
-val catsVersion                = "1.6.1"
-val catsEffectVersion          = "1.3.1"
+val akkaVersion                = "2.5.25"
+val catsVersion                = "2.0.0"
+val catsEffectVersion          = "2.0.0"
 val scalatestVersion           = "3.0.8"
-val monocleVersion             = "1.5.0"
+val monocleVersion             = "2.0.0"
 val shapelessVersion           = "2.3.3"
-val refinedVersion             = "0.9.8"
-val pureConfigVersion          = "0.11.1"
+val refinedVersion             = "0.9.10"
+val pureConfigVersion          = "0.12.0"
 val scalacheckShapelessVersion = "1.1.8"
-val refinedScalacheckVersion   = "0.9.8"
+val refinedScalacheckVersion   = "0.9.10"
 val protobufJavaVersion        = "3.8.0"
 val typesafeConfigVersion      = "1.3.4"
 val logbackVersion             = "1.2.3"
-val circeVersion               = "0.11.1"
+val circeVersion               = "0.12.1"
 val scalaLoggingVersion        = "3.9.2"
 val kindProjectorVersion       = "0.10.3"
-val betterMonadicForVersion    = "0.3.0"
+val betterMonadicForVersion    = "0.3.1"
 
 resolvers += Resolver.sonatypeRepo("releases")
 
