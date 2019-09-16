@@ -5,7 +5,7 @@ package strategy
 import cats.implicits._
 import com.typesafe.config.Config
 import pureconfig.error.ConfigReaderFailures
-import pureconfig.{ConfigReader, Derivation}
+import pureconfig.{ConfigReader, ConfigSource, Derivation}
 
 /**
   * Interface for loading split-brain resolution strategies from the configuration.
@@ -13,6 +13,7 @@ import pureconfig.{ConfigReader, Derivation}
   * @tparam A the type of the strategy to load.
   */
 private[lithium] trait StrategyReader[A] {
+
   import StrategyReader._
 
   /**
@@ -26,15 +27,19 @@ private[lithium] trait StrategyReader[A] {
     * Attempts to load the strategy `A` otherwise an error.
     */
   def load(config: Config)(implicit R: Derivation[ConfigReader[A]]): Either[ConfigReaderError, A] =
-    pureconfig
-      .loadConfig[A](config, s"com.swissborg.lithium.$name")
+    ConfigSource
+      .fromConfig(config)
+      .at(s"com.swissborg.lithium.$name")
+      .load[A]
       .leftMap(ConfigReaderError)
 }
 
 private[lithium] object StrategyReader {
+
   sealed abstract class StrategyError(message: String) extends Throwable(message) with Product with Serializable
 
   final case class ConfigReaderError(f: ConfigReaderFailures) extends StrategyError(s"$f")
 
   final case class UnknownStrategy(strategy: String) extends StrategyError(strategy)
+
 }
