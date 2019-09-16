@@ -9,11 +9,12 @@ import akka.cluster.swissborg.TestMember
 import cats.Id
 import eu.timepit.refined._
 import eu.timepit.refined.auto._
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.collection.immutable.SortedSet
 
-class KeepRefereeSuite extends WordSpec with Matchers {
+class KeepRefereeSuite extends AnyWordSpecLike with Matchers {
   private val aa = TestMember(Address("akka.tcp", "sys", "a", 2552), Up)
   private val bb = TestMember(Address("akka.tcp", "sys", "b", 2552), Up)
   private val cc = TestMember(Address("akka.tcp", "sys", "c", 2552), Up)
