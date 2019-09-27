@@ -87,7 +87,6 @@ private[reachability] object ReachabilityReporterState {
         s =>
           s.latestReceived.fold(ignore) {
             case LatestReceived.SeenBy =>
-              println("here")
               s.latestReachability.fold(ignore)(updatedReachabilityEvents(_, seenBy, s.members))
             case LatestReceived.Reachability => ignore
           }
