@@ -16,7 +16,7 @@ jobs:
 
     - stage: styling
       env: TEST="linting"
-      script scalafmtCheck test:scalafmtCheck multi-jvm:scalafmtCheck
+      script: scalafmtCheck test:scalafmtCheck multi-jvm:scalafmtCheck
 
 cache:
   directories:
