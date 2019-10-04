@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/SwissBorg/lithium.svg?branch=master)](https://travis-ci.com/SwissBorg/lithium)
+
 # Lithium - A Split-Brain Resolver for Akka-Cluster
 
 When a cluster member becomes unreachable the leader cannot perform its 
