@@ -14,15 +14,13 @@ import com.swissborg.lithium.implicits._
 import com.swissborg.lithium.internals._
 import com.swissborg.lithium.reporter.SplitBrainReporter._
 
-import scala.collection.immutable.SortedSet
-
 /**
- * Actor reporting the reachability status of cluster members based on `akka.cluster.Reachability`.
- *
- * @param splitBrainReporter the actor to which the reachability events have to be sent.
- */
+  * Actor reporting the reachability status of cluster members based on `akka.cluster.Reachability`.
+  *
+  * @param splitBrainReporter the actor to which the reachability events have to be sent.
+  */
 private[lithium] class ReachabilityReporter(private val splitBrainReporter: ActorRef)
-  extends Actor
+    extends Actor
     with ActorLogging
     with Stash {
 
@@ -63,13 +61,13 @@ private[lithium] class ReachabilityReporter(private val splitBrainReporter: Acto
   private def updateReachability(reachability: LithiumReachability): F[Unit] =
     for {
       events <- ReachabilityReporterState.withReachability(reachability).mapK(evalToSyncIO)
-      _ <- events.traverse_(sendToReporter)
+      _      <- events.traverse_(sendToReporter)
     } yield ()
 
   private def updateSeenBy(seenBy: Set[Address]): F[Unit] =
     for {
       events <- ReachabilityReporterState.withSeenBy(seenBy).mapK(evalToSyncIO)
-      _ <- events.traverse_(sendToReporter)
+      _      <- events.traverse_(sendToReporter)
     } yield ()
 
   private def add(member: Member): F[Unit] = StateT.modify(_.withMember(member))
@@ -78,10 +76,10 @@ private[lithium] class ReachabilityReporter(private val splitBrainReporter: Acto
     StateT.liftF(SyncIO(splitBrainReporter ! reachabilityEvent))
 
   /**
-   * Register the node as removed.
-   *
-   * If the removed node is the current one the actor will stop itself.
-   */
+    * Register the node as removed.
+    *
+    * If the removed node is the current one the actor will stop itself.
+    */
   private def remove(node: UniqueAddress): F[Unit] =
     if (node === selfUniqueAddress) {
       // This node is being stopped. Kill the actor
