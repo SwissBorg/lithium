@@ -6,15 +6,18 @@ scala:
 stages:
   - name: styling
   - name: test
+  - name: multi-jvm-test
 
 jobs:
   include:
-    - stage: test
-      install: pip install --user codecov
-      script: sbt coverage test multi-jvm:test coverageReport && codecov
-
     - stage: styling
       script: sbt scalafmtCheck test:scalafmtCheck multi-jvm:scalafmtCheck
+
+    - stage: test
+      script: sbt test
+
+    - stage: multi-jvm-test
+      script: sbt multi-jvm:test
 
 cache:
   directories:
