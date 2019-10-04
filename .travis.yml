@@ -10,13 +10,11 @@ stages:
 jobs:
   include:
     - stage: test
-      env: TEST="coverage"
       install: pip install --user codecov
       script: sbt coverage test multi-jvm:test coverageReport && codecov
 
     - stage: styling
-      env: TEST="linting"
-      script: scalafmtCheck test:scalafmtCheck multi-jvm:scalafmtCheck
+      script: sbt scalafmtCheck test:scalafmtCheck multi-jvm:scalafmtCheck
 
 cache:
   directories:
