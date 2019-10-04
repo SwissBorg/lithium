@@ -1,0 +1,8 @@
+language: scala
+
+scala:
+  - 2.12.10
+
+script:
+  - sbt scalafmtCheck test:scalafmtCheck compile test:compile multi-jvm:compile
+  - sbt test multi-jvm:test

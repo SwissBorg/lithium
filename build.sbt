@@ -127,10 +127,6 @@ lazy val root = (project in file("."))
 
 scalafmtOnCompile := true
 
-sbVersionWithGit
-commonSwissBorgSettings
-sbMavenPublishSetting
-
 testOptions in Test += Tests.Argument("-oF")
 
 parallelExecution in MultiJvm := false
