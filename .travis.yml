@@ -3,6 +3,24 @@ language: scala
 scala:
   - 2.12.10
 
-script:
-  - sbt scalafmtCheck test:scalafmtCheck compile test:compile multi-jvm:compile
-  - sbt test multi-jvm:test
+stages:
+  - name: styling
+  - name: test
+
+jobs:
+  include:
+    - stage: test
+      env: TEST="coverage"
+      install: pip install --user codecov
+      script: sbt coverage test multi-jvm:test coverageReport && codecov
+
+    - stage: styling
+      env: TEST="linting"
+      script scalafmtCheck test:scalafmtCheck multi-jvm:scalafmtCheck
+
+cache:
+  directories:
+    - $HOME/.m2
+    - $HOME/.ivy2/cache
+    - $HOME/.sbt
+    - $HOME/.coursier
