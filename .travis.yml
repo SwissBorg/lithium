@@ -6,7 +6,7 @@ scala:
 stages:
   - name: styling
   - name: test
-  - name: multi-jvm-test
+#  - name: multi-jvm-test
 
 jobs:
   include:
@@ -16,8 +16,9 @@ jobs:
     - stage: test
       script: sbt test
 
-    - stage: multi-jvm-test
-      script: sbt multi-jvm:test
+# TODO Super slow and flaky on Travis :/
+#    - stage: multi-jvm-test
+#      script: sbt multi-jvm:test
 
 cache:
   directories:
