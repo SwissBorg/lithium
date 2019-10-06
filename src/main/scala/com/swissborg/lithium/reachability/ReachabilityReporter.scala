@@ -14,8 +14,6 @@ import com.swissborg.lithium.implicits._
 import com.swissborg.lithium.internals._
 import com.swissborg.lithium.reporter.SplitBrainReporter._
 
-import scala.collection.immutable.SortedSet
-
 /**
   * Actor reporting the reachability status of cluster members based on `akka.cluster.Reachability`.
   *
@@ -90,8 +88,6 @@ private[lithium] class ReachabilityReporter(private val splitBrainReporter: Acto
     } else {
       StateT.modify(_.remove(node))
     }
-
-  private def members: F[SortedSet[Member]] = StateT.liftF(SyncIO(cluster.state.members))
 
   override def preStart(): Unit = {
     cluster.subscribe(self, classOf[MemberEvent])

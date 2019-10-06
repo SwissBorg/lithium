@@ -1,0 +1,28 @@
+language: scala
+
+scala:
+  - 2.12.10
+
+stages:
+  - name: styling
+  - name: test
+#  - name: multi-jvm-test
+
+jobs:
+  include:
+    - stage: styling
+      script: sbt scalafmtCheck test:scalafmtCheck multi-jvm:scalafmtCheck
+
+    - stage: test
+      script: sbt test
+
+# TODO Super slow and flaky on Travis :/
+#    - stage: multi-jvm-test
+#      script: sbt multi-jvm:test
+
+cache:
+  directories:
+    - $HOME/.m2
+    - $HOME/.ivy2/cache
+    - $HOME/.sbt
+    - $HOME/.coursier
