@@ -20,16 +20,12 @@ sealed abstract private[lithium] class Node extends Product with Serializable {
     */
   def copyMember(member: Member): Node
 
-  /**
-    * Apply `f` on the member.
-    */
-  def updateMember(f: Member => Member): Node = copyMember(f(member))
-
   // hashCode + equals overridden so that only the unique addresses
   // are taken in account. All the other parts represent the state
   // of the node. Without this the same node, in two different
   // states, would be seen as two different ones.
   override def hashCode: Int = member.hashCode()
+
   override def equals(other: Any): Boolean = other match {
     case n: Node ⇒ member.equals(n.member)
     case _       ⇒ false

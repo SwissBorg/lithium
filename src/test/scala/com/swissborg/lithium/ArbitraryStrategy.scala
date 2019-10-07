@@ -54,7 +54,7 @@ object ArbitraryStrategy {
       }
     }
 
-  implicit def keepMajorityArbitraryStrategy[F[_]: ApplicativeError[?[_], Throwable]]
+  implicit def keepMajorityArbitraryStrategy[F[_]: ApplicativeError[*[_], Throwable]]
       : ArbitraryStrategy[KeepMajority[F]] =
     new ArbitraryStrategy[KeepMajority[F]] {
       override def fromScenario(scenario: Scenario): Arbitrary[KeepMajority[F]] =
@@ -63,7 +63,7 @@ object ArbitraryStrategy {
         )
     }
 
-  implicit def keepOldestArbitraryStrategy[F[_]: ApplicativeError[?[_], Throwable]]: ArbitraryStrategy[KeepOldest[F]] =
+  implicit def keepOldestArbitraryStrategy[F[_]: ApplicativeError[*[_], Throwable]]: ArbitraryStrategy[KeepOldest[F]] =
     new ArbitraryStrategy[KeepOldest[F]] {
       override def fromScenario(scenario: Scenario): Arbitrary[KeepOldest[F]] = Arbitrary {
         for {
