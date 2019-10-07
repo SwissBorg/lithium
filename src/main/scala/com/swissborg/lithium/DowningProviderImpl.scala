@@ -11,6 +11,7 @@ import com.swissborg.lithium.resolver.SplitBrainResolver
 import com.swissborg.lithium.strategy.Strategy
 import com.swissborg.lithium.strategy.StrategyReader.UnknownStrategy
 import com.swissborg.lithium.strategy._
+import com.typesafe.scalalogging.LazyLogging
 import eu.timepit.refined.pureconfig._
 import pureconfig.generic.auto._
 
@@ -22,7 +23,8 @@ import scala.util.{Failure, Success, Try}
   *
   * @param system the current actor system.
   */
-class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
+class DowningProviderImpl(system: ActorSystem) extends DowningProvider with LazyLogging {
+
   import DowningProviderImpl._
 
   private val config = Config(system)
@@ -49,33 +51,53 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
       case `keepMajority` =>
         KeepMajority.Config
           .load(system.settings.config)
-          .map(c => sbResolver(new lithium.strategy.KeepMajority(c)))
+          .map { config =>
+            logStartup(keepMajority)
+            sbResolver(new lithium.strategy.KeepMajority(config))
+          }
 
       case `keepOldest` =>
         KeepOldest.Config
           .load(system.settings.config)
-          .map(c => sbResolver(new lithium.strategy.KeepOldest(c)))
+          .map { config =>
+            logStartup(keepOldest)
+            sbResolver(new lithium.strategy.KeepOldest(config))
+          }
 
       case `keepReferee` =>
         KeepReferee.Config
           .load(system.settings.config)
-          .map(c => sbResolver(new lithium.strategy.KeepReferee(c)))
+          .map { config =>
+            logStartup(keepReferee)
+            sbResolver(new lithium.strategy.KeepReferee(config))
+          }
 
       case `staticQuorum` =>
         StaticQuorum.Config
           .load(system.settings.config)
-          .map(c => sbResolver(new lithium.strategy.StaticQuorum(c)))
+          .map { config =>
+            logStartup(staticQuorum)
+            sbResolver(new lithium.strategy.StaticQuorum(config))
+          }
 
-      case `downAll` => sbResolver(new lithium.strategy.DownAll).asRight
+      case `downAll` =>
+        logStartup(downAll)
+        sbResolver(new lithium.strategy.DownAll).asRight
 
-      case unknownStrategy => UnknownStrategy(unknownStrategy).asLeft
+      case unknownStrategy =>
+        logger.error(s"'$unknownStrategy' is not a valid Lithium strategy.")
+        UnknownStrategy(unknownStrategy).asLeft
     }
 
     strategy.fold(throw _, Some(_))
   }
+
+  private def logStartup(strategyName: String): Unit =
+    logger.info(s"Starting Lithium with the $strategyName strategy.")
 }
 
 object DowningProviderImpl {
+
   sealed abstract case class Config(
       activeStrategy: String,
       stableAfter: FiniteDuration,
@@ -139,4 +161,5 @@ object DowningProviderImpl {
       new Config(activeStrategy, stableAfter, downAllWhenUnstable, trackIndirectlyConnectedNodes) {}
     }
   }
+
 }
