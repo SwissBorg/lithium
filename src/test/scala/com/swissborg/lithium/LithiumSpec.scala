@@ -51,5 +51,5 @@ trait LithiumSpec extends AnyWordSpecLike with Matchers with ScalaCheckPropertyC
       ev: Strat[F] <:< Strategy[F],
       M: Monoid[F[PostResolution]]
   ): Unit =
-    simulate[F, Union[?[_], Strat, IndirectlyConnected], WithNonCleanPartitions[S]](name)(run)
+    simulate[F, Union[*[_], Strat, IndirectlyConnected], WithNonCleanPartitions[S]](name)(run)
 }
