@@ -9,6 +9,13 @@ to manually down members so the leader can continue its duties. This
 library provides a few strategies that will automatically down members 
 without needing any intervention.
 
+## Getting started
+
+```scala
+resolvers += Resolver.bintrayRepo("swissborg", "maven")
+libraryDependencies += "com.swissborg" %% "lithium" % "0.9.5"
+```
+
 ## Stable-After
 The strategy is run only after the cluster has been stable for 
 a configured amount of time. The stability is affected by members changing
