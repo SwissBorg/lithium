@@ -3,6 +3,11 @@ import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 
 organization := "com.swissborg"
 name := "lithium"
+version := "0.9.5"
+
+bintrayOrganization := Some("swissborg")
+licenses += ("Apache-2.0", url("https://opensource.org/licenses/Apache-2.0"))
+
 
 scalaVersion := "2.12.10"
 
