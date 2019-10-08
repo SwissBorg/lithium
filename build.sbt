@@ -7,7 +7,7 @@ version := "0.9.5"
 
 bintrayOrganization := Some("swissborg")
 licenses += ("Apache-2.0", url("https://opensource.org/licenses/Apache-2.0"))
-
+bintrayReleaseOnPublish in ThisBuild := false
 
 scalaVersion := "2.12.10"
 
