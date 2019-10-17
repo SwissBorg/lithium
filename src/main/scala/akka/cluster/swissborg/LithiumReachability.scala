@@ -12,8 +12,8 @@ sealed abstract class LithiumReachability {
   def isReachable(node: UniqueAddress): Boolean
 
   /**
-    * Removes the records mentioning any of the `nodes`.
-    */
+   * Removes the records mentioning any of the `nodes`.
+   */
   def remove(nodes: Set[UniqueAddress]): LithiumReachability
 }
 
@@ -33,29 +33,30 @@ object LithiumReachability {
   }
 
   // Used for testing
-  def apply(
-      reachableNodes: Set[UniqueAddress],
-      observersGroupedByUnreachable0: Map[UniqueAddress, Set[UniqueAddress]]
-  ): LithiumReachability = new LithiumReachability {
-    override val observersGroupedByUnreachable: Map[UniqueAddress, Set[UniqueAddress]] = observersGroupedByUnreachable0
+  def apply(reachableNodes: Set[UniqueAddress],
+            observersGroupedByUnreachable0: Map[UniqueAddress, Set[UniqueAddress]]): LithiumReachability =
+    new LithiumReachability {
+      override val observersGroupedByUnreachable: Map[UniqueAddress, Set[UniqueAddress]] =
+        observersGroupedByUnreachable0
 
-    override lazy val allUnreachable: Set[UniqueAddress] = observersGroupedByUnreachable.keySet
+      override lazy val allUnreachable: Set[UniqueAddress] = observersGroupedByUnreachable.keySet
 
-    override lazy val allObservers: Set[UniqueAddress] = observersGroupedByUnreachable.values.flatten.toSet
+      override lazy val allObservers: Set[UniqueAddress] = observersGroupedByUnreachable.values.flatten.toSet
 
-    override def isReachable(node: UniqueAddress): Boolean = reachableNodes.contains(node)
+      override def isReachable(node: UniqueAddress): Boolean = reachableNodes.contains(node)
 
-    override def remove(nodes: Set[UniqueAddress]): LithiumReachability = LithiumReachability(
-      reachableNodes.diff(nodes),
-      observersGroupedByUnreachable.flatMap {
-        case (unreachable, observers) =>
-          if (nodes.contains(unreachable)) None
-          else {
-            val updateObservers = observers -- nodes
-            if (updateObservers.isEmpty) None
-            else Some((unreachable, updateObservers))
+      override def remove(nodes: Set[UniqueAddress]): LithiumReachability =
+        LithiumReachability(
+          reachableNodes.diff(nodes),
+          observersGroupedByUnreachable.flatMap {
+            case (unreachable, observers) =>
+              if (nodes.contains(unreachable)) None
+              else {
+                val updateObservers = observers -- nodes
+                if (updateObservers.isEmpty) None
+                else Some((unreachable, updateObservers))
+              }
           }
-      }
-    )
-  }
+        )
+    }
 }

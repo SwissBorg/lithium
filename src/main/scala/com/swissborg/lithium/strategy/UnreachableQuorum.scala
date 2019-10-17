@@ -13,11 +13,7 @@ sealed abstract private[lithium] class UnreachableQuorum
 
 private[lithium] object UnreachableQuorum {
 
-  def apply(
-      worldView: WorldView,
-      quorumSize: Int Refined Positive,
-      role: String
-  ): UnreachableQuorum = {
+  def apply(worldView: WorldView, quorumSize: Int Refined Positive, role: String): UnreachableQuorum = {
     val nbrOfConsideredUnreachableNodes = worldView.unreachableNodesWithRole(role).count { node =>
       node.status === Up || node.status === Leaving
     }

@@ -8,20 +8,20 @@ import com.swissborg.lithium.strategy._
 import scala.collection.SortedSet
 
 /**
-  * Represents the cluster after applying a strategy's decision.
-  */
+ * Represents the cluster after applying a strategy's decision.
+ */
 final case class PostResolution(
-    /**
-      * The nodes as seen by each partition.
-      */
-    partitions: List[SortedSet[Node]]
+  /**
+   * The nodes as seen by each partition.
+   */
+  partitions: List[SortedSet[Node]]
 ) {
 
   /**
-    * True if there are no non-reachable nodes in the cluster and
-    * that all the partitions have the same elements, aka the
-    * resolution did not create multiple clusters.
-    */
+   * True if there are no non-reachable nodes in the cluster and
+   * that all the partitions have the same elements, aka the
+   * resolution did not create multiple clusters.
+   */
   lazy val isResolved: Boolean = {
     val nonEmptyPartitions = partitions.filter(_.nonEmpty)
 

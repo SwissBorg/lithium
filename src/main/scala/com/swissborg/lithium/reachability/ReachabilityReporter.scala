@@ -15,10 +15,10 @@ import com.swissborg.lithium.internals._
 import com.swissborg.lithium.reporter.SplitBrainReporter._
 
 /**
-  * Actor reporting the reachability status of cluster members based on `akka.cluster.Reachability`.
-  *
-  * @param splitBrainReporter the actor to which the reachability events have to be sent.
-  */
+ * Actor reporting the reachability status of cluster members based on `akka.cluster.Reachability`.
+ *
+ * @param splitBrainReporter the actor to which the reachability events have to be sent.
+ */
 private[lithium] class ReachabilityReporter(private val splitBrainReporter: ActorRef)
     extends Actor
     with ActorLogging
@@ -36,9 +36,7 @@ private[lithium] class ReachabilityReporter(private val splitBrainReporter: Acto
   private def initializing: Receive = {
     case snapshot: CurrentClusterState =>
       unstashAll()
-      context.become(
-        active(ReachabilityReporterState.fromSnapshot(snapshot, cluster.selfDataCenter))
-      )
+      context.become(active(ReachabilityReporterState.fromSnapshot(snapshot, cluster.selfDataCenter)))
 
     case _ => stash()
   }
@@ -76,10 +74,10 @@ private[lithium] class ReachabilityReporter(private val splitBrainReporter: Acto
     StateT.liftF(SyncIO(splitBrainReporter ! reachabilityEvent))
 
   /**
-    * Register the node as removed.
-    *
-    * If the removed node is the current one the actor will stop itself.
-    */
+   * Register the node as removed.
+   *
+   * If the removed node is the current one the actor will stop itself.
+   */
   private def remove(node: UniqueAddress): F[Unit] =
     if (node === selfUniqueAddress) {
       // This node is being stopped. Kill the actor

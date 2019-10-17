@@ -22,19 +22,14 @@ object ArbitraryStrategy {
         val maybeNodes = scenario.worldViews.headOption.map(_.nodes)
 
         for {
-          referee <- Gen.oneOf(
-                      maybeNodes.fold(Arbitrary.arbitrary[Node]) { nodes =>
-                        chooseNum(0, nodes.length - 1).map(nodes.toNonEmptyList.toList.apply)
-                      },
-                      Arbitrary.arbitrary[Node]
-                    )
+          referee <- Gen.oneOf(maybeNodes.fold(Arbitrary.arbitrary[Node]) { nodes =>
+            chooseNum(0, nodes.length - 1).map(nodes.toNonEmptyList.toList.apply)
+          }, Arbitrary.arbitrary[Node])
 
           downIfLessThan <- chooseNum(1, maybeNodes.fold(1)(_.length))
         } yield new strategy.KeepReferee[F](
-          KeepReferee.Config(
-            refineV[SBAddress](referee.member.address.toString).right.get,
-            refineV[Positive](downIfLessThan).right.get
-          )
+          KeepReferee.Config(refineV[SBAddress](referee.member.address.toString).right.get,
+                             refineV[Positive](downIfLessThan).right.get)
         )
       }
     }
@@ -48,19 +43,15 @@ object ArbitraryStrategy {
         for {
           quorumSize <- chooseNum(minQuorumSize, clusterSize.value)
           role       <- arbitrary[String]
-        } yield new strategy.StaticQuorum(
-          StaticQuorum.Config(role, refineV[Positive](quorumSize).right.get)
-        )
+        } yield new strategy.StaticQuorum(StaticQuorum.Config(role, refineV[Positive](quorumSize).right.get))
       }
     }
 
   implicit def keepMajorityArbitraryStrategy[F[_]: ApplicativeError[*[_], Throwable]]
-      : ArbitraryStrategy[KeepMajority[F]] =
+    : ArbitraryStrategy[KeepMajority[F]] =
     new ArbitraryStrategy[KeepMajority[F]] {
       override def fromScenario(scenario: Scenario): Arbitrary[KeepMajority[F]] =
-        Arbitrary(
-          arbitrary[String].map(role => new strategy.KeepMajority(KeepMajority.Config(role)))
-        )
+        Arbitrary(arbitrary[String].map(role => new strategy.KeepMajority(KeepMajority.Config(role))))
     }
 
   implicit def keepOldestArbitraryStrategy[F[_]: ApplicativeError[*[_], Throwable]]: ArbitraryStrategy[KeepOldest[F]] =
@@ -87,10 +78,10 @@ object ArbitraryStrategy {
     }
 
   implicit def unionArbitraryStrategy[F[_]: Functor: Semigroupal, Strat1[_[_]], Strat2[_[_]]](
-      implicit ev1: Strat1[F] <:< Strategy[F],
-      ev2: Strat2[F] <:< Strategy[F],
-      arbStrat1: ArbitraryStrategy[Strat1[F]],
-      arbStrat2: ArbitraryStrategy[Strat2[F]]
+    implicit ev1: Strat1[F] <:< Strategy[F],
+    ev2: Strat2[F] <:< Strategy[F],
+    arbStrat1: ArbitraryStrategy[Strat1[F]],
+    arbStrat2: ArbitraryStrategy[Strat2[F]]
   ): ArbitraryStrategy[Union[F, Strat1, Strat2]] =
     new ArbitraryStrategy[Union[F, Strat1, Strat2]] {
       override def fromScenario(scenario: Scenario): Arbitrary[Union[F, Strat1, Strat2]] =

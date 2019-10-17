@@ -65,16 +65,13 @@ libraryDependencies ++= Seq(
 
 // Logging
 libraryDependencies ++= Seq(
-  "ch.qos.logback"             % "logback-classic" % logbackVersion,
-  "com.typesafe.scala-logging" %% "scala-logging"  % scalaLoggingVersion,
-  "com.typesafe.akka"          %% "akka-slf4j"     % akkaVersion
+  "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingVersion
 )
 
 // PureConfig
 libraryDependencies ++= Seq(
   "com.github.pureconfig" %% "pureconfig-core"    % pureConfigVersion,
-  "com.github.pureconfig" %% "pureconfig-generic" % pureConfigVersion,
-  "com.github.pureconfig" %% "pureconfig-macros"  % pureConfigVersion
+  "com.github.pureconfig" %% "pureconfig-generic" % pureConfigVersion
 )
 
 // Cats

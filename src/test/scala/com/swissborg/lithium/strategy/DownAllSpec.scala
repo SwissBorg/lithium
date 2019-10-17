@@ -19,30 +19,20 @@ class DownAllSpec extends LithiumSpec {
 
     simulate[Id, DownAll, CleanPartitionScenario]("handle clean partitions")(identity)
 
-    simulate[Id, DownAll, UpDisseminationScenario](
-      "handle a split during up-dissemination scenarios"
-    )(identity)
+    simulate[Id, DownAll, UpDisseminationScenario]("handle a split during up-dissemination scenarios")(identity)
 
-    simulate[Id, DownAll, OldestRemovedDisseminationScenario](
-      "handle a split during the oldest-removed scenarios"
-    )(identity)
-
-    simulateWithNonCleanPartitions[Id, DownAll, CleanPartitionScenario](
-      "handle non-clean partitions"
-    )(
+    simulate[Id, DownAll, OldestRemovedDisseminationScenario]("handle a split during the oldest-removed scenarios")(
       identity
     )
+
+    simulateWithNonCleanPartitions[Id, DownAll, CleanPartitionScenario]("handle non-clean partitions")(identity)
 
     simulateWithNonCleanPartitions[Id, DownAll, UpDisseminationScenario](
       "handle non-clean partitions during up-dissemination scenarios"
-    )(
-      identity
-    )
+    )(identity)
 
     simulateWithNonCleanPartitions[Id, DownAll, OldestRemovedDisseminationScenario](
       "handle non-clean partitions during oldest-removed scenarios"
-    )(
-      identity
-    )
+    )(identity)
   }
 }

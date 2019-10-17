@@ -15,7 +15,7 @@ class DecisionSpec extends LithiumSpec {
         Decision.DownUnreachable(worldView).nodesToDown should ===(worldView.unreachableNodes)
 
         Decision.DownIndirectlyConnected(worldView).nodesToDown should
-        ===(worldView.indirectlyConnectedNodes)
+          ===(worldView.indirectlyConnectedNodes)
       }
     }
 
@@ -48,9 +48,7 @@ class DecisionSpec extends LithiumSpec {
           decisions.flatMap(_.nodesToDown)(collection.breakOut)
 
         expectedNodesToDown should contain theSameElementsAs
-        decisions
-          .foldRight(Monoid[Decision].empty)(Monoid[Decision].combine)
-          .nodesToDown
+          decisions.foldRight(Monoid[Decision].empty)(Monoid[Decision].combine).nodesToDown
 
       }
     }

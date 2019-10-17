@@ -19,12 +19,12 @@ class KeepRefereeSpec6MultiJvmNode4 extends KeepRefereeSpec6
 class KeepRefereeSpec6MultiJvmNode5 extends KeepRefereeSpec6
 
 /**
-  * The link between node1 and node4 fails.
-  * The link between node3 and node5 fails.
-  *
-  * All nodes but node2 downs itself because they are indirectly connected.
-  * Node2 survives as it is the referee.
-  */
+ * The link between node1 and node4 fails.
+ * The link between node3 and node5 fails.
+ *
+ * All nodes but node2 downs itself because they are indirectly connected.
+ * Node2 survives as it is the referee.
+ */
 sealed abstract class KeepRefereeSpec6 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 6" in within(120 seconds) {

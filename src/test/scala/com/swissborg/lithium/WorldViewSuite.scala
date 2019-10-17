@@ -39,14 +39,10 @@ class WorldViewSuite extends WordSpec with Matchers {
     }
 
     "build from a snapshot" in {
-      val w = WorldView.fromSnapshot(
-        aa,
-        CurrentClusterState(
-          SortedSet(aa, bb, cc, dd, removed),
-          Set(dd),
-          seenBy = Set(aa.address, bb.address, cc.address)
-        )
-      )
+      val w = WorldView.fromSnapshot(aa,
+                                     CurrentClusterState(SortedSet(aa, bb, cc, dd, removed),
+                                                         Set(dd),
+                                                         seenBy = Set(aa.address, bb.address, cc.address)))
 
       w.reachableNodes.map(_.member) should ===(Set(aa, bb, cc))
       w.unreachableNodes.map(_.member) should ===(Set(dd))
@@ -56,12 +52,7 @@ class WorldViewSuite extends WordSpec with Matchers {
     "build from nodes" in {
       val w = WorldView.fromNodes(
         IndirectlyConnectedNode(aa),
-        SortedSet(
-          ReachableNode(bb),
-          IndirectlyConnectedNode(cc),
-          UnreachableNode(dd),
-          ReachableNode(removed)
-        )
+        SortedSet(ReachableNode(bb), IndirectlyConnectedNode(cc), UnreachableNode(dd), ReachableNode(removed))
       )
 
       w.reachableNodes.map(_.member) should ===(Set(bb))
@@ -70,11 +61,10 @@ class WorldViewSuite extends WordSpec with Matchers {
     }
 
     "correctly classify nodes from a snapshot" in {
-      val w = WorldView
-        .fromSnapshot(
-          aa,
-          CurrentClusterState(SortedSet(aa, bb, cc), Set(cc), seenBy = Set(aa.address, bb.address))
-        )
+      val w = WorldView.fromSnapshot(
+        aa,
+        CurrentClusterState(SortedSet(aa, bb, cc), Set(cc), seenBy = Set(aa.address, bb.address))
+      )
 
       w.reachableNodes.map(_.member) should ===(Set(aa, bb))
       w.unreachableNodes.map(_.member) should ===(Set(cc))
@@ -106,11 +96,7 @@ class WorldViewSuite extends WordSpec with Matchers {
     }
 
     "move a member from reachable to unreachable" in {
-      val w = WorldView
-        .fromSnapshot(
-          aa,
-          CurrentClusterState(SortedSet(aa, bb), seenBy = Set.empty)
-        )
+      val w = WorldView.fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb), seenBy = Set.empty))
 
       val w2 = w.withUnreachableNode(bb.uniqueAddress)
       w2.reachableNodes.map(_.member) should ===(Set(aa))
@@ -118,11 +104,7 @@ class WorldViewSuite extends WordSpec with Matchers {
     }
 
     "self member must not become unreachable" in {
-      val w = WorldView
-        .fromSnapshot(
-          aa,
-          CurrentClusterState(SortedSet(aa, bb), seenBy = Set.empty)
-        )
+      val w = WorldView.fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb), seenBy = Set.empty))
 
       val w1 = w.withUnreachableNode(aa.uniqueAddress)
       w1.reachableNodes.map(_.member) should ===(Set(aa, bb))
@@ -131,20 +113,14 @@ class WorldViewSuite extends WordSpec with Matchers {
 
     "move a member from unreachable to reachable" in {
       val w1 = WorldView
-        .fromSnapshot(
-          aa,
-          CurrentClusterState(SortedSet(aa, bb), Set(bb), seenBy = Set.empty)
-        )
+        .fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb), Set(bb), seenBy = Set.empty))
         .withReachableNode(bb.uniqueAddress)
 
       w1.reachableNodes.map(_.member) should ===(Set(aa, bb))
       w1.unreachableNodes.map(_.member) should ===(Set.empty)
 
       val w2 = WorldView
-        .fromSnapshot(
-          aa,
-          CurrentClusterState(SortedSet(aa, bb), Set(aa), seenBy = Set(aa.address, bb.address))
-        )
+        .fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb), Set(aa), seenBy = Set(aa.address, bb.address)))
         .withReachableNode(aa.uniqueAddress)
 
       w2.reachableNodes.map(_.member) should ===(Set(aa, bb))
@@ -152,11 +128,7 @@ class WorldViewSuite extends WordSpec with Matchers {
     }
 
     "move a member from reachable to indirectly connected" in {
-      val w = WorldView
-        .fromSnapshot(
-          aa,
-          CurrentClusterState(SortedSet(aa, bb), seenBy = Set(aa.address, bb.address))
-        )
+      val w = WorldView.fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb), seenBy = Set(aa.address, bb.address)))
 
       // todo should selfMember really become unreachable
       val w1 = w.withIndirectlyConnectedNode(aa.uniqueAddress)
@@ -169,11 +141,7 @@ class WorldViewSuite extends WordSpec with Matchers {
     }
 
     "move a member from indirectly connected to reachable" in {
-      val w = WorldView
-        .fromSnapshot(
-          aa,
-          CurrentClusterState(SortedSet(aa, bb), seenBy = Set(aa.address, bb.address))
-        )
+      val w = WorldView.fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb), seenBy = Set(aa.address, bb.address)))
 
       val w1 = w.withIndirectlyConnectedNode(aa.uniqueAddress).withReachableNode(aa.uniqueAddress)
       w1.reachableNodes.map(_.member) should ===(Set(aa, bb))
@@ -184,20 +152,14 @@ class WorldViewSuite extends WordSpec with Matchers {
 
     "move a member from unreachable to indirectly connected" in {
       val w1 = WorldView
-        .fromSnapshot(
-          aa,
-          CurrentClusterState(SortedSet(aa, bb), Set(bb), seenBy = Set(aa.address, bb.address))
-        )
+        .fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb), Set(bb), seenBy = Set(aa.address, bb.address)))
         .withIndirectlyConnectedNode(bb.uniqueAddress)
 
       w1.reachableNodes.map(_.member) should ===(Set(aa))
       w1.indirectlyConnectedNodes.map(_.member) should ===(Set(bb))
 
       val w2 = WorldView
-        .fromSnapshot(
-          aa,
-          CurrentClusterState(SortedSet(aa, bb), Set(aa), seenBy = Set(aa.address, bb.address))
-        )
+        .fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb), Set(aa), seenBy = Set(aa.address, bb.address)))
         .withIndirectlyConnectedNode(aa.uniqueAddress)
 
       w2.reachableNodes.map(_.member) should ===(Set(bb))
@@ -206,10 +168,7 @@ class WorldViewSuite extends WordSpec with Matchers {
 
     "move a member from indirectly connected to unreachable" in {
       val w1 = WorldView
-        .fromSnapshot(
-          aa,
-          CurrentClusterState(SortedSet(aa, bb), seenBy = Set.empty)
-        )
+        .fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb), seenBy = Set.empty))
         .withIndirectlyConnectedNode(bb.uniqueAddress)
         .withUnreachableNode(bb.uniqueAddress)
 
@@ -220,11 +179,7 @@ class WorldViewSuite extends WordSpec with Matchers {
     "remove an unreachable member" in {
       val w = WorldView.fromSnapshot(
         aa,
-        CurrentClusterState(
-          SortedSet(aa, bb, removed),
-          Set(removed),
-          seenBy = Set(aa.address, bb.address)
-        )
+        CurrentClusterState(SortedSet(aa, bb, removed), Set(removed), seenBy = Set(aa.address, bb.address))
       )
 
       val w1 = w.removeMember(removed)
@@ -234,11 +189,7 @@ class WorldViewSuite extends WordSpec with Matchers {
     "remove a reachable member" in {
       val w = WorldView.fromSnapshot(
         aa,
-        CurrentClusterState(
-          SortedSet(aa, removed, cc),
-          Set(cc),
-          seenBy = Set(aa.address, bb.address)
-        )
+        CurrentClusterState(SortedSet(aa, removed, cc), Set(cc), seenBy = Set(aa.address, bb.address))
       )
 
       val w1 = w.removeMember(removed)
@@ -247,14 +198,8 @@ class WorldViewSuite extends WordSpec with Matchers {
 
     "remove an indirectly connected member" in {
       val w = WorldView
-        .fromSnapshot(
-          aa,
-          CurrentClusterState(
-            SortedSet(aa, removed, cc),
-            Set(cc),
-            seenBy = Set(aa.address, bb.address)
-          )
-        )
+        .fromSnapshot(aa,
+                      CurrentClusterState(SortedSet(aa, removed, cc), Set(cc), seenBy = Set(aa.address, bb.address)))
         .withIndirectlyConnectedNode(removed.uniqueAddress)
 
       val w1 = w.removeMember(removed)
@@ -263,10 +208,7 @@ class WorldViewSuite extends WordSpec with Matchers {
 
     "remove an unknown member" in {
       val w = WorldView
-        .fromSnapshot(
-          aa,
-          CurrentClusterState(SortedSet(aa, bb), seenBy = Set(aa.address, bb.address))
-        )
+        .fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb), seenBy = Set(aa.address, bb.address)))
         .removeMember(removed)
 
       w.members should ===(Set(aa, bb))
@@ -274,33 +216,23 @@ class WorldViewSuite extends WordSpec with Matchers {
 
     "update self" in {
       val w = WorldView
-        .fromSnapshot(
-          aa,
-          CurrentClusterState(SortedSet(aa, bb), seenBy = Set(aa.address, bb.address))
-        )
+        .fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb), seenBy = Set(aa.address, bb.address)))
         .addOrUpdate(aa.copy(Leaving))
 
       w.selfStatus should ===(Status(aa.copy(Leaving), ReachabilityStatus.Reachable))
     }
 
     "get the latest state of selfMember from the snapshot" in {
-      val w = WorldView.fromSnapshot(
-        aa0,
-        CurrentClusterState(
-          SortedSet(aa, bb, cc, dd, removed),
-          Set(dd),
-          seenBy = Set(aa.address, bb.address, cc.address)
-        )
-      )
+      val w = WorldView.fromSnapshot(aa0,
+                                     CurrentClusterState(SortedSet(aa, bb, cc, dd, removed),
+                                                         Set(dd),
+                                                         seenBy = Set(aa.address, bb.address, cc.address)))
 
       w.selfStatus.member.status should ===(aa.status)
     }
 
     "use the provided selfMember if not in the snapshot" in {
-      val w = WorldView.fromSnapshot(
-        aa0,
-        CurrentClusterState(SortedSet(bb, cc, dd, removed), Set(dd))
-      )
+      val w = WorldView.fromSnapshot(aa0, CurrentClusterState(SortedSet(bb, cc, dd, removed), Set(dd)))
 
       w.selfStatus.member.status should ===(aa0.status)
     }

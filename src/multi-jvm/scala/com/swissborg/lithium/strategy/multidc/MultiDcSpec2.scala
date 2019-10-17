@@ -21,9 +21,9 @@ class MultiDcSpec2MultiJvmNode9  extends MultiDcSpec2
 class MultiDcSpec2MultiJvmNode10 extends MultiDcSpec2
 
 /**
-  * Tests that the network partition between node1-2 and node3 is resolved and
-  * the one between node4 and node5 but nothing cross-dc.
-  */
+ * Tests that the network partition between node1-2 and node3 is resolved and
+ * the one between node4 and node5 but nothing cross-dc.
+ */
 sealed abstract class MultiDcSpec2 extends TenNodeSpec("MultiDc", MultiDcSpecConfig) {
   override def assertions(): Unit =
     "handle scenario 2" in within(120 seconds) {

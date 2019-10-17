@@ -15,11 +15,11 @@ class KeepRefereeSpec4MultiJvmNode4 extends KeepRefereeSpec4
 class KeepRefereeSpec4MultiJvmNode5 extends KeepRefereeSpec4
 
 /**
-  * Node4 and node5 are indirectly connected in a five node cluster
-  *
-  * Node4 and node5 should down themselves as they are indirectly connected.
-  * The three other nodes survive as they can reach the referee.
-  */
+ * Node4 and node5 are indirectly connected in a five node cluster
+ *
+ * Node4 and node5 should down themselves as they are indirectly connected.
+ * The three other nodes survive as they can reach the referee.
+ */
 sealed abstract class KeepRefereeSpec4 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 4" in within(120 seconds) {

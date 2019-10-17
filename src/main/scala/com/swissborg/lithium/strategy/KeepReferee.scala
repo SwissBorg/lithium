@@ -11,13 +11,13 @@ import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric._
 
 /**
-  * Split-brain strategy that will keep the partition containing the referee (`config.address`)
-  * and down all the other partitions.
-  * If the remaining partition has less than `config.downAllIfLessThanNodes` the cluster will
-  * be downed.
-  *
-  * This strategy is useful when the cluster has a node that is critical to its operation.
-  */
+ * Split-brain strategy that will keep the partition containing the referee (`config.address`)
+ * and down all the other partitions.
+ * If the remaining partition has less than `config.downAllIfLessThanNodes` the cluster will
+ * be downed.
+ *
+ * This strategy is useful when the cluster has a node that is critical to its operation.
+ */
 private[lithium] class KeepReferee[F[_]: Applicative](config: KeepReferee.Config) extends Strategy[F] {
 
   import config._
@@ -43,16 +43,13 @@ private[lithium] class KeepReferee[F[_]: Applicative](config: KeepReferee.Config
 private[lithium] object KeepReferee {
 
   /**
-    * [[KeepReferee]] config.
-    *
-    * @param referee                the address of the referee.
-    * @param downAllIfLessThanNodes the minimum number of nodes that should be remaining in the cluster.
-    *                               Else the cluster gets downed.
-    */
-  final case class Config(
-      referee: String Refined SBAddress,
-      downAllIfLessThanNodes: Int Refined Positive
-  )
+   * [[KeepReferee]] config.
+   *
+   * @param referee                the address of the referee.
+   * @param downAllIfLessThanNodes the minimum number of nodes that should be remaining in the cluster.
+   *                               Else the cluster gets downed.
+   */
+  final case class Config(referee: String Refined SBAddress, downAllIfLessThanNodes: Int Refined Positive)
 
   object Config extends StrategyReader[Config] {
     override val name: String = "keep-referee"

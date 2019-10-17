@@ -11,16 +11,16 @@ import monocle.Getter
 import scala.collection.immutable.SortedSet
 
 /**
-  * Represents the strategy that needs to be taken
-  * to resolve a potential split-brain issue.
-  */
+ * Represents the strategy that needs to be taken
+ * to resolve a potential split-brain issue.
+ */
 sealed abstract private[lithium] class Decision extends Product with Serializable
 
 private[lithium] object Decision {
 
   /**
-    * Decision to down the reachable nodes.
-    */
+   * Decision to down the reachable nodes.
+   */
   sealed abstract case class DownReachable(nodesToDown: SortedSet[ReachableNode]) extends Decision
 
   object DownReachable {
@@ -29,9 +29,7 @@ private[lithium] object Decision {
       new DownReachable(worldView.reachableNodes) {}
   }
 
-  sealed abstract case class DownIndirectlyConnected(
-      nodesToDown: SortedSet[IndirectlyConnectedNode]
-  ) extends Decision
+  sealed abstract case class DownIndirectlyConnected(nodesToDown: SortedSet[IndirectlyConnectedNode]) extends Decision
 
   object DownIndirectlyConnected {
 
@@ -40,8 +38,8 @@ private[lithium] object Decision {
   }
 
   /**
-    * The unreachable nodes that should be downed.
-    */
+   * The unreachable nodes that should be downed.
+   */
   sealed abstract case class DownUnreachable(nodesToDown: SortedSet[UnreachableNode]) extends Decision
 
   object DownUnreachable {
@@ -62,11 +60,9 @@ private[lithium] object Decision {
 
   case object Idle extends Decision
 
-  final case class SimpleStrategyDecision(
-      downReachable: List[SimpleMember],
-      downIndirectlyConnected: List[SimpleMember],
-      downUnreachable: List[SimpleMember]
-  )
+  final case class SimpleStrategyDecision(downReachable: List[SimpleMember],
+                                          downIndirectlyConnected: List[SimpleMember],
+                                          downUnreachable: List[SimpleMember])
 
   object SimpleStrategyDecision {
     val empty: SimpleStrategyDecision = SimpleStrategyDecision(List.empty, List.empty, List.empty)
@@ -75,8 +71,8 @@ private[lithium] object Decision {
   }
 
   /**
-    * Get the nodes to down given the strategy decision.
-    */
+   * Get the nodes to down given the strategy decision.
+   */
   val nodesToDown: Getter[Decision, SortedSet[Node]] =
     Getter[Decision, SortedSet[Node]] {
       case DownThese(decision1, decision2)      => decision1.nodesToDown ++ decision2.nodesToDown
@@ -91,9 +87,9 @@ private[lithium] object Decision {
     def nodesToDown: SortedSet[Node] = Decision.nodesToDown.get(decision)
 
     /**
-      * The strategy decision with the leafs without nodes to to
-      * down recursively replaced by idle.
-      */
+     * The strategy decision with the leafs without nodes to to
+     * down recursively replaced by idle.
+     */
     def simplify: Decision =
       if (decision.nodesToDown.isEmpty) Idle
       else {
@@ -113,20 +109,15 @@ private[lithium] object Decision {
         case (decision, node) =>
           node match {
             case ReachableNode(member) =>
-              decision.copy(
-                downReachable = SimpleMember.fromMember(member) :: decision.downReachable
-              )
+              decision.copy(downReachable = SimpleMember.fromMember(member) :: decision.downReachable)
 
             case IndirectlyConnectedNode(member) =>
               decision.copy(
-                downIndirectlyConnected = SimpleMember
-                    .fromMember(member) :: decision.downIndirectlyConnected
+                downIndirectlyConnected = SimpleMember.fromMember(member) :: decision.downIndirectlyConnected
               )
 
             case UnreachableNode(member) =>
-              decision.copy(
-                downUnreachable = SimpleMember.fromMember(member) :: decision.downUnreachable
-              )
+              decision.copy(downUnreachable = SimpleMember.fromMember(member) :: decision.downUnreachable)
           }
       }
   }
@@ -142,8 +133,8 @@ private[lithium] object Decision {
     DownIndirectlyConnected(worldView)
 
   /**
-    * Monoid combining decisions by yielding new one that is a union of both.
-    */
+   * Monoid combining decisions by yielding new one that is a union of both.
+   */
   implicit val strategyDecisionMonoid: Monoid[Decision] = new Monoid[Decision] {
     override def empty: Decision = Idle
 

@@ -16,17 +16,17 @@ class KeepRefereeSpec2MultiJvmNode4 extends KeepRefereeSpec2
 class KeepRefereeSpec2MultiJvmNode5 extends KeepRefereeSpec2
 
 /**
-  * Creates the partitions:
-  *   (1) node1, node2
-  *   (2) node3
-  *   (3) node4
-  *   (4) node5
-  *
-  * (1) should survive as it contains the referee.
-  * (2) should down itself as it does not contain the referee.
-  * (3) should down itself as it does not contain the referee.
-  * (4) should down itself as it does not contain the referee.
-  */
+ * Creates the partitions:
+ *   (1) node1, node2
+ *   (2) node3
+ *   (3) node4
+ *   (4) node5
+ *
+ * (1) should survive as it contains the referee.
+ * (2) should down itself as it does not contain the referee.
+ * (3) should down itself as it does not contain the referee.
+ * (4) should down itself as it does not contain the referee.
+ */
 sealed abstract class KeepRefereeSpec2 extends FiveNodeSpec("KeepReferee", KeepRefereeSpecFiveNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 2" in within(60 seconds) {

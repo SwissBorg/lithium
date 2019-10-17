@@ -15,12 +15,12 @@ class KeepMajoritySpec6MultiJvmNode4 extends KeepMajoritySpec6
 class KeepMajoritySpec6MultiJvmNode5 extends KeepMajoritySpec6
 
 /**
-  * The link between node2 and node4 fails.
-  * The link between node3 and node5 fails.
-  *
-  * All nodes but node1 downs itself because they are indirectly connected.
-  * Node1 survives as it is a majority (only node left).
-  */
+ * The link between node2 and node4 fails.
+ * The link between node3 and node5 fails.
+ *
+ * All nodes but node1 downs itself because they are indirectly connected.
+ * Node1 survives as it is a majority (only node left).
+ */
 sealed abstract class KeepMajoritySpec6 extends FiveNodeSpec("KeepMajority", KeepMajoritySpecFiveNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 6" in within(120 seconds) {

@@ -20,9 +20,9 @@ class KeepRefereeSpec8MultiJvmNode9  extends KeepRefereeSpec8
 class KeepRefereeSpec8MultiJvmNode10 extends KeepRefereeSpec8
 
 /**
-  * Node3 and node4 are indirectly connected in a ten node cluster
-  * Node9 and node10 are indirectly connected in a ten node cluster
-  */
+ * Node3 and node4 are indirectly connected in a ten node cluster
+ * Node9 and node10 are indirectly connected in a ten node cluster
+ */
 sealed abstract class KeepRefereeSpec8 extends TenNodeSpec("KeepReferee", KeepRefereeSpecTenNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 8" in within(120 seconds) {

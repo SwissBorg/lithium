@@ -7,8 +7,8 @@ object TestUtil {
   def linksToKillForPartitions(partitions: List[List[RoleName]]): List[(RoleName, RoleName)] = {
     @scala.annotation.tailrec
     def go(
-        partitions: List[List[RoleName]],
-        links: List[(RoleName, RoleName)]
+      partitions: List[List[RoleName]],
+      links: List[(RoleName, RoleName)]
     ): List[(RoleName, RoleName)] =
       partitions match {
         case Nil      => links
