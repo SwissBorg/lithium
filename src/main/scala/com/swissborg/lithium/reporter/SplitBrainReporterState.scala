@@ -7,10 +7,10 @@ import akka.cluster.{Member, MemberStatus, UniqueAddress}
 import com.swissborg.lithium.WorldView
 
 /**
-  * State of the [[SplitBrainReporter]].
-  *
-  * @param worldView the view of the cluster from the current cluster node.
-  */
+ * State of the [[SplitBrainReporter]].
+ *
+ * @param worldView the view of the cluster from the current cluster node.
+ */
 final private[reporter] case class SplitBrainReporterState(worldView: WorldView) {
 
   def updatedMember(m: Member): SplitBrainReporterState =
@@ -20,20 +20,20 @@ final private[reporter] case class SplitBrainReporterState(worldView: WorldView)
     }
 
   /**
-    * Set the node as reachable.
-    */
+   * Set the node as reachable.
+   */
   def withReachableNode(node: UniqueAddress): SplitBrainReporterState =
     copy(worldView = worldView.withReachableNode(node))
 
   /**
-    * Set the node as unreachable.
-    */
+   * Set the node as unreachable.
+   */
   def withUnreachableNode(node: UniqueAddress): SplitBrainReporterState =
     copy(worldView = worldView.withUnreachableNode(node))
 
   /**
-    * Set the node as indirectly connected.
-    */
+   * Set the node as indirectly connected.
+   */
   def withIndirectlyConnectedNode(node: UniqueAddress): SplitBrainReporterState =
     copy(worldView = worldView.withIndirectlyConnectedNode(node))
 }

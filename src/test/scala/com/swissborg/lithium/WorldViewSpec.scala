@@ -9,9 +9,7 @@ class WorldViewSpec extends LithiumSpec {
   "WorldView" must {
     "not have a node simultaneously reachable and unreachable" in {
       forAll { worldView: WorldView =>
-        worldView.reachableNodes
-          .map(_.member)
-          .intersect(worldView.unreachableNodes.map(_.member)) shouldBe empty
+        worldView.reachableNodes.map(_.member).intersect(worldView.unreachableNodes.map(_.member)) shouldBe empty
       }
     }
 
@@ -37,9 +35,7 @@ class WorldViewSpec extends LithiumSpec {
     "change with reachability events" in {
       forAll { (worldView: WorldView, member: Member) =>
         val w = worldView.addOrUpdate(member)
-        w.withReachableNode(member.uniqueAddress)
-          .nodes
-          .contains(ReachableNode(member)) shouldBe true
+        w.withReachableNode(member.uniqueAddress).nodes.contains(ReachableNode(member)) shouldBe true
         w.withIndirectlyConnectedNode(member.uniqueAddress)
           .nodes
           .contains(IndirectlyConnectedNode(member)) shouldBe true
@@ -66,19 +62,13 @@ class WorldViewSpec extends LithiumSpec {
 
     "get the non-indirectly-connected nodes" in {
       forAll { worldView: WorldView =>
-        assert(
-          worldView.nonICNodes.forall(
-            (worldView.reachableNodes ++ worldView.unreachableNodes).contains
-          )
-        )
+        assert(worldView.nonICNodes.forall((worldView.reachableNodes ++ worldView.unreachableNodes).contains))
       }
     }
 
     "get the indirectly-connected nodes" in {
       forAll { worldView: WorldView =>
-        assert(
-          worldView.indirectlyConnectedNodes.forall(worldView.nodes.contains)
-        )
+        assert(worldView.indirectlyConnectedNodes.forall(worldView.nodes.contains))
       }
     }
 
@@ -87,11 +77,7 @@ class WorldViewSpec extends LithiumSpec {
         if (role.isEmpty)
           worldView.nonICNodesWithRole(role) should ===(worldView.nonICNodes)
         else
-          assert(
-            worldView
-              .nonICNodesWithRole(role)
-              .forall(worldView.nonICNodes.contains)
-          )
+          assert(worldView.nonICNodesWithRole(role).forall(worldView.nonICNodes.contains))
 
         worldView.nonICNodesWithRole(role) should ===(
           worldView.reachableNodesWithRole(role) ++ worldView.unreachableNodesWithRole(role)
@@ -102,15 +88,9 @@ class WorldViewSpec extends LithiumSpec {
     "get the considered reachable nodes with a role" in {
       forAll { (worldView: WorldView, role: String) =>
         if (role.isEmpty)
-          worldView.reachableNodesWithRole(role).map(_.member) should ===(
-            worldView.reachableNodes.map(_.member)
-          )
+          worldView.reachableNodesWithRole(role).map(_.member) should ===(worldView.reachableNodes.map(_.member))
         else
-          assert(
-            worldView
-              .reachableNodesWithRole(role)
-              .forall(worldView.reachableNodes.contains)
-          )
+          assert(worldView.reachableNodesWithRole(role).forall(worldView.reachableNodes.contains))
       }
     }
 
@@ -121,11 +101,7 @@ class WorldViewSpec extends LithiumSpec {
             worldView.indirectlyConnectedNodes.map(_.member)
           )
         else
-          assert(
-            worldView
-              .indirectlyConnectedNodesWithRole(role)
-              .forall(worldView.indirectlyConnectedNodes.contains)
-          )
+          assert(worldView.indirectlyConnectedNodesWithRole(role).forall(worldView.indirectlyConnectedNodes.contains))
       }
     }
 

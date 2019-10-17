@@ -13,11 +13,7 @@ sealed abstract private[lithium] class ReachableQuorum extends Product with Seri
 
 private[lithium] object ReachableQuorum {
 
-  def apply(
-      worldView: WorldView,
-      quorumSize: Int Refined Positive,
-      role: String
-  ): ReachableQuorum = {
+  def apply(worldView: WorldView, quorumSize: Int Refined Positive, role: String): ReachableQuorum = {
     val nbrOfConsideredReachableNodes = worldView.reachableNodesWithRole(role).count { node =>
       node.status === Up || node.status === Leaving
     }

@@ -169,13 +169,9 @@ class ReachabilityReporterStateSuite extends WordSpec with Matchers {
 
       val events = getEvents
         .runA(
-          ReachabilityReporterState.fromSnapshot(
-            CurrentClusterState(
-              members = SortedSet(aaMember, bbMember, ccMember),
-              seenBy = Set(aa.address, cc.address)
-            ),
-            defaultDc
-          )
+          ReachabilityReporterState.fromSnapshot(CurrentClusterState(members = SortedSet(aaMember, bbMember, ccMember),
+                                                                     seenBy = Set(aa.address, cc.address)),
+                                                 defaultDc)
         )
         .value
 
@@ -191,19 +187,15 @@ class ReachabilityReporterStateSuite extends WordSpec with Matchers {
         _ <- ReachabilityReporterState.withSeenBy(Set(aa.address, cc.address))
         _ <- ReachabilityReporterState.withReachability(LithiumReachability(Set(aa), Map(cc -> Set(aa))))
         events <- ReachabilityReporterState.withReachability(
-                   LithiumReachability(Set(aa), Map(bb -> Set(aa), cc -> Set(aa)))
-                 )
+          LithiumReachability(Set(aa), Map(bb -> Set(aa), cc -> Set(aa)))
+        )
       } yield events
 
       val events = getEvents
         .runA(
-          ReachabilityReporterState.fromSnapshot(
-            CurrentClusterState(
-              members = SortedSet(aaMember, bbMember, ccMember),
-              seenBy = Set(aa.address, cc.address)
-            ),
-            defaultDc
-          )
+          ReachabilityReporterState.fromSnapshot(CurrentClusterState(members = SortedSet(aaMember, bbMember, ccMember),
+                                                                     seenBy = Set(aa.address, cc.address)),
+                                                 defaultDc)
         )
         .value
 

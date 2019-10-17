@@ -24,32 +24,19 @@ class KeepRefereeSuite extends AnyWordSpecLike with Matchers {
 
   "KeepReferee" must {
     "down the unreachable nodes when being the referee node and reaching enough nodes" in {
-      val w = WorldView.fromSnapshot(
-        aa,
-        CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty)
-      )
+      val w = WorldView.fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty))
 
-      new KeepReferee[Id](KeepReferee.Config(referee, 1)).takeDecision(w) should ===(
-        Decision.DownUnreachable(w)
-      )
+      new KeepReferee[Id](KeepReferee.Config(referee, 1)).takeDecision(w) should ===(Decision.DownUnreachable(w))
     }
 
     "down the reachable nodes when being the referee and not reaching enough nodes" in {
-      val w = WorldView.fromSnapshot(
-        aa,
-        CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty)
-      )
+      val w = WorldView.fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty))
 
-      new strategy.KeepReferee[Id](KeepReferee.Config(referee, 3)).takeDecision(w) should ===(
-        Decision.DownReachable(w)
-      )
+      new strategy.KeepReferee[Id](KeepReferee.Config(referee, 3)).takeDecision(w) should ===(Decision.DownReachable(w))
     }
 
     "down the unreachable nodes when the referee is reachable and reaching enough nodes" in {
-      val w = WorldView.fromSnapshot(
-        cc,
-        CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty)
-      )
+      val w = WorldView.fromSnapshot(cc, CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty))
 
       new strategy.KeepReferee[Id](KeepReferee.Config(referee, 1)).takeDecision(w) should ===(
         Decision.DownUnreachable(w)
@@ -57,29 +44,17 @@ class KeepRefereeSuite extends AnyWordSpecLike with Matchers {
     }
 
     "down the reachable nodes when the referee is reachable and not reaching enough nodes" in {
-      val w = WorldView.fromSnapshot(
-        cc,
-        CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty)
-      )
+      val w = WorldView.fromSnapshot(cc, CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty))
 
-      new strategy.KeepReferee[Id](KeepReferee.Config(referee, 3)).takeDecision(w) should ===(
-        Decision.DownReachable(w)
-      )
+      new strategy.KeepReferee[Id](KeepReferee.Config(referee, 3)).takeDecision(w) should ===(Decision.DownReachable(w))
     }
 
     "down the reachable nodes when the referee is unreachable" in {
-      val w = WorldView.fromSnapshot(
-        bb,
-        CurrentClusterState(SortedSet(aa, bb, cc), Set(aa), seenBy = Set.empty)
-      )
+      val w = WorldView.fromSnapshot(bb, CurrentClusterState(SortedSet(aa, bb, cc), Set(aa), seenBy = Set.empty))
 
-      new strategy.KeepReferee[Id](KeepReferee.Config(referee, 1)).takeDecision(w) should ===(
-        Decision.DownReachable(w)
-      )
+      new strategy.KeepReferee[Id](KeepReferee.Config(referee, 1)).takeDecision(w) should ===(Decision.DownReachable(w))
 
-      new strategy.KeepReferee[Id](KeepReferee.Config(referee, 3)).takeDecision(w) should ===(
-        Decision.DownReachable(w)
-      )
+      new strategy.KeepReferee[Id](KeepReferee.Config(referee, 3)).takeDecision(w) should ===(Decision.DownReachable(w))
     }
 
     "compile for valid addresses" in {

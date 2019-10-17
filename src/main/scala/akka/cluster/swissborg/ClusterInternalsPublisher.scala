@@ -5,9 +5,9 @@ import akka.cluster.ClusterEvent.{ReachabilityChanged, SeenChanged}
 import com.swissborg.lithium.internals._
 
 /**
-  * Actor making the [[SeenChanged]] and [[ReachabilityChanged]] event streams
-  * accessible from outside the `akka.cluster` namespace.
-  */
+ * Actor making the [[SeenChanged]] and [[ReachabilityChanged]] event streams
+ * accessible from outside the `akka.cluster` namespace.
+ */
 class ClusterInternalsPublisher extends Actor {
 
   @SuppressWarnings(Array("org.wartremover.warts.Any"))

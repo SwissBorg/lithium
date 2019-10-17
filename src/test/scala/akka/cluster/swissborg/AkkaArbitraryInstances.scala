@@ -9,8 +9,8 @@ import shapeless.tag
 import shapeless.tag.@@
 
 /**
-  * Arbitrary instances that can only be generated from within the `akka.cluster` namespace.
-  */
+ * Arbitrary instances that can only be generated from within the `akka.cluster` namespace.
+ */
 object AkkaArbitraryInstances {
   sealed trait JoiningTag
   type JoiningMember = Member @@ JoiningTag
@@ -21,28 +21,24 @@ object AkkaArbitraryInstances {
     } yield tag[JoiningTag][Member](Member(uniqueAddress, Set("dc-datacenter")))
   }
 
-  implicit val arbRootActorPath: Arbitrary[RootActorPath] = Arbitrary(
-    arbitrary[Address].map(RootActorPath(_))
-  )
+  implicit val arbRootActorPath: Arbitrary[RootActorPath] = Arbitrary(arbitrary[Address].map(RootActorPath(_)))
 
-  def arbChildActorPath(parent: ActorPath): Arbitrary[ChildActorPath] = Arbitrary(
-    for {
+  def arbChildActorPath(parent: ActorPath): Arbitrary[ChildActorPath] =
+    Arbitrary(for {
       c  <- Gen.alphaChar
       cs <- Gen.alphaStr
       name = s"$c$cs"
-    } yield new ChildActorPath(parent, name)
-  )
+    } yield new ChildActorPath(parent, name))
 
-  def arbActorPath(depth: Int, parent: ActorPath): Arbitrary[ActorPath] = Arbitrary(
-    if (depth <= 0) Gen.const(parent)
-    else arbChildActorPath(parent).arbitrary.flatMap(arbActorPath(depth - 1, _).arbitrary)
-  )
+  def arbActorPath(depth: Int, parent: ActorPath): Arbitrary[ActorPath] =
+    Arbitrary(
+      if (depth <= 0) Gen.const(parent)
+      else arbChildActorPath(parent).arbitrary.flatMap(arbActorPath(depth - 1, _).arbitrary)
+    )
 
-  implicit val arbActorPath0: Arbitrary[ActorPath] = Arbitrary(
-    for {
-      depth  <- Gen.chooseNum(0, 10)
-      parent <- arbitrary[RootActorPath]
-      path   <- arbActorPath(depth, parent).arbitrary
-    } yield path
-  )
+  implicit val arbActorPath0: Arbitrary[ActorPath] = Arbitrary(for {
+    depth  <- Gen.chooseNum(0, 10)
+    parent <- arbitrary[RootActorPath]
+    path   <- arbActorPath(depth, parent).arbitrary
+  } yield path)
 }

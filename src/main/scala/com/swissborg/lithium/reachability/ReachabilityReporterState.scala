@@ -16,18 +16,18 @@ import com.swissborg.lithium.reporter.SplitBrainReporter._
 import scala.collection.immutable.SortedSet
 
 /**
-  * State of the `ReachabilityReporter`.
-  */
+ * State of the `ReachabilityReporter`.
+ */
 final private[reachability] case class ReachabilityReporterState private (
-    selfDataCenter: DataCenter,
-    members: SortedSet[Member],
-    otherDcMembers: SortedSet[UniqueAddress],
-    latestReachability: Option[LithiumReachability],
-    latestSeenBy: Option[Set[Address]],
-    latestReceived: Option[LatestReceived],
-    latestIndirectlyConnectedNodes: Set[UniqueAddress],
-    latestUnreachableNodes: Set[UniqueAddress],
-    latestReachableNodes: Set[UniqueAddress]
+  selfDataCenter: DataCenter,
+  members: SortedSet[Member],
+  otherDcMembers: SortedSet[UniqueAddress],
+  latestReachability: Option[LithiumReachability],
+  latestSeenBy: Option[Set[Address]],
+  latestReceived: Option[LatestReceived],
+  latestIndirectlyConnectedNodes: Set[UniqueAddress],
+  latestUnreachableNodes: Set[UniqueAddress],
+  latestReachableNodes: Set[UniqueAddress]
 ) {
   private[reachability] def withMember(member: Member): ReachabilityReporterState =
     if (member.dataCenter === selfDataCenter) {
@@ -37,8 +37,8 @@ final private[reachability] case class ReachabilityReporterState private (
     }
 
   /**
-    * Remove the node.
-    */
+   * Remove the node.
+   */
   private[reachability] def remove(node: UniqueAddress): ReachabilityReporterState =
     copy(
       members = members.filterNot(m => m.uniqueAddress === node),
@@ -62,22 +62,17 @@ private[reachability] object ReachabilityReporterState {
   }
 
   def apply(selfDataCenter: DataCenter): ReachabilityReporterState =
-    ReachabilityReporterState(
-      selfDataCenter,
-      SortedSet.empty,
-      SortedSet.empty,
-      None,
-      None,
-      None,
-      Set.empty,
-      Set.empty,
-      Set.empty
-    )
+    ReachabilityReporterState(selfDataCenter,
+                              SortedSet.empty,
+                              SortedSet.empty,
+                              None,
+                              None,
+                              None,
+                              Set.empty,
+                              Set.empty,
+                              Set.empty)
 
-  def fromSnapshot(
-      snapshot: CurrentClusterState,
-      selfDataCenter: DataCenter
-  ): ReachabilityReporterState =
+  def fromSnapshot(snapshot: CurrentClusterState, selfDataCenter: DataCenter): ReachabilityReporterState =
     snapshot.members.foldLeft(ReachabilityReporterState(selfDataCenter))(_.withMember(_))
 
   def withSeenBy(seenBy: Set[Address]): State[ReachabilityReporterState, List[NodeReachabilityEvent]] =
@@ -94,7 +89,7 @@ private[reachability] object ReachabilityReporterState {
       .modify(_.copy(latestSeenBy = Some(seenBy), latestReceived = Some(LatestReceived.SeenBy)))
 
   def withReachability(
-      reachability: LithiumReachability
+    reachability: LithiumReachability
   ): State[ReachabilityReporterState, List[NodeReachabilityEvent]] =
     State
       .get[ReachabilityReporterState]
@@ -108,9 +103,9 @@ private[reachability] object ReachabilityReporterState {
   private val ignore = State.empty[ReachabilityReporterState, List[NodeReachabilityEvent]]
 
   private def updatedReachabilityEvents(
-      reachability: LithiumReachability,
-      seenBy: Set[Address],
-      members: SortedSet[Member]
+    reachability: LithiumReachability,
+    seenBy: Set[Address],
+    members: SortedSet[Member]
   ): State[ReachabilityReporterState, List[NodeReachabilityEvent]] = State { s =>
     // Only keep reachability information made by members and of members
     // in this data-center.
@@ -144,14 +139,12 @@ private[reachability] object ReachabilityReporterState {
 
     val updatedReachabilityEvents =
       newIndirectlyConnectedNodes.toList.map(NodeIndirectlyConnected) ++
-      newUnreachableNodes.toList.map(NodeUnreachable) ++
-      newReachableNodes.toList.map(NodeReachable)
+        newUnreachableNodes.toList.map(NodeUnreachable) ++
+        newReachableNodes.toList.map(NodeReachable)
 
-    val updatedState = s.copy(
-      latestIndirectlyConnectedNodes = indirectlyConnectedNodes,
-      latestUnreachableNodes = unreachableNodes,
-      latestReachableNodes = reachableNodes
-    )
+    val updatedState = s.copy(latestIndirectlyConnectedNodes = indirectlyConnectedNodes,
+                              latestUnreachableNodes = unreachableNodes,
+                              latestReachableNodes = reachableNodes)
 
     (updatedState, updatedReachabilityEvents)
   }

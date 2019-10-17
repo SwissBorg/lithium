@@ -5,9 +5,9 @@ import akka.cluster.{Member, MemberStatus, UniqueAddress}
 import cats.Order
 
 /**
-  * Wrapper around a member adding the reachability information
-  * on top of it.
-  */
+ * Wrapper around a member adding the reachability information
+ * on top of it.
+ */
 sealed abstract private[lithium] class Node extends Product with Serializable {
   val member: Member
 
@@ -16,8 +16,8 @@ sealed abstract private[lithium] class Node extends Product with Serializable {
   val address: Address             = member.address
 
   /**
-    * Replace the current member by `member`.
-    */
+   * Replace the current member by `member`.
+   */
   def copyMember(member: Member): Node
 
   // hashCode + equals overridden so that only the unique addresses
@@ -48,8 +48,8 @@ private[lithium] object NonIndirectlyConnectedNode {
 }
 
 /**
-  * A cluster node that cannot be reached from any of its observers.
-  */
+ * A cluster node that cannot be reached from any of its observers.
+ */
 final private[lithium] case class UnreachableNode(member: Member) extends NonIndirectlyConnectedNode {
   override def copyMember(member: Member): Node = copy(member = member)
 }
@@ -60,8 +60,8 @@ private[lithium] object UnreachableNode {
 }
 
 /**
-  * A cluster nodes that can be reached by all its observers.
-  */
+ * A cluster nodes that can be reached by all its observers.
+ */
 final private[lithium] case class ReachableNode(member: Member) extends NonIndirectlyConnectedNode {
   override def copyMember(member: Member): Node = copy(member = member)
 }
@@ -72,8 +72,8 @@ private[lithium] object ReachableNode {
 }
 
 /**
-  * A cluster node that can be reached by only a part of its observers.
-  */
+ * A cluster node that can be reached by only a part of its observers.
+ */
 final private[lithium] case class IndirectlyConnectedNode(member: Member) extends Node {
   override def copyMember(member: Member): Node = copy(member = member)
 }

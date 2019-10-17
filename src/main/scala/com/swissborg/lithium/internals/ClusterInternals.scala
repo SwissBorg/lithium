@@ -6,8 +6,8 @@ import akka.actor._
 import akka.cluster.swissborg.ClusterInternalsPublisher
 
 /**
-  * @see [[ClusterInternalsImpl]]
-  */
+ * @see [[ClusterInternalsImpl]]
+ */
 private[lithium] object ClusterInternals extends ExtensionId[ClusterInternalsImpl] with ExtensionIdProvider {
   override def createExtension(system: ExtendedActorSystem): ClusterInternalsImpl = {
     discard(system.actorOf(ClusterInternalsPublisher.props))

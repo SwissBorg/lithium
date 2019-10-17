@@ -9,16 +9,15 @@ import cats.implicits._
 import com.swissborg.lithium.implicits._
 
 /**
-  * Split-brain resolver strategy that will keep the partition containing the oldest node and down
-  * the other ones. By enabling `config.downIfAlone`, if the oldest node is alone (filtered by
-  * `config.role`) it will down itself and keep the other partition.
-  *
-  * This strategy is useful when you are trying do not want the singleton instances to be migrated
-  * after a resolution. The oldest node in the cluster contains the current singleton instance.
-  */
-private[lithium] class KeepOldest[F[_]: ApplicativeError[*[_], Throwable]](
-    config: KeepOldest.Config
-) extends Strategy[F] {
+ * Split-brain resolver strategy that will keep the partition containing the oldest node and down
+ * the other ones. By enabling `config.downIfAlone`, if the oldest node is alone (filtered by
+ * `config.role`) it will down itself and keep the other partition.
+ *
+ * This strategy is useful when you are trying do not want the singleton instances to be migrated
+ * after a resolution. The oldest node in the cluster contains the current singleton instance.
+ */
+private[lithium] class KeepOldest[F[_]: ApplicativeError[*[_], Throwable]](config: KeepOldest.Config)
+    extends Strategy[F] {
 
   import config._
 
@@ -26,9 +25,7 @@ private[lithium] class KeepOldest[F[_]: ApplicativeError[*[_], Throwable]](
     // Leaving nodes are not counted as they might have moved to "removed"
     // on the other side and thus not considered.
     val consideredNonICNodes =
-      worldView
-        .nonICNodesWithRole(role)
-        .filter(n => n.status === Up || n.status === Leaving)
+      worldView.nonICNodesWithRole(role).filter(n => n.status === Up || n.status === Leaving)
 
     val allNodesSortedByAge = consideredNonICNodes.toList.sortBy(_.member)(Member.ageOrdering)
 
@@ -74,11 +71,11 @@ private[lithium] class KeepOldest[F[_]: ApplicativeError[*[_], Throwable]](
 private[lithium] object KeepOldest {
 
   /**
-    * [[KeepOldest]] configuration.
-    *
-    * @param downIfAlone down the oldest node if it is cutoff from all the nodes with the given role.
-    * @param role        the role of the nodes to take in account.
-    */
+   * [[KeepOldest]] configuration.
+   *
+   * @param downIfAlone down the oldest node if it is cutoff from all the nodes with the given role.
+   * @param role        the role of the nodes to take in account.
+   */
   final case class Config(downIfAlone: Boolean, role: String)
 
   object Config extends StrategyReader[Config] {

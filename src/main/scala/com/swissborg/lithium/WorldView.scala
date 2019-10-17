@@ -16,27 +16,25 @@ import io.circe.generic.semiauto.deriveEncoder
 import scala.collection.immutable.SortedSet
 
 /**
-  * Represents the view of the cluster from the point of view of the
-  * `selfNode`.
-  *
-  * Only contains nodes in the same data-center as the `selfNode`.
-  * As a result, partitions between data-centers are not handled.
-  */
-final private[lithium] case class WorldView private (
-    selfUniqueAddress: UniqueAddress,
-    selfStatus: SelfStatus,
-    /**
-      * The ordering on nodes is defined on their unique address,
-      * ignoring for instance the status.
-      * As a result, it cannot contain duplicate nodes.
-      *
-      * Care needs need to be taken when replacing a node with one where
-      * the status changed in the set. First it has it to be removed and
-      * then added. Only adding it will not override the value as they
-      * are equal given the ordering.
-      */
-    otherMembersStatus: Map[UniqueAddress, OtherStatus]
-) {
+ * Represents the view of the cluster from the point of view of the
+ * `selfNode`.
+ *
+ * Only contains nodes in the same data-center as the `selfNode`.
+ * As a result, partitions between data-centers are not handled.
+ */
+final private[lithium] case class WorldView private (selfUniqueAddress: UniqueAddress,
+                                                     selfStatus: SelfStatus,
+                                                     /**
+                                                      * The ordering on nodes is defined on their unique address,
+                                                      * ignoring for instance the status.
+                                                      * As a result, it cannot contain duplicate nodes.
+                                                      *
+                                                      * Care needs need to be taken when replacing a node with one where
+                                                      * the status changed in the set. First it has it to be removed and
+                                                      * then added. Only adding it will not override the value as they
+                                                      * are equal given the ordering.
+                                                      */
+                                                     otherMembersStatus: Map[UniqueAddress, OtherStatus]) {
   import WorldView._
 
   assert(
@@ -47,8 +45,8 @@ final private[lithium] case class WorldView private (
   lazy val selfNode: Node = toNode(selfStatus.member, selfStatus.reachability)
 
   /**
-    * All the nodes in the cluster.
-    */
+   * All the nodes in the cluster.
+   */
   lazy val nodes: NonEmptySet[Node] = {
     val otherNodes: Seq[Node] = otherMembersStatus.values.map {
       case Status(member, reachability) => toNode(member, reachability)
@@ -68,8 +66,8 @@ final private[lithium] case class WorldView private (
     else nonICNodes
 
   /**
-    * All the reachable nodes.
-    */
+   * All the reachable nodes.
+   */
   lazy val reachableNodes: SortedSet[ReachableNode] = nodes.collect { case r: ReachableNode => r }
 
   def reachableNodesWithRole(role: String): SortedSet[ReachableNode] =
@@ -77,22 +75,22 @@ final private[lithium] case class WorldView private (
     else reachableNodes
 
   /**
-    * All the unreachable nodes.
-    */
+   * All the unreachable nodes.
+   */
   lazy val unreachableNodes: SortedSet[UnreachableNode] = nodes.collect {
     case r: UnreachableNode => r
   }
 
   /**
-    * The indirectly connected nodes with the given role.
-    */
+   * The indirectly connected nodes with the given role.
+   */
   def indirectlyConnectedNodesWithRole(role: String): SortedSet[IndirectlyConnectedNode] =
     if (role.nonEmpty) indirectlyConnectedNodes.filter(_.member.roles.contains(role))
     else indirectlyConnectedNodes
 
   /**
-    * All the indirectly connected nodes.
-    */
+   * All the indirectly connected nodes.
+   */
   lazy val indirectlyConnectedNodes: SortedSet[IndirectlyConnectedNode] = nodes.collect {
     case r: IndirectlyConnectedNode => r
   }
@@ -117,16 +115,14 @@ final private[lithium] case class WorldView private (
         .fold(
           // Assumes the member is reachable if seen for the 1st time.
           copy(
-            otherMembersStatus = otherMembersStatus + (member.uniqueAddress -> Status(
-                member,
-                ReachabilityStatus.Reachable
-              ))
+            otherMembersStatus = otherMembersStatus + (member.uniqueAddress -> Status(member,
+                                                                                      ReachabilityStatus.Reachable))
           )
         )(
           s =>
             copy(
               otherMembersStatus = otherMembersStatus - member.uniqueAddress + (member.uniqueAddress -> s
-                  .withMember(member))
+                .withMember(member))
             )
         )
     }
@@ -136,37 +132,35 @@ final private[lithium] case class WorldView private (
     if (member.uniqueAddress === selfUniqueAddress) {
       copy(member.uniqueAddress, selfStatus = selfStatus.withMember(member)) // ignore only update // todo is it safe?
     } else {
-      otherMembersStatus
-        .get(member.uniqueAddress)
-        .fold(this) { _ =>
-          copy(otherMembersStatus = otherMembersStatus - member.uniqueAddress)
-        }
+      otherMembersStatus.get(member.uniqueAddress).fold(this) { _ =>
+        copy(otherMembersStatus = otherMembersStatus - member.uniqueAddress)
+      }
     }
   }
 
   /**
-    * Change the `node`'s state to `Reachable`.
-    */
+   * Change the `node`'s state to `Reachable`.
+   */
   def withReachableNode(node: UniqueAddress): WorldView =
     changeReachability(node, ReachabilityStatus.Reachable)
 
   /**
-    * Change the `node`'s status to `Unreachable`.
-    */
+   * Change the `node`'s status to `Unreachable`.
+   */
   def withUnreachableNode(node: UniqueAddress): WorldView =
     changeReachability(node, ReachabilityStatus.Unreachable)
 
   /**
-    * Change the `node`'s status to `IndirectlyConnected`.
-    */
+   * Change the `node`'s status to `IndirectlyConnected`.
+   */
   def withIndirectlyConnectedNode(node: UniqueAddress): WorldView =
     changeReachability(node, ReachabilityStatus.IndirectlyConnected)
 
   /**
-    * Replace the `selfMember` with `member`.
-    *
-    * Used in tests.
-    */
+   * Replace the `selfMember` with `member`.
+   *
+   * Used in tests.
+   */
   private[lithium] def changeSelf(member: Member): WorldView = sameDataCenter(member) {
     val newSelfStatus: SelfStatus = otherMembersStatus
       .get(member.uniqueAddress)
@@ -180,11 +174,9 @@ final private[lithium] case class WorldView private (
 
     selfStatus.member.status match {
       case Removed =>
-        copy(
-          selfUniqueAddress = member.uniqueAddress,
-          selfStatus = newSelfStatus,
-          otherMembersStatus = otherMembersStatus - member.uniqueAddress
-        )
+        copy(selfUniqueAddress = member.uniqueAddress,
+             selfStatus = newSelfStatus,
+             otherMembersStatus = otherMembersStatus - member.uniqueAddress)
 
       case _ =>
         val maybeOldSelf: Map[UniqueAddress, OtherStatus] =
@@ -193,21 +185,16 @@ final private[lithium] case class WorldView private (
 
         val updatedOtherMembersStatus = otherMembersStatus - member.uniqueAddress ++ maybeOldSelf
 
-        copy(
-          selfUniqueAddress = member.uniqueAddress,
-          selfStatus = newSelfStatus,
-          otherMembersStatus = updatedOtherMembersStatus
-        )
+        copy(selfUniqueAddress = member.uniqueAddress,
+             selfStatus = newSelfStatus,
+             otherMembersStatus = updatedOtherMembersStatus)
     }
   }
 
   /**
-    * Change the reachability of `member` with `reachability`.
-    */
-  private def changeReachability(
-      node: UniqueAddress,
-      reachability: ReachabilityStatus
-  ): WorldView =
+   * Change the reachability of `member` with `reachability`.
+   */
+  private def changeReachability(node: UniqueAddress, reachability: ReachabilityStatus): WorldView =
     if (node === selfUniqueAddress) {
       reachability match {
         case reachability: SelfReachabilityStatus =>
@@ -215,19 +202,14 @@ final private[lithium] case class WorldView private (
         case _ => this // TODO is it safe to ignore?
       }
     } else {
-      otherMembersStatus
-        .get(node)
-        .fold(this) { s =>
-          copy(
-            otherMembersStatus = otherMembersStatus - node + (node -> s
-                .withReachability(reachability))
-          )
-        }
+      otherMembersStatus.get(node).fold(this) { s =>
+        copy(otherMembersStatus = otherMembersStatus - node + (node -> s.withReachability(reachability)))
+      }
     }
 
   /**
-    * Update the world view if and only if the `member` is in the same datacenter.
-    */
+   * Update the world view if and only if the `member` is in the same datacenter.
+   */
   private def sameDataCenter(member: Member)(updatedWorldView: => WorldView): WorldView =
     if (selfStatus.member.dataCenter == member.dataCenter) {
       updatedWorldView
@@ -244,39 +226,30 @@ final private[lithium] case class WorldView private (
 }
 
 private[lithium] object WorldView {
-  final case class Simple(
-      selfUniqueAddress: UniqueAddress,
-      reachableMembers: List[SimpleMember],
-      indirectlyConnectedMembers: List[SimpleMember],
-      unreachableMembers: List[SimpleMember]
-  )
+  final case class Simple(selfUniqueAddress: UniqueAddress,
+                          reachableMembers: List[SimpleMember],
+                          indirectlyConnectedMembers: List[SimpleMember],
+                          unreachableMembers: List[SimpleMember])
 
   object Simple {
     implicit val simpleWorldViewEncoder: Encoder[Simple] = deriveEncoder
     implicit val simpleWorldEq: Eq[Simple] = Eq.and(
-      Eq.and(
-        Eq.and(Eq.by(_.reachableMembers), Eq.by(_.unreachableMembers)),
-        Eq.by(_.indirectlyConnectedMembers)
-      ),
+      Eq.and(Eq.and(Eq.by(_.reachableMembers), Eq.by(_.unreachableMembers)), Eq.by(_.indirectlyConnectedMembers)),
       Eq.by(_.selfUniqueAddress)
     )
   }
 
   /**
-    * Create an empty world view.
-    */
+   * Create an empty world view.
+   */
   def init(selfMember: Member): WorldView =
-    new WorldView(
-      selfMember.uniqueAddress,
-      Status(selfMember, ReachabilityStatus.Reachable),
-      Map.empty
-    )
+    new WorldView(selfMember.uniqueAddress, Status(selfMember, ReachabilityStatus.Reachable), Map.empty)
 
   /**
-    * Create a world view based on the `state`.
-    * All the members not in the same data-center as `selfMember`
-    * will be ignored.
-    */
+   * Create a world view based on the `state`.
+   * All the members not in the same data-center as `selfMember`
+   * will be ignored.
+   */
   def fromSnapshot(selfMember: Member, snapshot: CurrentClusterState): WorldView = {
     val sameDCMembers     = snapshot.members.filter(_.dataCenter == selfMember.dataCenter)
     val sameDCUnreachable = snapshot.unreachable.filter(_.dataCenter == selfMember.dataCenter)
@@ -312,10 +285,10 @@ private[lithium] object WorldView {
   }
 
   /**
-    * Build a world view based on the given nodes.
-    *
-    * Used in tests.
-    */
+   * Build a world view based on the given nodes.
+   *
+   * Used in tests.
+   */
   def fromNodes(selfNode: Node, otherNodes: SortedSet[Node]): WorldView = {
     val sameDCOtherNodes = otherNodes.filter(_.member.dataCenter == selfNode.member.dataCenter)
 
@@ -349,16 +322,14 @@ private[lithium] object WorldView {
 
     val (_, others) = sameDCOtherNodes.partition(_.member.status === Removed)
 
-    WorldView(
-      selfUniqueAddress,
-      selfStatus,
-      others.filterNot(_.member.status === Removed).map(convertOther)(collection.breakOut)
-    )
+    WorldView(selfUniqueAddress,
+              selfStatus,
+              others.filterNot(_.member.status === Removed).map(convertOther)(collection.breakOut))
   }
 
   /**
-    * Convert the `member` and its `reachability` to a [[Node]].
-    */
+   * Convert the `member` and its `reachability` to a [[Node]].
+   */
   private def toNode[R <: ReachabilityStatus](member: Member, reachability: R): Node =
     reachability match {
       case ReachabilityStatus.Reachable           => ReachableNode(member)
@@ -393,19 +364,19 @@ private[lithium] object WorldView {
   }
 
   /**
-    * True if the node is "joining" or "weakly-up".
-    *
-    * Members can still join the cluster during partitions.
-    */
+   * True if the node is "joining" or "weakly-up".
+   *
+   * Members can still join the cluster during partitions.
+   */
   def isJoining(node: Node): Boolean =
     node.member.status === Joining || node.member.status === WeaklyUp
 
   /**
-    * True if the node can be removed by the leader while it is unreachable.
-    *
-    * Unreachable members that are "exiting" or "down" are removed from the membership
-    * state even during a split.
-    */
+   * True if the node can be removed by the leader while it is unreachable.
+   *
+   * Unreachable members that are "exiting" or "down" are removed from the membership
+   * state even during a split.
+   */
   def canBeRemoveWhileUnreachable(node: Node): Boolean =
     node.member.status === Exiting || node.member.status === Down
 

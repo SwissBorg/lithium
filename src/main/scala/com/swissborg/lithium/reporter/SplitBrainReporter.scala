@@ -19,19 +19,18 @@ import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
 
 /**
-  * Actor reporting on split-brain events.
-  *
-  * @param splitBrainResolver the actor that resolves the split-brain scenarios.
-  * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
-  * @param downAllWhenUnstable downs the current partition if it takes longer than the duration. Otherwise nothing.
-  * @param trackIndirectlyConnectedNodes detects indirectly-connected nodes when enabled.
-  */
-private[lithium] class SplitBrainReporter(
-    private val splitBrainResolver: ActorRef,
-    private val stableAfter: FiniteDuration,
-    private val downAllWhenUnstable: Option[FiniteDuration],
-    private val trackIndirectlyConnectedNodes: Boolean
-) extends Actor
+ * Actor reporting on split-brain events.
+ *
+ * @param splitBrainResolver the actor that resolves the split-brain scenarios.
+ * @param stableAfter duration during which a cluster has to be stable before attempting to resolve a split-brain.
+ * @param downAllWhenUnstable downs the current partition if it takes longer than the duration. Otherwise nothing.
+ * @param trackIndirectlyConnectedNodes detects indirectly-connected nodes when enabled.
+ */
+private[lithium] class SplitBrainReporter(private val splitBrainResolver: ActorRef,
+                                          private val stableAfter: FiniteDuration,
+                                          private val downAllWhenUnstable: Option[FiniteDuration],
+                                          private val trackIndirectlyConnectedNodes: Boolean)
+    extends Actor
     with Stash
     with ActorLogging
     with Timers {
@@ -91,17 +90,15 @@ private[lithium] class SplitBrainReporter(
   }
 
   /**
-    * Modify the state using `f` and manage the stability timers.
-    *
-    * If the change describes a non-stable change of the world view
-    * it will reset the `ClusterIsStable` timer. If the after applying
-    * `f` the world view is not subject to a partition anymore, the
-    * `ClusterIsUnstable` timer is cancelled. On the other hand, if the
-    * partition worsened and the timer is not running, it is started.
-    */
-  private def modifyAndManageStability(
-      update: SplitBrainReporterState => SplitBrainReporterState
-  ): F[Unit] =
+   * Modify the state using `f` and manage the stability timers.
+   *
+   * If the change describes a non-stable change of the world view
+   * it will reset the `ClusterIsStable` timer. If the after applying
+   * `f` the world view is not subject to a partition anymore, the
+   * `ClusterIsUnstable` timer is cancelled. On the other hand, if the
+   * partition worsened and the timer is not running, it is started.
+   */
+  private def modifyAndManageStability(update: SplitBrainReporterState => SplitBrainReporterState): F[Unit] =
     StateT.modifyF { state =>
       val updatedState = update(state)
 
@@ -121,22 +118,22 @@ private[lithium] class SplitBrainReporter(
 
       for {
         _ <- if (downAllWhenUnstable.isDefined)
-              clusterIsUnstableIsActive.ifM(
-                // When the timer is running it should not be interfered
-                // with as it is started when the first non-reachable node
-                // is detected. It is stopped when the split-brain has resolved.
-                // In this case it healed itself as the `clusterIsUnstable` timer
-                // is stopped before a resolution is requested.
-                cancelClusterIsUnstableIfSplitBrainResolved,
-                // When the timer is not running it means that all the nodes
-                // were reachable up to this point or that a resolution has
-                // been requested. It is started when new non-reachable nodes
-                // appear. That could the 1st non-reachable node or an additional
-                // one after a resolution has been requested.
-                scheduleClusterIsUnstableIfSplitBrainWorsened
-              )
-            else
-              SyncIO.unit // not downing the partition if it is unstable for too long
+          clusterIsUnstableIsActive.ifM(
+            // When the timer is running it should not be interfered
+            // with as it is started when the first non-reachable node
+            // is detected. It is stopped when the split-brain has resolved.
+            // In this case it healed itself as the `clusterIsUnstable` timer
+            // is stopped before a resolution is requested.
+            cancelClusterIsUnstableIfSplitBrainResolved,
+            // When the timer is not running it means that all the nodes
+            // were reachable up to this point or that a resolution has
+            // been requested. It is started when new non-reachable nodes
+            // appear. That could the 1st non-reachable node or an additional
+            // one after a resolution has been requested.
+            scheduleClusterIsUnstableIfSplitBrainWorsened
+          )
+        else
+          SyncIO.unit // not downing the partition if it is unstable for too long
 
         _ <- resetClusterIsStableIfUnstable
       } yield updatedState
@@ -171,21 +168,17 @@ private[lithium] class SplitBrainReporter(
   private val resetClusterIsStable: SyncIO[Unit] = cancelClusterIsStable >> scheduleClusterIsStable
 
   private val scheduleClusterIsUnstable: SyncIO[Unit] =
-    downAllWhenUnstable.traverse_(
-      d => SyncIO(timers.startSingleTimer(ClusterIsUnstable, ClusterIsUnstable, d))
-    )
+    downAllWhenUnstable.traverse_(d => SyncIO(timers.startSingleTimer(ClusterIsUnstable, ClusterIsUnstable, d)))
 
   private val cancelClusterIsUnstable: SyncIO[Unit] = SyncIO(timers.cancel(ClusterIsUnstable))
 
-  private val clusterIsUnstableIsActive: SyncIO[Boolean] = SyncIO(
-    timers.isTimerActive(ClusterIsUnstable)
-  )
+  private val clusterIsUnstableIsActive: SyncIO[Boolean] = SyncIO(timers.isTimerActive(ClusterIsUnstable))
 
   /**
-    * Send the resolver the order to run a split-brain resolution.
-    *
-    * If there's not split-brain, does nothing.
-    */
+   * Send the resolver the order to run a split-brain resolution.
+   *
+   * If there's not split-brain, does nothing.
+   */
   private val handleSplitBrain: F[Unit] =
     for {
       // Cancel else the partition will be downed if it takes too long for
@@ -217,12 +210,10 @@ private[lithium] class SplitBrainReporter(
     if (trackIndirectlyConnectedNodes) {
       cluster.subscribe(self, InitialStateAsSnapshot, classOf[ClusterEvent.MemberEvent])
     } else {
-      cluster.subscribe(
-        self,
-        InitialStateAsSnapshot,
-        classOf[ClusterEvent.MemberEvent],
-        classOf[ClusterEvent.ReachabilityEvent]
-      )
+      cluster.subscribe(self,
+                        InitialStateAsSnapshot,
+                        classOf[ClusterEvent.MemberEvent],
+                        classOf[ClusterEvent.ReachabilityEvent])
     }
 
     scheduleClusterIsStable.unsafeRunSync()
@@ -238,15 +229,11 @@ private[lithium] class SplitBrainReporter(
 private[lithium] object SplitBrainReporter {
   private type F[A] = StateT[SyncIO, SplitBrainReporterState, A]
 
-  def props(
-      downer: ActorRef,
-      stableAfter: FiniteDuration,
-      downAllWhenUnstable: Option[FiniteDuration],
-      trackIndirectlyConnected: Boolean
-  ): Props =
-    Props(
-      new SplitBrainReporter(downer, stableAfter, downAllWhenUnstable, trackIndirectlyConnected)
-    )
+  def props(downer: ActorRef,
+            stableAfter: FiniteDuration,
+            downAllWhenUnstable: Option[FiniteDuration],
+            trackIndirectlyConnected: Boolean): Props =
+    Props(new SplitBrainReporter(downer, stableAfter, downAllWhenUnstable, trackIndirectlyConnected))
 
   final private case object ClusterIsStable
   final private case object ClusterIsUnstable
@@ -262,16 +249,14 @@ private[lithium] object SplitBrainReporter {
   final private[lithium] case class NodeUnreachable(node: UniqueAddress) extends NodeReachabilityEvent
 
   /**
-    * Information on the difference between two world views.
-    *
-    * @param changeIsStable true if both world views are the same ignoring `Joining` and `WeaklyUp` members.
-    * @param hasAdditionalNonReachableNodes true if the updated world view has more unreachable or indirectly
-    *                                               connected nodes.
-    */
-  sealed abstract private[reporter] case class DiffInfo(
-      changeIsStable: Boolean,
-      hasAdditionalNonReachableNodes: Boolean
-  )
+   * Information on the difference between two world views.
+   *
+   * @param changeIsStable true if both world views are the same ignoring `Joining` and `WeaklyUp` members.
+   * @param hasAdditionalNonReachableNodes true if the updated world view has more unreachable or indirectly
+   *                                               connected nodes.
+   */
+  sealed abstract private[reporter] case class DiffInfo(changeIsStable: Boolean,
+                                                        hasAdditionalNonReachableNodes: Boolean)
 
   private[reporter] object DiffInfo {
 
@@ -292,7 +277,7 @@ private[lithium] object SplitBrainReporter {
       def considered[N <: Node](nodes: SortedSet[N]): SortedSet[N] = nodes.filter(isConsidered)
 
       /**
-        * True if the both sets contain the same nodes with the same status.
+       * True if the both sets contain the same nodes with the same status.
         **/
       def noChange[N1 <: Node, N2 <: Node](nodes1: SortedSet[N1], nodes2: SortedSet[N2]): Boolean =
         nodes1.map(node => (node.uniqueAddress, node.status)) === nodes2.map(node => (node.uniqueAddress, node.status))
@@ -317,12 +302,9 @@ private[lithium] object SplitBrainReporter {
 
       val hasAdditionalNonReachableNodes =
         !oldNonReachable.sameElements(updatedNonReachable) &&
-        oldNonReachable.subsetOf(updatedNonReachable)
+          oldNonReachable.subsetOf(updatedNonReachable)
 
-      new DiffInfo(
-        stableReachable && stableIndirectlyConnected && stableUnreachable,
-        hasAdditionalNonReachableNodes
-      ) {}
+      new DiffInfo(stableReachable && stableIndirectlyConnected && stableUnreachable, hasAdditionalNonReachableNodes) {}
     }
   }
 }

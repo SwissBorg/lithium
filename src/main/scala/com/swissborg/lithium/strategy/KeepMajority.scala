@@ -8,15 +8,14 @@ import cats.implicits._
 import com.swissborg.lithium.implicits._
 
 /**
-  * Split-brain resolver strategy that will keep the partition containing more than half of the nodes and down the other
-  * ones. In case of an even number and nodes and none is a majority the partition containing the node
-  * if the lowest address will be picked as a survivor.
-  *
-  * This strategy is useful when the cluster is dynamic.
-  */
-private[lithium] class KeepMajority[F[_]: ApplicativeError[*[_], Throwable]](
-    config: KeepMajority.Config
-) extends Strategy[F] {
+ * Split-brain resolver strategy that will keep the partition containing more than half of the nodes and down the other
+ * ones. In case of an even number and nodes and none is a majority the partition containing the node
+ * if the lowest address will be picked as a survivor.
+ *
+ * This strategy is useful when the cluster is dynamic.
+ */
+private[lithium] class KeepMajority[F[_]: ApplicativeError[*[_], Throwable]](config: KeepMajority.Config)
+    extends Strategy[F] {
 
   import config._
 
@@ -43,11 +42,10 @@ private[lithium] class KeepMajority[F[_]: ApplicativeError[*[_], Throwable]](
       Decision.downReachable(worldView).pure[F]
     else if (totalNodes > 0 && reachableConsideredNodes.size === unreachableConsideredNodes.size) {
       // check if the node with the lowest unique address is in this partition
-      allNodes.toList.sorted.headOption
-        .fold(KeepMajority.NoMajority.raiseError[F, Decision]) {
-          case _: ReachableNode   => Decision.downUnreachable(worldView).pure[F]
-          case _: UnreachableNode => Decision.downReachable(worldView).pure[F]
-        }
+      allNodes.toList.sorted.headOption.fold(KeepMajority.NoMajority.raiseError[F, Decision]) {
+        case _: ReachableNode   => Decision.downUnreachable(worldView).pure[F]
+        case _: UnreachableNode => Decision.downReachable(worldView).pure[F]
+      }
     } else {
       // There are no nodes with the configured role in the cluster so
       // there is no partition with a majority. In this case we make
@@ -62,10 +60,10 @@ private[lithium] class KeepMajority[F[_]: ApplicativeError[*[_], Throwable]](
 private[lithium] object KeepMajority {
 
   /**
-    * [[KeepMajority]] configuration.
-    *
-    * @param role the role of the nodes to take in account.
-    */
+   * [[KeepMajority]] configuration.
+   *
+   * @param role the role of the nodes to take in account.
+   */
   final case class Config(role: String)
 
   object Config extends StrategyReader[Config] {

@@ -67,10 +67,8 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
   )
 
   implicit val arbJoiningOrWeaklyUpMember: Arbitrary[JoiningOrWeaklyUpMember] = Arbitrary(
-    Gen.oneOf(
-      arbJoiningMember.arbitrary.map(tag[JoiningOrWeaklyUpTag][Member]),
-      arbWeaklyUpMember.arbitrary.map(tag[JoiningOrWeaklyUpTag][Member])
-    )
+    Gen.oneOf(arbJoiningMember.arbitrary.map(tag[JoiningOrWeaklyUpTag][Member]),
+              arbWeaklyUpMember.arbitrary.map(tag[JoiningOrWeaklyUpTag][Member]))
   )
 
   implicit val arbUpMember: Arbitrary[UpMember] = Arbitrary(
@@ -105,22 +103,18 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
     )
   )
 
-  implicit val arbWorldView: Arbitrary[WorldView] = Arbitrary(
-    for {
-      selfNode <- arbitrary[Node]
-      nodes    <- arbitrary[SortedSet[Node]]
-      nodes0 = nodes - selfNode
-    } yield WorldView.fromNodes(ReachableNode(selfNode.member), nodes0)
-  )
+  implicit val arbWorldView: Arbitrary[WorldView] = Arbitrary(for {
+    selfNode <- arbitrary[Node]
+    nodes    <- arbitrary[SortedSet[Node]]
+    nodes0 = nodes - selfNode
+  } yield WorldView.fromNodes(ReachableNode(selfNode.member), nodes0))
 
-  implicit val arbHealthyWorldView: Arbitrary[HealthyWorldView] = Arbitrary(
-    for {
-      selfNode <- arbitrary[ReachableNode]
-      nodes    <- arbitrary[SortedSet[ReachableNode]]
-      nodes0    = nodes - selfNode
-      worldView = WorldView.fromNodes(selfNode, nodes0.map(identity))
-    } yield tag[HealthyTag][WorldView](worldView)
-  )
+  implicit val arbHealthyWorldView: Arbitrary[HealthyWorldView] = Arbitrary(for {
+    selfNode <- arbitrary[ReachableNode]
+    nodes    <- arbitrary[SortedSet[ReachableNode]]
+    nodes0    = nodes - selfNode
+    worldView = WorldView.fromNodes(selfNode, nodes0.map(identity))
+  } yield tag[HealthyTag][WorldView](worldView))
 
   implicit val arbAllUpWorldView: Arbitrary[AllUpWorldView] = {
     Arbitrary(for {
@@ -134,8 +128,7 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
         case (member, ix) => member.copyUp(count - ix)
       }
 
-      worldView = WorldView
-        .fromNodes(ReachableNode(upMembers.head), upMembers.tail.map(ReachableNode(_)))
+      worldView = WorldView.fromNodes(ReachableNode(upMembers.head), upMembers.tail.map(ReachableNode(_)))
     } yield tag[AllUpTag][WorldView](worldView))
   }
 
@@ -160,13 +153,7 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
     Arbitrary(arbMember.arbitrary.map(IndirectlyConnectedNode(_)))
 
   implicit val arbNode: Arbitrary[Node] =
-    Arbitrary(
-      Gen.oneOf(
-        arbReachableNode.arbitrary,
-        arbUnreachableNode.arbitrary,
-        arbIndirectlyConnectedNode.arbitrary
-      )
-    )
+    Arbitrary(Gen.oneOf(arbReachableNode.arbitrary, arbUnreachableNode.arbitrary, arbIndirectlyConnectedNode.arbitrary))
 
   implicit val arbUniqueAddress: Arbitrary[UniqueAddress] =
     Arbitrary(for {
@@ -183,33 +170,19 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
     } yield Address(protocol, system, Some(host), Some(port)))
 
   implicit val arbMemberStatus: Arbitrary[MemberStatus] =
-    Arbitrary(
-      Gen.oneOf(Joining, WeaklyUp, Up, Leaving, Exiting, Down, Removed)
-    )
+    Arbitrary(Gen.oneOf(Joining, WeaklyUp, Up, Leaving, Exiting, Down, Removed))
 
-  implicit val arbMemberJoined: Arbitrary[MemberJoined] = Arbitrary(
-    arbJoiningMember.arbitrary.map(MemberJoined)
-  )
+  implicit val arbMemberJoined: Arbitrary[MemberJoined] = Arbitrary(arbJoiningMember.arbitrary.map(MemberJoined))
 
-  implicit val arbMemberUp: Arbitrary[MemberUp] = Arbitrary(
-    arbUpMember.arbitrary.map(MemberUp)
-  )
+  implicit val arbMemberUp: Arbitrary[MemberUp] = Arbitrary(arbUpMember.arbitrary.map(MemberUp))
 
-  implicit val arbMemberLeft: Arbitrary[MemberLeft] = Arbitrary(
-    arbLeavingMember.arbitrary.map(MemberLeft)
-  )
+  implicit val arbMemberLeft: Arbitrary[MemberLeft] = Arbitrary(arbLeavingMember.arbitrary.map(MemberLeft))
 
-  implicit val arbMemberExited: Arbitrary[MemberExited] = Arbitrary(
-    arbExitingMember.arbitrary.map(MemberExited)
-  )
+  implicit val arbMemberExited: Arbitrary[MemberExited] = Arbitrary(arbExitingMember.arbitrary.map(MemberExited))
 
-  implicit val arbMemberDowned: Arbitrary[MemberDowned] = Arbitrary(
-    arbDownMember.arbitrary.map(MemberDowned)
-  )
+  implicit val arbMemberDowned: Arbitrary[MemberDowned] = Arbitrary(arbDownMember.arbitrary.map(MemberDowned))
 
-  implicit val arbMemberWeaklyUp: Arbitrary[MemberWeaklyUp] = Arbitrary(
-    arbWeaklyUpMember.arbitrary.map(MemberWeaklyUp)
-  )
+  implicit val arbMemberWeaklyUp: Arbitrary[MemberWeaklyUp] = Arbitrary(arbWeaklyUpMember.arbitrary.map(MemberWeaklyUp))
 
   implicit val arbMemberRemoved: Arbitrary[MemberRemoved] = Arbitrary(
     arbRemovedMember.arbitrary.map(MemberRemoved(_, Removed))
@@ -231,9 +204,7 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
     arbMember.arbitrary.map(UnreachableMember)
   )
 
-  implicit val arbReachableMember: Arbitrary[ReachableMember] = Arbitrary(
-    arbMember.arbitrary.map(ReachableMember)
-  )
+  implicit val arbReachableMember: Arbitrary[ReachableMember] = Arbitrary(arbMember.arbitrary.map(ReachableMember))
 
   implicit val arbReachabilityEvent: Arbitrary[ReachabilityEvent] = Arbitrary(
     Gen.oneOf(arbUnreachableMember.arbitrary, arbReachableMember.arbitrary)
@@ -247,50 +218,34 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
     arbWorldView.arbitrary.map(Decision.DownUnreachable(_))
   )
 
-  implicit val arbDownThese: Arbitrary[Decision.DownThese] = Arbitrary(
-    for {
-      decision1 <- Gen
-                    .oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary) // todo also gen downtheses?
-      decision2 <- Gen
-                    .oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary)
-    } yield Decision.DownThese(decision1, decision2)
-  )
+  implicit val arbDownThese: Arbitrary[Decision.DownThese] = Arbitrary(for {
+    decision1 <- Gen.oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary) // todo also gen downtheses?
+    decision2 <- Gen.oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary)
+  } yield Decision.DownThese(decision1, decision2))
 
   implicit val arbStrategyDecision: Arbitrary[Decision] = Arbitrary(
-    Gen.oneOf(
-      arbDownReachable.arbitrary,
-      arbDownUnreachable.arbitrary,
-      arbDownThese.arbitrary
-    )
+    Gen.oneOf(arbDownReachable.arbitrary, arbDownUnreachable.arbitrary, arbDownThese.arbitrary)
   )
 
   implicit val arbSBRReachability: Arbitrary[ReachabilityStatus] = Arbitrary(
-    Gen.oneOf(
-      ReachabilityStatus.Reachable,
-      ReachabilityStatus.Unreachable,
-      ReachabilityStatus.IndirectlyConnected
-    )
+    Gen.oneOf(ReachabilityStatus.Reachable, ReachabilityStatus.Unreachable, ReachabilityStatus.IndirectlyConnected)
   )
 
   implicit val arbQuorumSize: Arbitrary[Int Refined Positive] = Arbitrary {
     posNum[Int].map(refineV[Positive](_).right.get) // trust me
   }
 
-  implicit val arbReachableNodes: Arbitrary[ReachableQuorum] = Arbitrary(
-    for {
-      worldView  <- arbitrary[WorldView]
-      quorumSize <- arbitrary[Int Refined Positive]
-      role       <- arbitrary[String]
-    } yield ReachableQuorum(worldView, quorumSize, role)
-  )
+  implicit val arbReachableNodes: Arbitrary[ReachableQuorum] = Arbitrary(for {
+    worldView  <- arbitrary[WorldView]
+    quorumSize <- arbitrary[Int Refined Positive]
+    role       <- arbitrary[String]
+  } yield ReachableQuorum(worldView, quorumSize, role))
 
-  implicit val arbUnreachableNodes: Arbitrary[UnreachableQuorum] = Arbitrary(
-    for {
-      worldView  <- arbitrary[WorldView]
-      quorumSize <- arbitrary[Int Refined Positive]
-      role       <- arbitrary[String]
-    } yield UnreachableQuorum(worldView, quorumSize, role)
-  )
+  implicit val arbUnreachableNodes: Arbitrary[UnreachableQuorum] = Arbitrary(for {
+    worldView  <- arbitrary[WorldView]
+    quorumSize <- arbitrary[Int Refined Positive]
+    role       <- arbitrary[String]
+  } yield UnreachableQuorum(worldView, quorumSize, role))
 
 }
 
@@ -299,26 +254,17 @@ trait ArbitraryInstances0 {
     Arbitrary(arbitrary[Set[A]].map(s => SortedSet.empty[A](implicitly[Order[A]].toOrdering) ++ s))
 
   implicit def arbSortedMap[K: Arbitrary: Order, V: Arbitrary]: Arbitrary[SortedMap[K, V]] =
-    Arbitrary(
-      arbitrary[Map[K, V]].map(s => SortedMap.empty[K, V](implicitly[Order[K]].toOrdering) ++ s)
-    )
+    Arbitrary(arbitrary[Map[K, V]].map(s => SortedMap.empty[K, V](implicitly[Order[K]].toOrdering) ++ s))
 
   implicit def arbNonEmptySet[A](implicit O: Order[A], A: Arbitrary[A]): Arbitrary[NonEmptySet[A]] =
-    Arbitrary(
-      implicitly[Arbitrary[SortedSet[A]]].arbitrary
-        .flatMap(fa => A.arbitrary.map(a => NonEmptySet(a, fa)))
-    )
+    Arbitrary(implicitly[Arbitrary[SortedSet[A]]].arbitrary.flatMap(fa => A.arbitrary.map(a => NonEmptySet(a, fa))))
 
-  implicit def arbNonEmptyList[A](implicit A: Arbitrary[A]): Arbitrary[NonEmptyList[A]] = Arbitrary(
-    implicitly[Arbitrary[List[A]]].arbitrary
-      .flatMap(as => A.arbitrary.map(a => NonEmptyList(a, as)))
-  )
+  implicit def arbNonEmptyList[A](implicit A: Arbitrary[A]): Arbitrary[NonEmptyList[A]] =
+    Arbitrary(implicitly[Arbitrary[List[A]]].arbitrary.flatMap(as => A.arbitrary.map(a => NonEmptyList(a, as))))
 
-  implicit def arbNonEmptyMap[K, A](
-      implicit O: Order[K],
-      A: Arbitrary[A],
-      K: Arbitrary[K]
-  ): Arbitrary[NonEmptyMap[K, A]] =
+  implicit def arbNonEmptyMap[K, A](implicit O: Order[K],
+                                    A: Arbitrary[A],
+                                    K: Arbitrary[K]): Arbitrary[NonEmptyMap[K, A]] =
     Arbitrary(for {
       fa <- arbSortedMap[K, A].arbitrary
       k  <- K.arbitrary
