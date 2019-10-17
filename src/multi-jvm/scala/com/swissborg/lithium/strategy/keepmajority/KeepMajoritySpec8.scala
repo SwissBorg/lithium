@@ -20,8 +20,8 @@ class KeepMajoritySpec8MultiJvmNode9  extends KeepMajority8
 class KeepMajoritySpec8MultiJvmNode10 extends KeepMajority8
 
 /**
-  * Node9 and node10 are indirectly connected in a ten node cluster
-  */
+ * Node9 and node10 are indirectly connected in a ten node cluster
+ */
 sealed abstract class KeepMajority8 extends TenNodeSpec("KeepMajority", KeepMajoritySpecTenNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 8" in within(120 seconds) {

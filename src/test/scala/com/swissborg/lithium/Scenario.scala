@@ -147,8 +147,8 @@ object RemovedDisseminationScenario {
      * as unreachable and sees some members as "exiting" that others
      * do not see.
      */
-    def divergeWorldView(allMembers: NonEmptySet[Member], membersToRemove: NonEmptySet[Member])(
-      partition: NonEmptySet[Member]): Arbitrary[WorldView] = {
+    def divergeWorldView(allMembers: NonEmptySet[Member],
+                         membersToRemove: NonEmptySet[Member])(partition: NonEmptySet[Member]): Arbitrary[WorldView] = {
       val otherMembers = allMembers -- partition
 
       val baseWorldView = WorldView.fromNodes(

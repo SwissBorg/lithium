@@ -15,11 +15,11 @@ class KeepOldestSpec5MultiJvmNode4 extends KeepOldestSpec5
 class KeepOldestSpec5MultiJvmNode5 extends KeepOldestSpec5
 
 /**
-  * Node4 and node5 are indirectly connected in a five node cluster
-  *
-  * Node4 and node5 should down themselves as they are indirectly connected.
-  * The three other nodes survive as they can reach the oldest.
-  */
+ * Node4 and node5 are indirectly connected in a five node cluster
+ *
+ * Node4 and node5 should down themselves as they are indirectly connected.
+ * The three other nodes survive as they can reach the oldest.
+ */
 sealed abstract class KeepOldestSpec5 extends FiveNodeSpec("KeepOldest", KeepOldestSpecFiveNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 5" in within(120 seconds) {

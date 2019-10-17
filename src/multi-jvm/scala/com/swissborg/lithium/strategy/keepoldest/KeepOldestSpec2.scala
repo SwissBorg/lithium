@@ -16,15 +16,15 @@ class KeepOldestSpec2MultiJvmNode4 extends KeepOldestSpec2
 class KeepOldestSpec2MultiJvmNode5 extends KeepOldestSpec2
 
 /**
-  * Creates the partitions:
-  *   (1) node1
-  *   (2) node2, node3
-  *   (3) node4, node5
-  *
-  * (1) should survive as it contains the oldest.
-  * (2) should down itself as it does not contain the oldest.
-  * (3) should down itself as it does not contain the oldest.
-  */
+ * Creates the partitions:
+ *   (1) node1
+ *   (2) node2, node3
+ *   (3) node4, node5
+ *
+ * (1) should survive as it contains the oldest.
+ * (2) should down itself as it does not contain the oldest.
+ * (3) should down itself as it does not contain the oldest.
+ */
 sealed abstract class KeepOldestSpec2 extends FiveNodeSpec("KeepOldest", KeepOldestSpecFiveNodeConfig) {
   override def assertions(): Unit =
     "handle scenario 2" in within(120 seconds) {

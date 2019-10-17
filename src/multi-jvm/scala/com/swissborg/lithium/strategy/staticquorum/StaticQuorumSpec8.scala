@@ -20,9 +20,9 @@ class StaticQuorumSpec8MultiJvmNode9  extends StaticQuorumSpec8
 class StaticQuorumSpec8MultiJvmNode10 extends StaticQuorumSpec8
 
 /**
-  * Node2 and node3 are indirectly connected in a ten node cluster
-  * Node9 and node10 are indirectly connected in a ten node cluster
-  */
+ * Node2 and node3 are indirectly connected in a ten node cluster
+ * Node9 and node10 are indirectly connected in a ten node cluster
+ */
 sealed abstract class StaticQuorumSpec8 extends TenNodeSpec("StaticQuorum", StaticQuorumSpec3Config) {
   override def assertions(): Unit =
     "handle scenario 8" in within(120 seconds) {

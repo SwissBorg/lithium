@@ -15,11 +15,11 @@ class StaticQuorumSpec5MultiJvmNode4 extends StaticQuorumSpec5
 class StaticQuorumSpec5MultiJvmNode5 extends StaticQuorumSpec5
 
 /**
-  * Node4 and node5 are indirectly connected in a five node cluster
-  *
-  * Node4 and node5 should down themselves as they are indirectly connected.
-  * The three other nodes survive as they form a quorum.
-  */
+ * Node4 and node5 are indirectly connected in a five node cluster
+ *
+ * Node4 and node5 should down themselves as they are indirectly connected.
+ * The three other nodes survive as they form a quorum.
+ */
 sealed abstract class StaticQuorumSpec5 extends FiveNodeSpec("StaticQuorum", StaticQuorumSpec2Config) {
   override def assertions(): Unit =
     "handle scenario 5" in within(60 seconds) {
