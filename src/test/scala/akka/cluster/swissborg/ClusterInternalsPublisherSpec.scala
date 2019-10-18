@@ -29,7 +29,7 @@ class ClusterInternalsPublisherSpec
       system.eventStream.publish(ReachabilityChanged(Reachability(IndexedSeq.empty[Reachability.Record], Map.empty)))
       system.eventStream.subscribe(probe.ref, classOf[LithiumReachabilityChanged])
 
-      probe.expectMsgType[LithiumReachabilityChanged](10.seconds)
+      probe.expectMsgType[LithiumReachabilityChanged](2.minutes)
     }
 
     "convert and publish SeenChanged events" in {
