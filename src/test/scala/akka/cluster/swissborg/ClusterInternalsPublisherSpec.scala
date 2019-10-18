@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 import scala.collection.immutable.IndexedSeq
 
 class ClusterInternalsPublisherSpec
-    extends TestKit(ActorSystem("lithium"))
+  extends TestKit(ActorSystem("lithium"))
     with ImplicitSender
     with AnyWordSpecLike
     with Matchers
@@ -26,10 +26,10 @@ class ClusterInternalsPublisherSpec
 
       val probe = TestProbe()
 
-      system.eventStream.publish(ReachabilityChanged(Reachability(IndexedSeq.empty[Reachability.Record], Map.empty)))
       system.eventStream.subscribe(probe.ref, classOf[LithiumReachabilityChanged])
+      system.eventStream.publish(ReachabilityChanged(Reachability(IndexedSeq.empty[Reachability.Record], Map.empty)))
 
-      probe.expectMsgType[LithiumReachabilityChanged](2.minutes)
+      probe.expectMsgType[LithiumReachabilityChanged]
     }
 
     "convert and publish SeenChanged events" in {
@@ -37,8 +37,8 @@ class ClusterInternalsPublisherSpec
 
       val probe = TestProbe()
 
-      system.eventStream.publish(SeenChanged(false, Set.empty))
       system.eventStream.subscribe(probe.ref, classOf[LithiumSeenChanged])
+      system.eventStream.publish(SeenChanged(false, Set.empty))
 
       probe.expectMsg(LithiumSeenChanged(false, Set.empty))
     }
