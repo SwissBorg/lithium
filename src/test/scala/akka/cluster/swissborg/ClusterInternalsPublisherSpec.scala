@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 import scala.collection.immutable.IndexedSeq
 
 class ClusterInternalsPublisherSpec
-  extends TestKit(ActorSystem("lithium"))
+    extends TestKit(ActorSystem("lithium"))
     with ImplicitSender
     with AnyWordSpecLike
     with Matchers
