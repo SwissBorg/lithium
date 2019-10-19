@@ -8,6 +8,8 @@ import com.swissborg.lithium.internals.{LithiumReachabilityChanged, LithiumSeenC
 import org.scalatest.{BeforeAndAfterAll, Matchers}
 import org.scalatest.wordspec.AnyWordSpecLike
 
+import scala.concurrent.duration._
+
 import scala.collection.immutable.IndexedSeq
 
 class ClusterInternalsPublisherSpec
@@ -24,8 +26,8 @@ class ClusterInternalsPublisherSpec
 
       val probe = TestProbe()
 
-      system.eventStream.publish(ReachabilityChanged(Reachability(IndexedSeq.empty[Reachability.Record], Map.empty)))
       system.eventStream.subscribe(probe.ref, classOf[LithiumReachabilityChanged])
+      system.eventStream.publish(ReachabilityChanged(Reachability(IndexedSeq.empty[Reachability.Record], Map.empty)))
 
       probe.expectMsgType[LithiumReachabilityChanged]
     }
@@ -35,8 +37,8 @@ class ClusterInternalsPublisherSpec
 
       val probe = TestProbe()
 
-      system.eventStream.publish(SeenChanged(false, Set.empty))
       system.eventStream.subscribe(probe.ref, classOf[LithiumSeenChanged])
+      system.eventStream.publish(SeenChanged(false, Set.empty))
 
       probe.expectMsg(LithiumSeenChanged(false, Set.empty))
     }
