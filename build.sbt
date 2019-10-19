@@ -29,37 +29,39 @@ scalacOptions ++=
     "-Ywarn-value-discard",
     "-Xfuture",
     "-Yno-adapted-args",
-//    "-Xfatal-warnings",
+    //    "-Xfatal-warnings",
     "-deprecation"
   )
 
-val akkaVersion                = "2.5.25"
-val catsVersion                = "2.0.0"
-val catsEffectVersion          = "2.0.0"
-val scalatestVersion           = "3.0.8"
-val monocleVersion             = "2.0.0"
-val shapelessVersion           = "2.3.3"
-val refinedVersion             = "0.9.10"
-val pureConfigVersion          = "0.12.1"
+val akkaVersion = "2.5.26"
+val catsVersion = "2.0.0"
+val catsEffectVersion = "2.0.0"
+val scalatestVersion = "3.0.8"
+val monocleVersion = "2.0.0"
+val shapelessVersion = "2.3.3"
+val refinedVersion = "0.9.10"
+val pureConfigVersion = "0.12.1"
 val scalacheckShapelessVersion = "1.1.8"
-val refinedScalacheckVersion   = "0.9.10"
-val protobufJavaVersion        = "3.8.0"
-val typesafeConfigVersion      = "1.4.0"
-val logbackVersion             = "1.2.3"
-val circeVersion               = "0.12.2"
-val scalaLoggingVersion        = "3.9.2"
-val kindProjectorVersion       = "0.10.3"
-val betterMonadicForVersion    = "0.3.1"
+val refinedScalacheckVersion = "0.9.10"
+val protobufJavaVersion = "3.8.0"
+val typesafeConfigVersion = "1.4.0"
+val logbackVersion = "1.2.3"
+val circeVersion = "0.12.2"
+val scalaLoggingVersion = "3.9.2"
+val kindProjectorVersion = "0.10.3"
+val betterMonadicForVersion = "0.3.1"
 
 resolvers += Resolver.sonatypeRepo("releases")
 
 // Akka
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor"              % akkaVersion,
-  "com.typesafe.akka" %% "akka-cluster"            % akkaVersion,
-  "com.typesafe.akka" %% "akka-remote"             % akkaVersion,
-  "com.typesafe"      % "config"                   % typesafeConfigVersion,
-  "com.typesafe.akka" %% "akka-testkit"            % akkaVersion % Test,
+  "com.typesafe.akka" %% "akka-actor" % akkaVersion,
+  "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
+  "com.typesafe.akka" %% "akka-remote" % akkaVersion,
+  "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
+  "ch.qos.logback" % "logback-classic" % logbackVersion,
+  "com.typesafe" % "config" % typesafeConfigVersion,
+  "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
   "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion % Test
 )
 
@@ -70,27 +72,27 @@ libraryDependencies ++= Seq(
 
 // PureConfig
 libraryDependencies ++= Seq(
-  "com.github.pureconfig" %% "pureconfig-core"    % pureConfigVersion,
+  "com.github.pureconfig" %% "pureconfig-core" % pureConfigVersion,
   "com.github.pureconfig" %% "pureconfig-generic" % pureConfigVersion
 )
 
 // Cats
 libraryDependencies ++= Seq(
-  "org.typelevel" %% "cats-core"    % catsVersion,
-  "org.typelevel" %% "cats-kernel"  % catsVersion,
-  "org.typelevel" %% "cats-effect"  % catsEffectVersion,
+  "org.typelevel" %% "cats-core" % catsVersion,
+  "org.typelevel" %% "cats-kernel" % catsVersion,
+  "org.typelevel" %% "cats-effect" % catsEffectVersion,
   "org.typelevel" %% "cats-testkit" % catsVersion % Test
 )
 
 // Refined
 libraryDependencies ++= Seq(
-  "eu.timepit" %% "refined"            % refinedVersion,
+  "eu.timepit" %% "refined" % refinedVersion,
   "eu.timepit" %% "refined-pureconfig" % refinedVersion
 )
 
 // Circe
 libraryDependencies ++= Seq(
-  "io.circe" %% "circe-core"    % circeVersion,
+  "io.circe" %% "circe-core" % circeVersion,
   "io.circe" %% "circe-generic" % circeVersion
 )
 
@@ -102,24 +104,24 @@ libraryDependencies ++= Seq(
 // Monocle
 libraryDependencies ++= Seq(
   "com.github.julien-truffaut" %% "monocle-core" % monocleVersion,
-  "com.github.julien-truffaut" %% "monocle-law"  % monocleVersion % Test
+  "com.github.julien-truffaut" %% "monocle-law" % monocleVersion % Test
 )
 
 // ScalaTest
 libraryDependencies ++= Seq(
   "com.github.alexarchambault" %% "scalacheck-shapeless_1.13" % scalacheckShapelessVersion % Test,
-  "eu.timepit"                 %% "refined-scalacheck"        % refinedScalacheckVersion   % Test,
-  "org.scalatest"              %% "scalatest"                 % scalatestVersion           % Test
+  "eu.timepit" %% "refined-scalacheck" % refinedScalacheckVersion % Test,
+  "org.scalatest" %% "scalatest" % scalatestVersion % Test
 )
 
 // ScalaCheck
 libraryDependencies ++= Seq(
   "com.github.alexarchambault" %% "scalacheck-shapeless_1.13" % scalacheckShapelessVersion % Test,
-  "eu.timepit"                 %% "refined-scalacheck"        % refinedScalacheckVersion   % Test
+  "eu.timepit" %% "refined-scalacheck" % refinedScalacheckVersion % Test
 )
 
-addCompilerPlugin("org.typelevel" %% "kind-projector"     % kindProjectorVersion)
-addCompilerPlugin("com.olegpy"    %% "better-monadic-for" % betterMonadicForVersion)
+addCompilerPlugin("org.typelevel" %% "kind-projector" % kindProjectorVersion)
+addCompilerPlugin("com.olegpy" %% "better-monadic-for" % betterMonadicForVersion)
 
 lazy val root = (project in file("."))
   .enablePlugins(MultiJvmPlugin)
