@@ -43,11 +43,9 @@ val refinedVersion = "0.9.10"
 val pureConfigVersion = "0.12.1"
 val scalacheckShapelessVersion = "1.1.8"
 val refinedScalacheckVersion = "0.9.10"
-val protobufJavaVersion = "3.8.0"
-val typesafeConfigVersion = "1.4.0"
 val logbackVersion = "1.2.3"
 val circeVersion = "0.12.2"
-val scalaLoggingVersion = "3.9.2"
+val slf4jApiVersion = "1.7.28"
 val kindProjectorVersion = "0.10.3"
 val betterMonadicForVersion = "0.3.1"
 
@@ -58,16 +56,15 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % akkaVersion,
   "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
   "com.typesafe.akka" %% "akka-remote" % akkaVersion,
-  "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
-  "ch.qos.logback" % "logback-classic" % logbackVersion,
-  "com.typesafe" % "config" % typesafeConfigVersion,
   "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
   "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion % Test
 )
 
 // Logging
 libraryDependencies ++= Seq(
-  "com.typesafe.scala-logging" %% "scala-logging" % scalaLoggingVersion
+  "org.slf4j" % "slf4j-api" % slf4jApiVersion,
+  "com.typesafe.akka" %% "akka-slf4j" % akkaVersion % Test,
+  "ch.qos.logback" % "logback-classic" % logbackVersion % Test
 )
 
 // PureConfig

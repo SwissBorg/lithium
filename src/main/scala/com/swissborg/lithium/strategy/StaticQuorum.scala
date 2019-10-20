@@ -6,10 +6,10 @@ import akka.cluster.MemberStatus.{Leaving, Up}
 import cats.effect.Sync
 import cats.implicits._
 import com.swissborg.lithium.implicits._
-import com.typesafe.scalalogging.StrictLogging
 import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric._
 import eu.timepit.refined.auto._
+import eu.timepit.refined.numeric._
+import org.slf4j.LoggerFactory
 
 /**
  * Split-brain resolver strategy that will keep the partition that have a quorum (`config.quorumSize`) and down the other
@@ -18,11 +18,11 @@ import eu.timepit.refined.auto._
  *
  * This strategy is useful when the cluster has a fixed size.
  */
-private[lithium] class StaticQuorum[F[_]](config: StaticQuorum.Config)(implicit val F: Sync[F])
-    extends Strategy[F]
-    with StrictLogging {
+private[lithium] class StaticQuorum[F[_]](config: StaticQuorum.Config)(implicit val F: Sync[F]) extends Strategy[F] {
 
   import config._
+
+  private val logger = LoggerFactory.getLogger(this.getClass)
 
   override def takeDecision(worldView: WorldView): F[Decision] = {
     val nbrOfConsideredNonICNodes = worldView.nonICNodesWithRole(role).count { n =>

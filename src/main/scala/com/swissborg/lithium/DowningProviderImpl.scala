@@ -4,6 +4,7 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorSystem, Props}
 import akka.cluster.DowningProvider
+import akka.event.Logging
 import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.lithium
@@ -11,7 +12,6 @@ import com.swissborg.lithium.resolver.SplitBrainResolver
 import com.swissborg.lithium.strategy.Strategy
 import com.swissborg.lithium.strategy.StrategyReader.UnknownStrategy
 import com.swissborg.lithium.strategy._
-import com.typesafe.scalalogging.LazyLogging
 import eu.timepit.refined.pureconfig._
 import pureconfig.generic.auto._
 
@@ -23,11 +23,12 @@ import scala.util.{Failure, Success, Try}
  *
  * @param system the current actor system.
  */
-class DowningProviderImpl(system: ActorSystem) extends DowningProvider with LazyLogging {
+class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
 
   import DowningProviderImpl._
 
   private val config = Config(system)
+  private val logger = Logging(system, this.getClass)
 
   override def downRemovalMargin: FiniteDuration = config.stableAfter
 
@@ -75,7 +76,7 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider with Lazy
         sbResolver(new lithium.strategy.DownAll).asRight
 
       case unknownStrategy =>
-        logger.error(s"'$unknownStrategy' is not a valid Lithium strategy.")
+        logger.error("'{}' is not a valid Lithium strategy.", unknownStrategy)
         UnknownStrategy(unknownStrategy).asLeft
     }
 
@@ -83,7 +84,7 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider with Lazy
   }
 
   private def logStartup(strategyName: String): Unit =
-    logger.info(s"Starting Lithium with the $strategyName strategy.")
+    logger.info("Starting Lithium with the {} strategy.", strategyName)
 }
 
 object DowningProviderImpl {
