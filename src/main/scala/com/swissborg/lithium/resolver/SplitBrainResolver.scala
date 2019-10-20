@@ -63,49 +63,44 @@ private[lithium] class SplitBrainResolver(private val _strategy: Strategy[SyncIO
    * Handle the partition using the [[Union]] of the configured
    * strategy and the [[IndirectlyConnected]].
    */
-  private def resolveSplitBrain(worldView: WorldView): SyncIO[Unit] =
+  protected def resolveSplitBrain(worldView: WorldView): SyncIO[Unit] =
     for {
       _ <- SyncIO(
         log.info(s"[{}] Received request to handle a split-brain... {}",
                  selfUniqueAddress,
                  worldView.simple.asJson.noSpaces)
       )
-      _ <- runStrategy(strategy, worldView)
+      decision <- strategy.takeDecision(worldView)
+      _        <- runDecision(decision)
     } yield ()
 
   /**
    * Handle the partition by downing all the members.
    */
-  private def downAll(worldView: WorldView): SyncIO[Unit] =
+  protected def downAll(worldView: WorldView): SyncIO[Unit] =
     for {
       _ <- SyncIO(
         log.info(s"[{}] Received request to down all the nodes... {}",
                  selfUniqueAddress,
                  worldView.simple.asJson.noSpaces)
       )
-      _ <- runStrategy(downAll, worldView)
+      decision <- downAll.takeDecision(worldView)
+      _        <- runDecision(decision)
     } yield ()
 
   /**
-   * Run `strategy` on `worldView`.
-   *
-   * Enable `nonJoiningOnly` so that joining and weakly-up
-   * members do not run the strategy.
+   * Run the decision by downing the nodes described by it.
    */
-  private def runStrategy(strategy: Strategy[SyncIO], worldView: WorldView): SyncIO[Unit] = {
+  protected def runDecision(decision: Decision): SyncIO[Unit] = {
     def execute(decision: Decision): SyncIO[Unit] =
       for {
         _ <- SyncIO(log.info("[{}] Downing the nodes: {}", selfUniqueAddress, decision.simple.asJson.noSpaces))
         _ <- decision.nodesToDown.toList.traverse_(node => SyncIO(cluster.down(node.address)))
-
       } yield ()
 
-    strategy
-      .takeDecision(worldView)
-      .flatMap(execute)
-      .handleErrorWith(
-        err => SyncIO(log.error(err, "[{}] An error occurred during the resolution.", selfUniqueAddress))
-      )
+    execute(decision).handleErrorWith { err =>
+      SyncIO(log.error(err, "[{}] An error occurred during the resolution.", selfUniqueAddress))
+    }
   }
 }
 
