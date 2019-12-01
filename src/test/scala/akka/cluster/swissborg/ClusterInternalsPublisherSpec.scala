@@ -5,12 +5,13 @@ import akka.cluster.ClusterEvent.{ReachabilityChanged, SeenChanged}
 import akka.cluster.Reachability
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import com.swissborg.lithium.internals.{LithiumReachabilityChanged, LithiumSeenChanged}
-import org.scalatest.{BeforeAndAfterAll, Matchers}
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.duration._
 
 import scala.collection.immutable.IndexedSeq
+import org.scalatest.matchers.should.Matchers
 
 class ClusterInternalsPublisherSpec
     extends TestKit(ActorSystem("lithium"))

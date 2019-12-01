@@ -9,8 +9,9 @@ import com.swissborg.lithium.utils.PostResolution
 import org.scalacheck.Arbitrary
 import org.scalactic.anyvals._
 import org.scalatest.wordspec.AnyWordSpecLike
-import org.scalatest.{Assertion, Matchers}
+import org.scalatest.Assertion
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
+import org.scalatest.matchers.should.Matchers
 
 trait LithiumSpec extends AnyWordSpecLike with Matchers with ScalaCheckPropertyChecks with ArbitraryTestInstances {
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
