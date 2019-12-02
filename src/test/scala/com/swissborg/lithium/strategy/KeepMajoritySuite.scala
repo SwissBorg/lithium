@@ -8,12 +8,13 @@ import akka.cluster.MemberStatus.Up
 import akka.cluster.swissborg.TestMember
 import cats.implicits._
 import com.swissborg.lithium.strategy.Decision._
-import org.scalatest.{Matchers, WordSpec}
 
 import scala.collection.immutable.SortedSet
 import scala.util.Try
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class KeepMajoritySuite extends WordSpec with Matchers {
+class KeepMajoritySuite extends AnyWordSpec with Matchers {
   val aa = TestMember(Address("akka.tcp", "sys", "a", 2552), Up)
   val bb = TestMember(Address("akka.tcp", "sys", "b", 2552), Up)
   val cc = TestMember(Address("akka.tcp", "sys", "c", 2552), Up, Set("role"))

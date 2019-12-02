@@ -9,11 +9,12 @@ import akka.cluster.UniqueAddress
 import akka.cluster.swissborg.{LithiumReachability, TestMember}
 import cats.implicits._
 import com.swissborg.lithium.reporter.SplitBrainReporter.{NodeIndirectlyConnected, NodeReachable, NodeUnreachable}
-import org.scalatest.{Matchers, WordSpec}
 
 import scala.collection.immutable.SortedSet
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class ReachabilityReporterStateSuite extends WordSpec with Matchers {
+class ReachabilityReporterStateSuite extends AnyWordSpec with Matchers {
   private val defaultDc = "dc-default"
   private val aa        = UniqueAddress(Address("akka.tcp", "sys", "a", 2552), 1L)
   private val bb        = UniqueAddress(Address("akka.tcp", "sys", "b", 2552), 2L)

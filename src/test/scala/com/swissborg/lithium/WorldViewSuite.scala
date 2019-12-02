@@ -7,11 +7,12 @@ import akka.cluster.swissborg.TestMember
 import com.swissborg.lithium.WorldView.Status
 import com.swissborg.lithium.testImplicits._
 import com.swissborg.lithium.reachability._
-import org.scalatest.{Matchers, WordSpec}
 
 import scala.collection.immutable.SortedSet
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class WorldViewSuite extends WordSpec with Matchers {
+class WorldViewSuite extends AnyWordSpec with Matchers {
   val aa = TestMember(Address("akka.tcp", "sys", "a", 2552), Up)
   val bb = TestMember(Address("akka.tcp", "sys", "b", 2552), Up)
   val cc = TestMember(Address("akka.tcp", "sys", "c", 2552), Up)
