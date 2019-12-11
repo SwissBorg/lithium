@@ -33,7 +33,7 @@ scalacOptions ++=
     "-deprecation"
   )
 
-val akkaVersion = "2.6.1"
+val akkaVersion = "2.5.27"
 val catsVersion = "2.0.0"
 val catsEffectVersion = "2.0.0"
 val scalatestVersion = "3.1.0"
