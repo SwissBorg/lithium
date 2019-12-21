@@ -45,7 +45,7 @@ val scalacheckShapelessVersion = "1.1.8"
 val refinedScalacheckVersion = "0.9.10"
 val logbackVersion = "1.2.3"
 val circeVersion = "0.12.2"
-val slf4jApiVersion = "1.7.28"
+val slf4jApiVersion = "1.7.30"
 val kindProjectorVersion = "0.10.3"
 val betterMonadicForVersion = "0.3.1"
 
