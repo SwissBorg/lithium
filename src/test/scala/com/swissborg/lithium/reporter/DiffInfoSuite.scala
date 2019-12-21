@@ -8,11 +8,12 @@ import akka.cluster.MemberStatus._
 import akka.cluster.swissborg.TestMember
 import com.swissborg.lithium.WorldView
 import com.swissborg.lithium.reporter.SplitBrainReporter.DiffInfo
-import org.scalatest.{Matchers, WordSpec}
 
 import scala.collection.immutable.SortedSet
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class DiffInfoSuite extends WordSpec with Matchers {
+class DiffInfoSuite extends AnyWordSpec with Matchers {
   val aa = TestMember(Address("akka.tcp", "sys", "a", 2552), Up)
   val bb = TestMember(Address("akka.tcp", "sys", "b", 2552), Up)
   val cc = TestMember(Address("akka.tcp", "sys", "c", 2552), Up)

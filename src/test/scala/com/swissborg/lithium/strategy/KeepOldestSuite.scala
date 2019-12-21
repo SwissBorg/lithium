@@ -7,11 +7,11 @@ import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.MemberStatus._
 import akka.cluster.swissborg.TestMember
 import cats.implicits._
-import org.scalatest.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.collection.immutable.SortedSet
 import scala.util.Try
+import org.scalatest.matchers.should.Matchers
 
 class KeepOldestSuite extends AnyWordSpecLike with Matchers {
   val aa = TestMember(Address("akka.tcp", "sys", "a", 2552), Up)
