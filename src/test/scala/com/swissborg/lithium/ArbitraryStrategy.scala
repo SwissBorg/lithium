@@ -1,5 +1,6 @@
 package com.swissborg.lithium
 
+import akka.cluster.swissborg.EitherValues
 import cats.effect.Sync
 import cats.{Applicative, ApplicativeError, Functor, Semigroupal}
 import com.swissborg.lithium.instances.ArbitraryTestInstances._
@@ -15,7 +16,7 @@ trait ArbitraryStrategy[F] {
   def fromScenario(scenario: Scenario): Arbitrary[F]
 }
 
-object ArbitraryStrategy {
+object ArbitraryStrategy extends EitherValues {
   implicit def keepRefereeArbitraryStrategy[F[_]: Applicative]: ArbitraryStrategy[KeepReferee[F]] =
     new ArbitraryStrategy[KeepReferee[F]] {
       override def fromScenario(scenario: Scenario): Arbitrary[KeepReferee[F]] = Arbitrary {
@@ -28,8 +29,8 @@ object ArbitraryStrategy {
 
           downIfLessThan <- chooseNum(1, maybeNodes.fold(1)(_.length))
         } yield new strategy.KeepReferee[F](
-          KeepReferee.Config(refineV[SBAddress](referee.member.address.toString).right.get,
-                             refineV[Positive](downIfLessThan).right.get)
+          KeepReferee.Config(refineV[SBAddress](referee.member.address.toString).rightValue,
+                             refineV[Positive](downIfLessThan).rightValue)
         )
       }
     }
@@ -43,7 +44,7 @@ object ArbitraryStrategy {
         for {
           quorumSize <- chooseNum(minQuorumSize, clusterSize.value)
           role       <- arbitrary[String]
-        } yield new strategy.StaticQuorum(StaticQuorum.Config(role, refineV[Positive](quorumSize).right.get))
+        } yield new strategy.StaticQuorum(StaticQuorum.Config(role, refineV[Positive](quorumSize).rightValue))
       }
     }
 

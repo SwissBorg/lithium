@@ -8,8 +8,6 @@ import com.swissborg.lithium.internals.{LithiumReachabilityChanged, LithiumSeenC
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpecLike
 
-import scala.concurrent.duration._
-
 import scala.collection.immutable.IndexedSeq
 import org.scalatest.matchers.should.Matchers
 

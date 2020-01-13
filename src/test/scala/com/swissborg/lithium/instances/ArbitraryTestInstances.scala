@@ -7,6 +7,7 @@ import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus._
 import akka.cluster.swissborg.AkkaArbitraryInstances._
 import akka.cluster._
+import akka.cluster.swissborg.EitherValues
 import cats._
 import cats.data._
 import com.swissborg.lithium.instances.OrderInstances._
@@ -25,7 +26,7 @@ import scala.collection.immutable.{SortedMap, SortedSet}
 
 object ArbitraryTestInstances extends ArbitraryTestInstances
 
-trait ArbitraryTestInstances extends ArbitraryInstances0 {
+trait ArbitraryTestInstances extends ArbitraryInstances0 with EitherValues {
   sealed trait WeaklyUpTag
   type WeaklyUpMember = Member @@ WeaklyUpTag
 
@@ -232,7 +233,7 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 {
   )
 
   implicit val arbQuorumSize: Arbitrary[Int Refined Positive] = Arbitrary {
-    posNum[Int].map(refineV[Positive](_).right.get) // trust me
+    posNum[Int].map(refineV[Positive](_).rightValue) // trust me
   }
 
   implicit val arbReachableNodes: Arbitrary[ReachableQuorum] = Arbitrary(for {

@@ -34,7 +34,7 @@ final case class PostResolution(
       nonEmptyPartitions.tail
         .foldLeft((true, nonEmptyPartitions.head)) {
           case ((noSplitBrain, expectedPartition), partition) =>
-            (noSplitBrain && expectedPartition.sameElements(partition), expectedPartition)
+            (noSplitBrain && expectedPartition.iterator.sameElements(partition), expectedPartition)
         }
         ._1
     } else {

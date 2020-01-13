@@ -2,6 +2,7 @@ package com.swissborg.lithium
 
 import akka.cluster.Member
 import akka.cluster.MemberStatus.{Exiting, Leaving, Removed}
+import akka.cluster.swissborg.EitherValues
 import cats.data.NonEmptySet
 import cats.implicits._
 import com.swissborg.lithium.testImplicits._
@@ -22,7 +23,7 @@ sealed abstract class Scenario {
 final case class OldestRemovedDisseminationScenario(worldViews: List[WorldView], clusterSize: Int Refined Positive)
     extends Scenario
 
-object OldestRemovedDisseminationScenario {
+object OldestRemovedDisseminationScenario extends EitherValues {
   implicit val arbOldestRemovedScenario: Arbitrary[OldestRemovedDisseminationScenario] = {
     def divergeWorldView(
       allMembers: NonEmptySet[Member]
@@ -35,7 +36,7 @@ object OldestRemovedDisseminationScenario {
         // Change `self`
         val baseWorldView =
           WorldView.fromNodes(ReachableNode(partition.head),
-                              partition.tail.map(ReachableNode(_)) ++ otherNodes.map(UnreachableNode(_)))
+                              partition.tail.map[Node](ReachableNode(_)) ++ otherNodes.map[Node](UnreachableNode(_)))
 
         def oldestRemoved =
           if (baseWorldView.selfUniqueAddress === oldestMember.uniqueAddress) {
@@ -55,13 +56,13 @@ object OldestRemovedDisseminationScenario {
       partitions         <- split(upMembers)
       divergedWorldViews <- partitions.traverse(divergeWorldView(upMembers))
     } yield OldestRemovedDisseminationScenario(divergedWorldViews.toList.flatten,
-                                               refineV[Positive](upMembers.length).right.get)
+                                               refineV[Positive](upMembers.length).rightValue)
   }
 }
 
 final case class CleanPartitionScenario(worldViews: List[WorldView], clusterSize: Int Refined Positive) extends Scenario
 
-object CleanPartitionScenario {
+object CleanPartitionScenario extends EitherValues {
 
   /**
    * Generates clean partition scenarios where the allNodes is split
@@ -73,7 +74,7 @@ object CleanPartitionScenario {
       val otherMembers = allMembers -- partition
 
       WorldView.fromNodes(ReachableNode(partition.head),
-                          partition.tail.map(ReachableNode(_)) ++ otherMembers.map(UnreachableNode(_)))
+                          partition.tail.map[Node](ReachableNode(_)) ++ otherMembers.map[Node](UnreachableNode(_)))
     }
 
     for {
@@ -84,7 +85,7 @@ object CleanPartitionScenario {
 
       // Each sub-allNodes sees the other nodes as unreachable.
       partitionedWorldViews = partitions.map(partitionedWorldView(members))
-    } yield CleanPartitionScenario(partitionedWorldViews.toList, refineV[Positive](members.length).right.get)
+    } yield CleanPartitionScenario(partitionedWorldViews.toList, refineV[Positive](members.length).rightValue)
   }
 
 }
@@ -92,7 +93,7 @@ object CleanPartitionScenario {
 final case class UpDisseminationScenario(worldViews: List[WorldView], clusterSize: Int Refined Positive)
     extends Scenario
 
-object UpDisseminationScenario {
+object UpDisseminationScenario extends EitherValues {
   implicit val arbUpDisseminationScenario: Arbitrary[UpDisseminationScenario] = {
 
     /**
@@ -108,7 +109,7 @@ object UpDisseminationScenario {
 
       val baseWorldView = WorldView
         .fromNodes(ReachableNode(partition.head),
-                   partition.tail.map(ReachableNode(_)) ++ otherMembers.map(UnreachableNode(_)))
+                   partition.tail.map[Node](ReachableNode(_)) ++ otherMembers.map[Node](UnreachableNode(_)))
         .addOrUpdate(oldestMemberUp)
 
       pickNonEmptySubset(allMembersUp).arbitrary.map(_.foldLeft(baseWorldView) {
@@ -131,14 +132,14 @@ object UpDisseminationScenario {
 
       divergedWorldViews <- partitions.traverse(divergeWorldView(joiningAndWeaklyUpMembers, allMembersUp, oldestMember))
     } yield UpDisseminationScenario(divergedWorldViews.toList,
-                                    refineV[Positive](joiningAndWeaklyUpMembers.length).right.get)
+                                    refineV[Positive](joiningAndWeaklyUpMembers.length).rightValue)
   }
 }
 
 final case class RemovedDisseminationScenario(worldViews: List[WorldView], clusterSize: Int Refined Positive)
     extends Scenario
 
-object RemovedDisseminationScenario {
+object RemovedDisseminationScenario extends EitherValues {
   implicit val arbRemovedDisseminationScenario: Arbitrary[RemovedDisseminationScenario] = {
 
     /**
@@ -153,7 +154,7 @@ object RemovedDisseminationScenario {
 
       val baseWorldView = WorldView.fromNodes(
         ReachableNode(partition.head),
-        partition.tail.map(ReachableNode(_)) ++ otherMembers.map(UnreachableNode(_))
+        partition.tail.map[Node](ReachableNode(_)) ++ otherMembers.map[Node](UnreachableNode(_))
       )
 
       pickNonEmptySubset(membersToRemove).map { ms =>
@@ -176,7 +177,7 @@ object RemovedDisseminationScenario {
       membersToRemove <- pickNonEmptySubset(allUpMembers)
 
       divergedWorldViews <- partitions.traverse(divergeWorldView(allUpMembers, membersToRemove))
-    } yield RemovedDisseminationScenario(divergedWorldViews.toList, refineV[Positive](allUpMembers.length).right.get)
+    } yield RemovedDisseminationScenario(divergedWorldViews.toList, refineV[Positive](allUpMembers.length).rightValue)
   }
 }
 

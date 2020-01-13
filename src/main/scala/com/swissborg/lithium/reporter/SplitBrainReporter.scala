@@ -279,7 +279,7 @@ private[lithium] object SplitBrainReporter {
       /**
        * True if the both sets contain the same nodes with the same status.
         **/
-      def noChange[N1 <: Node, N2 <: Node](nodes1: SortedSet[N1], nodes2: SortedSet[N2]): Boolean =
+      def noChange[N1 <: Node, N2 <: Node](nodes1: Set[N1], nodes2: Set[N2]): Boolean =
         nodes1.map(node => (node.uniqueAddress, node.status)) === nodes2.map(node => (node.uniqueAddress, node.status))
 
       val oldReachable           = considered(oldWorldView.reachableNodes)
@@ -301,7 +301,7 @@ private[lithium] object SplitBrainReporter {
         updatedUnreachable.map(_.uniqueAddress)
 
       val hasAdditionalNonReachableNodes =
-        !oldNonReachable.sameElements(updatedNonReachable) &&
+        !oldNonReachable.iterator.sameElements(updatedNonReachable) &&
           oldNonReachable.subsetOf(updatedNonReachable)
 
       new DiffInfo(stableReachable && stableIndirectlyConnected && stableUnreachable, hasAdditionalNonReachableNodes) {}

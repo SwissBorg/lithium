@@ -6,13 +6,15 @@ import akka.cluster.MemberStatus._
 import akka.remote.testconductor.RoleName
 import akka.remote.testkit.{MultiNodeConfig, MultiNodeSpec, MultiNodeSpecCallbacks}
 import akka.testkit.ImplicitSender
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.{Eventually, IntegrationPatience}
-import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
 
 abstract class LithiumMultiNodeSpec(val config: MultiNodeConfig)
     extends MultiNodeSpec(config)
     with MultiNodeSpecCallbacks
-    with WordSpecLike
+    with AnyWordSpecLike
     with Matchers
     with BeforeAndAfterAll
     with ImplicitSender

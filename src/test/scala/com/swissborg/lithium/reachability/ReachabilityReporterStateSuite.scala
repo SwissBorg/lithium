@@ -8,7 +8,7 @@ import akka.cluster.MemberStatus.Up
 import akka.cluster.UniqueAddress
 import akka.cluster.swissborg.{LithiumReachability, TestMember}
 import cats.implicits._
-import com.swissborg.lithium.reporter.SplitBrainReporter.{NodeIndirectlyConnected, NodeReachable, NodeUnreachable}
+import com.swissborg.lithium.reporter.SplitBrainReporter.{NodeIndirectlyConnected, NodeUnreachable}
 
 import scala.collection.immutable.SortedSet
 import org.scalatest.matchers.should.Matchers
