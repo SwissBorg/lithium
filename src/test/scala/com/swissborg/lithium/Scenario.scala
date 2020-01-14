@@ -36,7 +36,7 @@ object OldestRemovedDisseminationScenario extends EitherValues {
         // Change `self`
         val baseWorldView =
           WorldView.fromNodes(ReachableNode(partition.head),
-                              partition.tail.map[Node](ReachableNode(_)) ++ otherNodes.map[Node](UnreachableNode(_)))
+                              partition.tail.map(ReachableNode(_): Node) ++ otherNodes.map(UnreachableNode(_): Node))
 
         def oldestRemoved =
           if (baseWorldView.selfUniqueAddress === oldestMember.uniqueAddress) {
@@ -74,7 +74,7 @@ object CleanPartitionScenario extends EitherValues {
       val otherMembers = allMembers -- partition
 
       WorldView.fromNodes(ReachableNode(partition.head),
-                          partition.tail.map[Node](ReachableNode(_)) ++ otherMembers.map[Node](UnreachableNode(_)))
+                          partition.tail.map(ReachableNode(_): Node) ++ otherMembers.map(UnreachableNode(_): Node))
     }
 
     for {
@@ -109,7 +109,7 @@ object UpDisseminationScenario extends EitherValues {
 
       val baseWorldView = WorldView
         .fromNodes(ReachableNode(partition.head),
-                   partition.tail.map[Node](ReachableNode(_)) ++ otherMembers.map[Node](UnreachableNode(_)))
+                   partition.tail.map(ReachableNode(_): Node) ++ otherMembers.map(UnreachableNode(_): Node))
         .addOrUpdate(oldestMemberUp)
 
       pickNonEmptySubset(allMembersUp).arbitrary.map(_.foldLeft(baseWorldView) {
@@ -154,7 +154,7 @@ object RemovedDisseminationScenario extends EitherValues {
 
       val baseWorldView = WorldView.fromNodes(
         ReachableNode(partition.head),
-        partition.tail.map[Node](ReachableNode(_)) ++ otherMembers.map[Node](UnreachableNode(_))
+        partition.tail.map(ReachableNode(_): Node) ++ otherMembers.map(UnreachableNode(_): Node)
       )
 
       pickNonEmptySubset(membersToRemove).map { ms =>

@@ -301,7 +301,7 @@ private[lithium] object SplitBrainReporter {
         updatedUnreachable.map(_.uniqueAddress)
 
       val hasAdditionalNonReachableNodes =
-        !oldNonReachable.iterator.sameElements(updatedNonReachable) &&
+        !oldNonReachable.iterator.sameElements(updatedNonReachable.iterator) &&
           oldNonReachable.subsetOf(updatedNonReachable)
 
       new DiffInfo(stableReachable && stableIndirectlyConnected && stableUnreachable, hasAdditionalNonReachableNodes) {}

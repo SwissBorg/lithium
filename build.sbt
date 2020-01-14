@@ -1,15 +1,18 @@
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 import com.typesafe.sbt.SbtMultiJvm.multiJvmSettings
 
+lazy val scala212               = "2.12.10"
+lazy val scala213               = "2.13.1"
+lazy val supportedScalaVersions = List(scala212, scala213)
+
 organization := "com.swissborg"
 name := "lithium"
-version := "0.9.5"
+version := "0.9.6"
+scalaVersion := scala213
 
 bintrayOrganization := Some("swissborg")
 licenses += ("Apache-2.0", url("https://opensource.org/licenses/Apache-2.0"))
 bintrayReleaseOnPublish in ThisBuild := false
-
-scalaVersion := "2.13.1"
 
 scalacOptions ++=
   Seq(
@@ -114,14 +117,16 @@ libraryDependencies ++= Seq(
   "eu.timepit"                 %% "refined-scalacheck"        % refinedScalacheckVersion   % Test
 )
 
-addCompilerPlugin("org.typelevel" % "kind-projector_2.13.1" % kindProjectorVersion)
-addCompilerPlugin("com.olegpy"    %% "better-monadic-for"   % betterMonadicForVersion)
+addCompilerPlugin(("org.typelevel" % "kind-projector" % kindProjectorVersion).cross(CrossVersion.full))
+
+addCompilerPlugin("com.olegpy" %% "better-monadic-for" % betterMonadicForVersion)
 
 lazy val root = (project in file("."))
   .enablePlugins(MultiJvmPlugin)
   .configs(MultiJvm)
   .settings(multiJvmSettings: _*)
   .settings(parallelExecution in Test := false)
+  .settings(crossScalaVersions := supportedScalaVersions)
 
 scalafmtOnCompile := true
 
@@ -134,7 +139,8 @@ wartremoverErrors ++= Warts.allBut(Wart.StringPlusAny,
                                    Wart.Recursion,
                                    Wart.Overloading,
                                    Wart.Nothing,
-                                   Wart.Equals)
+                                   Wart.Equals,
+                                   Wart.Option2Iterable)
 wartremoverExcluded ++= Seq(
   sourceManaged.value,
   baseDirectory.value / "src" / "test",

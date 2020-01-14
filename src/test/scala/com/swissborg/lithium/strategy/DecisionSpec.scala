@@ -2,14 +2,10 @@ package com.swissborg.lithium
 
 package strategy
 
-import akka.actor.Address
-import akka.cluster.MemberStatus.{Exiting, Joining, Up}
-import akka.cluster.swissborg.TestMember
 import cats.Monoid
 import cats.implicits._
-import com.swissborg.lithium.strategy.Decision.{DownReachable, DownThese, DownUnreachable}
 
-import scala.collection.immutable.{SortedSet, TreeSet}
+import scala.collection.immutable.SortedSet
 
 class DecisionSpec extends LithiumSpec {
   "StrategyDecision" must {
@@ -52,7 +48,7 @@ class DecisionSpec extends LithiumSpec {
     "correctly combine decisions" ignore {
       forAll { decisions: List[Decision] =>
         val expectedNodesToDown: SortedSet[Node] =
-          SortedSet.from(decisions.flatMap(_.nodesToDown))
+          SortedSet(decisions.flatMap(_.nodesToDown): _*)
         val combined: SortedSet[Node] =
           decisions.foldRight(Monoid[Decision].empty)(Monoid[Decision].combine).nodesToDown
         combined should contain theSameElementsAs expectedNodesToDown

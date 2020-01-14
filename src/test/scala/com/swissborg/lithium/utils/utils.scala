@@ -43,6 +43,6 @@ package object utils extends EitherValues {
     }
 
   def pickNonEmptySubset[A: Ordering](as: NonEmptySet[A]): Arbitrary[NonEmptySet[A]] = Arbitrary {
-    atLeastOne(as.toSortedSet).map(seq => NonEmptySet.fromSetUnsafe(SortedSet.from(seq)))
+    atLeastOne(as.toSortedSet).map(seq => NonEmptySet.fromSetUnsafe(SortedSet(seq.toSeq: _*)))
   }
 }
