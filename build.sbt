@@ -14,6 +14,7 @@ bintrayOrganization := Some("swissborg")
 licenses += ("Apache-2.0", url("https://opensource.org/licenses/Apache-2.0"))
 bintrayReleaseOnPublish in ThisBuild := false
 
+lazy val scalacOptionsOnly212 = Seq("-Ypartial-unification", "-Xfuture", "-Yno-adapted-args")
 scalacOptions ++=
   Seq(
     "-encoding",
@@ -29,9 +30,11 @@ scalacOptions ++=
     "-Ywarn-unused",
     "-Ywarn-numeric-widen",
     "-Ywarn-value-discard",
-    //    "-Xfatal-warnings",
     "-deprecation"
-  )
+  ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, 12)) => scalacOptionsOnly212
+    case _               => Seq()
+  })
 
 val akkaVersion                = "2.6.1"
 val catsVersion                = "2.1.0"
