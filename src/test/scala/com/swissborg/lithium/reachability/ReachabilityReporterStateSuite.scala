@@ -16,9 +16,9 @@ import org.scalatest.wordspec.AnyWordSpec
 
 class ReachabilityReporterStateSuite extends AnyWordSpec with Matchers {
   private val defaultDc = "dc-default"
-  private val aa        = UniqueAddress(Address("akka.tcp", "sys", "a", 2552), 1L)
-  private val bb        = UniqueAddress(Address("akka.tcp", "sys", "b", 2552), 2L)
-  private val cc        = UniqueAddress(Address("akka.tcp", "sys", "c", 2552), 3L)
+  private val aa        = UniqueAddress(Address("akka", "sys", "a", 2552), 1L)
+  private val bb        = UniqueAddress(Address("akka", "sys", "b", 2552), 2L)
+  private val cc        = UniqueAddress(Address("akka", "sys", "c", 2552), 3L)
 
   "ReachabilityReporterState" must {
     //    "ignore members from the same DC" in {

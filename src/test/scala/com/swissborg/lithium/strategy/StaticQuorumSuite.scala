@@ -14,13 +14,13 @@ import scala.collection.immutable.SortedSet
 import org.scalatest.matchers.should.Matchers
 
 class StaticQuorumSuite extends AnyWordSpecLike with Matchers {
-  val aa = TestMember(Address("akka.tcp", "sys", "a", 2552), Up)
-  val bb = TestMember(Address("akka.tcp", "sys", "b", 2552), Up)
-  val cc = TestMember(Address("akka.tcp", "sys", "c", 2552), Up, Set("role"))
-  val dd = TestMember(Address("akka.tcp", "sys", "d", 2552), Up, Set("role"))
-  val ee = TestMember(Address("akka.tcp", "sys", "e", 2552), Up, Set("role"))
+  val aa = TestMember(Address("akka", "sys", "a", 2552), Up)
+  val bb = TestMember(Address("akka", "sys", "b", 2552), Up)
+  val cc = TestMember(Address("akka", "sys", "c", 2552), Up, Set("role"))
+  val dd = TestMember(Address("akka", "sys", "d", 2552), Up, Set("role"))
+  val ee = TestMember(Address("akka", "sys", "e", 2552), Up, Set("role"))
 
-  val joiningCC = TestMember(Address("akka.tcp", "sys", "c", 2552), Joining, Set("role"))
+  val joiningCC = TestMember(Address("akka", "sys", "c", 2552), Joining, Set("role"))
 
   "StaticQuorum" must {
     "down the unreachable nodes when part of a quorum" in {

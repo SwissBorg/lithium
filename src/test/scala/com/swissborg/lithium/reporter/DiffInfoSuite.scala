@@ -14,21 +14,21 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class DiffInfoSuite extends AnyWordSpec with Matchers {
-  val aa = TestMember(Address("akka.tcp", "sys", "a", 2552), Up)
-  val bb = TestMember(Address("akka.tcp", "sys", "b", 2552), Up)
-  val cc = TestMember(Address("akka.tcp", "sys", "c", 2552), Up)
-  val dd = TestMember(Address("akka.tcp", "sys", "d", 2552), Up)
-  val ee = TestMember(Address("akka.tcp", "sys", "e", 2552), Up)
+  val aa = TestMember(Address("akka", "sys", "a", 2552), Up)
+  val bb = TestMember(Address("akka", "sys", "b", 2552), Up)
+  val cc = TestMember(Address("akka", "sys", "c", 2552), Up)
+  val dd = TestMember(Address("akka", "sys", "d", 2552), Up)
+  val ee = TestMember(Address("akka", "sys", "e", 2552), Up)
 
-  val joiningBB  = TestMember(Address("akka.tcp", "sys", "b", 2552), Joining)
-  val weaklyUpBB = TestMember(Address("akka.tcp", "sys", "b", 2552), WeaklyUp)
-  val leavingBB  = TestMember(Address("akka.tcp", "sys", "b", 2552), Leaving)
-  val exitingBB  = TestMember(Address("akka.tcp", "sys", "b", 2552), Exiting)
-  val downBB     = TestMember(Address("akka.tcp", "sys", "b", 2552), Down)
-  val removedBB  = TestMember(Address("akka.tcp", "sys", "b", 2552), Removed)
+  val joiningBB  = TestMember(Address("akka", "sys", "b", 2552), Joining)
+  val weaklyUpBB = TestMember(Address("akka", "sys", "b", 2552), WeaklyUp)
+  val leavingBB  = TestMember(Address("akka", "sys", "b", 2552), Leaving)
+  val exitingBB  = TestMember(Address("akka", "sys", "b", 2552), Exiting)
+  val downBB     = TestMember(Address("akka", "sys", "b", 2552), Down)
+  val removedBB  = TestMember(Address("akka", "sys", "b", 2552), Removed)
 
-  val joining  = TestMember(Address("akka.tcp", "sys", "joining", 2552), Joining)
-  val weaklyUp = TestMember(Address("akka.tcp", "sys", "weaklyUp", 2552), WeaklyUp)
+  val joining  = TestMember(Address("akka", "sys", "joining", 2552), Joining)
+  val weaklyUp = TestMember(Address("akka", "sys", "weaklyUp", 2552), WeaklyUp)
 
   "DiffInfo" must {
     "detect no change" in {

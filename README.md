@@ -150,7 +150,7 @@ By design this strategy cannot lead to a split-brain.
 com.swissborg.lithium {
   active-strategy = "keep-referee"
   keep-referee {
-    # Address of the member in the format "akka.tcp://system@host:port"
+    # Address of the member in the format "akka://system@host:port"
     referee = null
     
     # Minimum number of nodes in the surviving partition.
