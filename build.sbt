@@ -109,7 +109,6 @@ libraryDependencies ++= Seq(
 
 // ScalaTest
 libraryDependencies ++= Seq(
-  "com.github.alexarchambault" %% "scalacheck-shapeless_1.14" % scalacheckShapelessVersion % Test,
   "eu.timepit"                 %% "refined-scalacheck"        % refinedScalacheckVersion   % Test,
   "org.scalatest"              %% "scalatest"                 % scalatestVersion           % Test
 )
