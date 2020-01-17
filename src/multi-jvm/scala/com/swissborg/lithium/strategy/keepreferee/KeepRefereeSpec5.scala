@@ -24,7 +24,7 @@ sealed abstract class KeepRefereeSpec5 extends FiveNodeSpec("KeepReferee", KeepR
   override def assertions(): Unit =
     "handle scenario 5" in within(60 seconds) {
       runOn(node1) {
-        testConductor.blackhole(node4, node5, Direction.Receive).await
+        testConductor.blackhole(node4, node5, Direction.Both).await
       }
 
       enterBarrier("links-failed")

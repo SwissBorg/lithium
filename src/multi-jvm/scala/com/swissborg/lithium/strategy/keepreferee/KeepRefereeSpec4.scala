@@ -26,7 +26,7 @@ sealed abstract class KeepRefereeSpec4 extends FiveNodeSpec("KeepReferee", KeepR
       runOn(node1) {
         // Node4 cannot receive node5 messages
         // Node4 and node5 will shutdown because they are indirectly connected.
-        testConductor.blackhole(node4, node5, Direction.Receive).await
+        testConductor.blackhole(node4, node5, Direction.Both).await
       }
 
       enterBarrier("links-failed")

@@ -27,8 +27,8 @@ sealed abstract class KeepRefereeSpec8 extends TenNodeSpec("KeepReferee", KeepRe
   override def assertions(): Unit =
     "handle scenario 8" in within(120 seconds) {
       runOn(node1) {
-        testConductor.blackhole(node9, node10, Direction.Receive).await
-        testConductor.blackhole(node3, node4, Direction.Receive).await
+        testConductor.blackhole(node9, node10, Direction.Both).await
+        testConductor.blackhole(node3, node4, Direction.Both).await
       }
 
       enterBarrier("links-failed")

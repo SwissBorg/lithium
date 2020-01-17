@@ -26,8 +26,8 @@ sealed abstract class StaticQuorumSpec6 extends FiveNodeSpec("StaticQuorum", Sta
     "handle scenario 6" in within(120 seconds) {
       runOn(node1) {
         // Node4 cannot receive node5 messages
-        testConductor.blackhole(node1, node4, Direction.Receive).await
-        testConductor.blackhole(node3, node5, Direction.Receive).await
+        testConductor.blackhole(node1, node4, Direction.Both).await
+        testConductor.blackhole(node3, node5, Direction.Both).await
       }
 
       enterBarrier("links-failed")

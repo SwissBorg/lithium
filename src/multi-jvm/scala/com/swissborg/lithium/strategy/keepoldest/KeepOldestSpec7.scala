@@ -26,7 +26,7 @@ sealed abstract class KeepOldestSpec7 extends TenNodeSpec("KeepOldest", KeepOlde
   override def assertions(): Unit =
     "handle scenario 7" in within(120 seconds) {
       runOn(node1) {
-        testConductor.blackhole(node9, node10, Direction.Receive).await
+        testConductor.blackhole(node9, node10, Direction.Both).await
       }
 
       enterBarrier("links-failed")

@@ -22,7 +22,7 @@ sealed abstract class StaticQuorumSpec4 extends ThreeNodeSpec("StaticQuorum", St
   override def assertions(): Unit =
     "handle scenario 4" in within(120 seconds) {
       runOn(node1) {
-        testConductor.blackhole(node2, node3, Direction.Receive).await
+        testConductor.blackhole(node2, node3, Direction.Both).await
       }
 
       enterBarrier("links-failed")

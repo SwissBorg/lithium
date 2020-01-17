@@ -22,7 +22,7 @@ sealed abstract class KeepOldestSpec4 extends ThreeNodeSpec("KeepOldest", KeepOl
   override def assertions(): Unit =
     "handle scenario 4" in within(120 seconds) {
       runOn(node1) {
-        testConductor.blackhole(node1, node2, Direction.Receive).await
+        testConductor.blackhole(node1, node2, Direction.Both).await
       }
 
       enterBarrier("links-failed")

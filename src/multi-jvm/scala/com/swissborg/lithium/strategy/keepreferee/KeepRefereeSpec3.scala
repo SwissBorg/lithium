@@ -23,7 +23,7 @@ sealed abstract class KeepRefereeSpec3 extends ThreeNodeSpec("KeepReferee", Keep
   override def assertions(): Unit =
     "handle scenario 3" in within(60 seconds) {
       runOn(node1) {
-        testConductor.blackhole(node1, node2, Direction.Receive).await
+        testConductor.blackhole(node1, node2, Direction.Both).await
       }
 
       enterBarrier("links-failed")

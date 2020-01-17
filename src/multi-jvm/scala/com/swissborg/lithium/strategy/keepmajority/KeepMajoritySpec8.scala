@@ -26,8 +26,8 @@ sealed abstract class KeepMajority8 extends TenNodeSpec("KeepMajority", KeepMajo
   override def assertions(): Unit =
     "handle scenario 8" in within(120 seconds) {
       runOn(node1) {
-        testConductor.blackhole(node9, node10, Direction.Receive).await
-        testConductor.blackhole(node2, node3, Direction.Receive).await
+        testConductor.blackhole(node9, node10, Direction.Both).await
+        testConductor.blackhole(node2, node3, Direction.Both).await
       }
 
       enterBarrier("links-failed")

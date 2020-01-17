@@ -27,8 +27,8 @@ sealed abstract class StaticQuorumSpec9 extends TenNodeSpec("StaticQuorum", Stat
   override def assertions(): Unit =
     "handle scenario 9" in within(120 seconds) {
       runOn(node1) {
-        testConductor.blackhole(node8, node9, Direction.Receive).await
-        testConductor.blackhole(node9, node10, Direction.Receive).await
+        testConductor.blackhole(node8, node9, Direction.Both).await
+        testConductor.blackhole(node9, node10, Direction.Both).await
       }
 
       enterBarrier("links-failed")
