@@ -7,7 +7,7 @@ lazy val supportedScalaVersions = List(scala212, scala213)
 
 organization := "com.swissborg"
 name := "lithium"
-version := "0.9.6"
+version := "0.10.0"
 scalaVersion := scala213
 
 bintrayOrganization := Some("swissborg")
