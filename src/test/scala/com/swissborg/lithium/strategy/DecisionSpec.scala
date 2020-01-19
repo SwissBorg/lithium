@@ -42,10 +42,7 @@ class DecisionSpec extends LithiumSpec {
       }
     }
 
-    // This test fails sometimes. It runs accross many random evaluations but eventually if fails in some.
-    // I cannot reproduce the error with a regular deterministic test. I assume there is some edge case error
-    // or some bug in some of the libraries orcastrating this test
-    "correctly combine decisions" ignore {
+    "correctly combine decisions" in {
       forAll { decisions: List[Decision] =>
         val expectedNodesToDown: SortedSet[Node] =
           SortedSet(decisions.flatMap(_.nodesToDown): _*)

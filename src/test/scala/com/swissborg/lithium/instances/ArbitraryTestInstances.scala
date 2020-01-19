@@ -166,8 +166,12 @@ trait ArbitraryTestInstances extends ArbitraryInstances0 with EitherValues {
     Arbitrary(for {
       protocol <- Gen.identifier
       system   <- Gen.identifier
-      host     <- Gen.identifier
-      port     <- Gen.chooseNum(0, Integer.MAX_VALUE)
+      // Use a fixed size host name otherwise there's a high chance
+      // of creating two addresses with the same host+port. Which
+      // happens quite often as Scalacheck has a bias towards
+      // "small" values.
+      host <- Gen.listOfN(16, Gen.alphaChar).map(_.mkString)
+      port <- Gen.chooseNum(0, Integer.MAX_VALUE)
     } yield Address(protocol, system, Some(host), Some(port)))
 
   implicit val arbMemberStatus: Arbitrary[MemberStatus] =
