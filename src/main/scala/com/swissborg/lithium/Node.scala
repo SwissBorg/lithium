@@ -27,8 +27,8 @@ sealed abstract private[lithium] class Node extends Product with Serializable {
   override def hashCode: Int = member.hashCode()
 
   override def equals(other: Any): Boolean = other match {
-    case n: Node ⇒ member.equals(n.member)
-    case _       ⇒ false
+    case n: Node => member.equals(n.member)
+    case _       => false
   }
 }
 

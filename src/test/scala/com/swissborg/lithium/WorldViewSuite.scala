@@ -13,24 +13,24 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class WorldViewSuite extends AnyWordSpec with Matchers {
-  val aa = TestMember(Address("akka.tcp", "sys", "a", 2552), Up)
-  val bb = TestMember(Address("akka.tcp", "sys", "b", 2552), Up)
-  val cc = TestMember(Address("akka.tcp", "sys", "c", 2552), Up)
-  val dd = TestMember(Address("akka.tcp", "sys", "d", 2552), Up)
-  val ee = TestMember(Address("akka.tcp", "sys", "e", 2552), Up)
+  val aa = TestMember(Address("akka", "sys", "a", 2552), Up)
+  val bb = TestMember(Address("akka", "sys", "b", 2552), Up)
+  val cc = TestMember(Address("akka", "sys", "c", 2552), Up)
+  val dd = TestMember(Address("akka", "sys", "d", 2552), Up)
+  val ee = TestMember(Address("akka", "sys", "e", 2552), Up)
 
-  val aa0 = TestMember(Address("akka.tcp", "sys", "a", 2552), Removed)
+  val aa0 = TestMember(Address("akka", "sys", "a", 2552), Removed)
 
-  val joining  = TestMember(Address("akka.tcp", "sys", "joining", 2552), Joining)
-  val weaklyUp = TestMember(Address("akka.tcp", "sys", "weaklyUp", 2552), WeaklyUp)
-  val up       = TestMember(Address("akka.tcp", "sys", "up", 2552), Up)
-  val leaving  = TestMember(Address("akka.tcp", "sys", "leaving", 2552), Leaving)
-  val exiting  = TestMember(Address("akka.tcp", "sys", "exiting", 2552), Exiting)
-  val down     = TestMember(Address("akka.tcp", "sys", "down", 2552), Down)
-  val removed  = TestMember(Address("akka.tcp", "sys", "removed", 2552), Removed)
+  val joining  = TestMember(Address("akka", "sys", "joining", 2552), Joining)
+  val weaklyUp = TestMember(Address("akka", "sys", "weaklyUp", 2552), WeaklyUp)
+  val up       = TestMember(Address("akka", "sys", "up", 2552), Up)
+  val leaving  = TestMember(Address("akka", "sys", "leaving", 2552), Leaving)
+  val exiting  = TestMember(Address("akka", "sys", "exiting", 2552), Exiting)
+  val down     = TestMember(Address("akka", "sys", "down", 2552), Down)
+  val removed  = TestMember(Address("akka", "sys", "removed", 2552), Removed)
 
-  val otherDC     = TestMember(Address("akka.tcp", "sys", "other-dc", 2552), Up, "Other")
-  val bbInOtherDC = TestMember(Address("akka.tcp", "sys", "b", 2552), Removed, "Other")
+  val otherDC     = TestMember(Address("akka", "sys", "other-dc", 2552), Up, "Other")
+  val bbInOtherDC = TestMember(Address("akka", "sys", "b", 2552), Removed, "Other")
 
   "WorldView" must {
     "init" in {

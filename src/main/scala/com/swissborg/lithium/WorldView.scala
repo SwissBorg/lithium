@@ -50,8 +50,7 @@ final private[lithium] case class WorldView private (selfUniqueAddress: UniqueAd
   lazy val nodes: NonEmptySet[Node] = {
     val otherNodes: Seq[Node] = otherMembersStatus.values.map {
       case Status(member, reachability) => toNode(member, reachability)
-    }(collection.breakOut)
-
+    }.toSeq
     NonEmptySet.of(selfNode, otherNodes: _*)
   }
 
@@ -322,9 +321,7 @@ private[lithium] object WorldView {
 
     val (_, others) = sameDCOtherNodes.partition(_.member.status === Removed)
 
-    WorldView(selfUniqueAddress,
-              selfStatus,
-              others.filterNot(_.member.status === Removed).map(convertOther)(collection.breakOut))
+    WorldView(selfUniqueAddress, selfStatus, others.view.filterNot(_.member.status === Removed).map(convertOther).toMap)
   }
 
   /**

@@ -8,7 +8,7 @@ import akka.cluster.MemberStatus.Up
 import akka.cluster.UniqueAddress
 import akka.cluster.swissborg.{LithiumReachability, TestMember}
 import cats.implicits._
-import com.swissborg.lithium.reporter.SplitBrainReporter.{NodeIndirectlyConnected, NodeReachable, NodeUnreachable}
+import com.swissborg.lithium.reporter.SplitBrainReporter.{NodeIndirectlyConnected, NodeUnreachable}
 
 import scala.collection.immutable.SortedSet
 import org.scalatest.matchers.should.Matchers
@@ -16,9 +16,9 @@ import org.scalatest.wordspec.AnyWordSpec
 
 class ReachabilityReporterStateSuite extends AnyWordSpec with Matchers {
   private val defaultDc = "dc-default"
-  private val aa        = UniqueAddress(Address("akka.tcp", "sys", "a", 2552), 1L)
-  private val bb        = UniqueAddress(Address("akka.tcp", "sys", "b", 2552), 2L)
-  private val cc        = UniqueAddress(Address("akka.tcp", "sys", "c", 2552), 3L)
+  private val aa        = UniqueAddress(Address("akka", "sys", "a", 2552), 1L)
+  private val bb        = UniqueAddress(Address("akka", "sys", "b", 2552), 2L)
+  private val cc        = UniqueAddress(Address("akka", "sys", "c", 2552), 3L)
 
   "ReachabilityReporterState" must {
     //    "ignore members from the same DC" in {

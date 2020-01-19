@@ -45,11 +45,10 @@ class DecisionSpec extends LithiumSpec {
     "correctly combine decisions" in {
       forAll { decisions: List[Decision] =>
         val expectedNodesToDown: SortedSet[Node] =
-          decisions.flatMap(_.nodesToDown)(collection.breakOut)
-
-        expectedNodesToDown should contain theSameElementsAs
+          SortedSet(decisions.flatMap(_.nodesToDown): _*)
+        val combined: SortedSet[Node] =
           decisions.foldRight(Monoid[Decision].empty)(Monoid[Decision].combine).nodesToDown
-
+        combined should contain theSameElementsAs expectedNodesToDown
       }
     }
   }

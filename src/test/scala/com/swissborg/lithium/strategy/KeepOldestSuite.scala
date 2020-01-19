@@ -14,13 +14,13 @@ import scala.util.Try
 import org.scalatest.matchers.should.Matchers
 
 class KeepOldestSuite extends AnyWordSpecLike with Matchers {
-  val aa = TestMember(Address("akka.tcp", "sys", "a", 2552), Up)
-  val bb = TestMember(Address("akka.tcp", "sys", "b", 2552), Up)
-  val cc = TestMember(Address("akka.tcp", "sys", "c", 2552), Up, Set("role"))
-  val dd = TestMember(Address("akka.tcp", "sys", "d", 2552), Up, Set("role"))
-  val ee = TestMember(Address("akka.tcp", "sys", "e", 2552), Up, Set("role"))
+  val aa = TestMember(Address("akka", "sys", "a", 2552), Up)
+  val bb = TestMember(Address("akka", "sys", "b", 2552), Up)
+  val cc = TestMember(Address("akka", "sys", "c", 2552), Up, Set("role"))
+  val dd = TestMember(Address("akka", "sys", "d", 2552), Up, Set("role"))
+  val ee = TestMember(Address("akka", "sys", "e", 2552), Up, Set("role"))
 
-  val weaklyUpBB = TestMember(Address("akka.tcp", "sys", "b", 2552), WeaklyUp)
+  val weaklyUpBB = TestMember(Address("akka", "sys", "b", 2552), WeaklyUp)
 
   "KeepOldest" must {
     "down the unreachable nodes when being the oldest node and not alone" in {

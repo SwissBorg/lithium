@@ -25,10 +25,11 @@ object AkkaArbitraryInstances {
 
   def arbChildActorPath(parent: ActorPath): Arbitrary[ChildActorPath] =
     Arbitrary(for {
-      c  <- Gen.alphaChar
-      cs <- Gen.alphaStr
+      c   <- Gen.alphaChar
+      cs  <- Gen.alphaStr
+      uid <- Gen.chooseNum(0, Int.MaxValue)
       name = s"$c$cs"
-    } yield new ChildActorPath(parent, name))
+    } yield new ChildActorPath(parent, name, uid))
 
   def arbActorPath(depth: Int, parent: ActorPath): Arbitrary[ActorPath] =
     Arbitrary(

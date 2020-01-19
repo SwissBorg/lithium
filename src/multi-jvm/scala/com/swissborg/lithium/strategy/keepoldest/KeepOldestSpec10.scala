@@ -34,7 +34,7 @@ sealed abstract class KeepOldestSpec10 extends TenNodeSpec("KeepOldest", KeepOld
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
         }
 
-        testConductor.blackhole(node7, node8, Direction.Receive).await
+        testConductor.blackhole(node7, node8, Direction.Both).await
       }
 
       enterBarrier("links-failed")

@@ -27,7 +27,7 @@ sealed abstract class KeepMajority7 extends TenNodeSpec("KeepMajority", KeepMajo
     "handle scenario 7" in within(120 seconds) {
       runOn(node1) {
         // Node9 cannot receive node10 messages
-        val _ = testConductor.blackhole(node9, node10, Direction.Receive).await
+        val _ = testConductor.blackhole(node9, node10, Direction.Both).await
       }
 
       enterBarrier("links-failed")

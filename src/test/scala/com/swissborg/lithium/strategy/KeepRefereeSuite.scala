@@ -15,9 +15,9 @@ import scala.collection.immutable.SortedSet
 import org.scalatest.matchers.should.Matchers
 
 class KeepRefereeSuite extends AnyWordSpecLike with Matchers {
-  private val aa = TestMember(Address("akka.tcp", "sys", "a", 2552), Up)
-  private val bb = TestMember(Address("akka.tcp", "sys", "b", 2552), Up)
-  private val cc = TestMember(Address("akka.tcp", "sys", "c", 2552), Up)
+  private val aa = TestMember(Address("akka", "sys", "a", 2552), Up)
+  private val bb = TestMember(Address("akka", "sys", "b", 2552), Up)
+  private val cc = TestMember(Address("akka", "sys", "c", 2552), Up)
 
   private val referee =
     refineV[SBAddress](aa.address.toString).left.map(new IllegalArgumentException(_)).toTry.get

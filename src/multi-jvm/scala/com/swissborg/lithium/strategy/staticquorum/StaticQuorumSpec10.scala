@@ -34,7 +34,7 @@ sealed abstract class StaticQuorumSpec10 extends TenNodeSpec("StaticQuorum", Sta
           case (from, to) => testConductor.blackhole(from, to, Direction.Both).await
         }
 
-        testConductor.blackhole(node7, node8, Direction.Receive).await
+        testConductor.blackhole(node7, node8, Direction.Both).await
       }
 
       enterBarrier("links-failed")

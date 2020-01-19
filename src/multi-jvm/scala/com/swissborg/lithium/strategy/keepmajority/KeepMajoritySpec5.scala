@@ -19,7 +19,7 @@ sealed abstract class KeepMajoritySpec5 extends FiveNodeSpec("KeepMajority", Kee
     "handle scenario 5" in within(120 seconds) {
       runOn(node1) {
         // Node4 cannot receive node5 messages
-        val _ = testConductor.blackhole(node4, node5, Direction.Receive).await
+        val _ = testConductor.blackhole(node4, node5, Direction.Both).await
       }
 
       enterBarrier("links-failed")
