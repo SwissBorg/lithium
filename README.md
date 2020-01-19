@@ -13,7 +13,7 @@ without needing any intervention.
 
 ```scala
 resolvers += Resolver.bintrayRepo("swissborg", "maven")
-libraryDependencies += "com.swissborg" %% "lithium" % "0.9.5"
+libraryDependencies += "com.swissborg" %% "lithium" % "0.10.0"
 ```
 
 ## Stable-After
