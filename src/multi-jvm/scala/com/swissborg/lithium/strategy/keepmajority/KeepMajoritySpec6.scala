@@ -31,12 +31,12 @@ sealed abstract class KeepMajoritySpec6 extends FiveNodeSpec("KeepMajority", Kee
 
       enterBarrier("links-failed")
 
-      runOn(node2, node3, node4, node5) {
-        waitForSelfDowning
-      }
-
       runOn(node1) {
         waitForAllLeaving(node2, node3, node4, node5)
+      }
+
+      runOn(node2, node3, node4, node5) {
+        waitForSelfDowning
       }
 
       enterBarrier("split-brain-resolved")

@@ -14,21 +14,17 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class DiffInfoSuite extends AnyWordSpec with Matchers {
-  val aa = TestMember(Address("akka", "sys", "a", 2552), Up)
-  val bb = TestMember(Address("akka", "sys", "b", 2552), Up)
-  val cc = TestMember(Address("akka", "sys", "c", 2552), Up)
-  val dd = TestMember(Address("akka", "sys", "d", 2552), Up)
-  val ee = TestMember(Address("akka", "sys", "e", 2552), Up)
+  private val aa = TestMember(Address("akka", "sys", "a", 2552), Up)
+  private val bb = TestMember(Address("akka", "sys", "b", 2552), Up)
+  private val cc = TestMember(Address("akka", "sys", "c", 2552), Up)
+  private val dd = TestMember(Address("akka", "sys", "d", 2552), Up)
 
-  val joiningBB  = TestMember(Address("akka", "sys", "b", 2552), Joining)
-  val weaklyUpBB = TestMember(Address("akka", "sys", "b", 2552), WeaklyUp)
-  val leavingBB  = TestMember(Address("akka", "sys", "b", 2552), Leaving)
-  val exitingBB  = TestMember(Address("akka", "sys", "b", 2552), Exiting)
-  val downBB     = TestMember(Address("akka", "sys", "b", 2552), Down)
-  val removedBB  = TestMember(Address("akka", "sys", "b", 2552), Removed)
+  private val leavingBB = TestMember(Address("akka", "sys", "b", 2552), Leaving)
+  private val exitingBB = TestMember(Address("akka", "sys", "b", 2552), Exiting)
+  private val downBB    = TestMember(Address("akka", "sys", "b", 2552), Down)
 
-  val joining  = TestMember(Address("akka", "sys", "joining", 2552), Joining)
-  val weaklyUp = TestMember(Address("akka", "sys", "weaklyUp", 2552), WeaklyUp)
+  private val joining  = TestMember(Address("akka", "sys", "joining", 2552), Joining)
+  private val weaklyUp = TestMember(Address("akka", "sys", "weaklyUp", 2552), WeaklyUp)
 
   "DiffInfo" must {
     "detect no change" in {
@@ -37,7 +33,7 @@ class DiffInfoSuite extends AnyWordSpec with Matchers {
       val diff = DiffInfo(w, w)
 
       diff.changeIsStable shouldBe true
-      diff.hasAdditionalNonReachableNodes shouldBe false
+      diff.hasAdditionalConsideredNonReachableNodes shouldBe false
     }
 
     "detect a new indirectly connected node" in {
@@ -48,7 +44,7 @@ class DiffInfoSuite extends AnyWordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasAdditionalNonReachableNodes shouldBe true
+      diff.hasAdditionalConsideredNonReachableNodes shouldBe true
     }
 
     "detect a new unreachable node" in {
@@ -59,7 +55,7 @@ class DiffInfoSuite extends AnyWordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasAdditionalNonReachableNodes shouldBe true
+      diff.hasAdditionalConsideredNonReachableNodes shouldBe true
     }
 
     "detect a exiting member" in {
@@ -70,7 +66,7 @@ class DiffInfoSuite extends AnyWordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasAdditionalNonReachableNodes shouldBe false
+      diff.hasAdditionalConsideredNonReachableNodes shouldBe false
     }
 
     "detect a downed member" in {
@@ -81,7 +77,7 @@ class DiffInfoSuite extends AnyWordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasAdditionalNonReachableNodes shouldBe false
+      diff.hasAdditionalConsideredNonReachableNodes shouldBe false
     }
 
     "detect a leaving member" in {
@@ -92,7 +88,7 @@ class DiffInfoSuite extends AnyWordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasAdditionalNonReachableNodes shouldBe false
+      diff.hasAdditionalConsideredNonReachableNodes shouldBe false
     }
 
     "ignore change from indirectly connected to unreachable" in {
@@ -105,7 +101,7 @@ class DiffInfoSuite extends AnyWordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasAdditionalNonReachableNodes shouldBe false
+      diff.hasAdditionalConsideredNonReachableNodes shouldBe false
     }
 
     "ignore change from unreachable to indirectly connected" in {
@@ -117,7 +113,7 @@ class DiffInfoSuite extends AnyWordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasAdditionalNonReachableNodes shouldBe false
+      diff.hasAdditionalConsideredNonReachableNodes shouldBe false
     }
 
     "ignore reachable joining members" in {
@@ -128,7 +124,7 @@ class DiffInfoSuite extends AnyWordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe true
-      diff.hasAdditionalNonReachableNodes shouldBe false
+      diff.hasAdditionalConsideredNonReachableNodes shouldBe false
     }
 
     "consider indirectly connected joining members" in {
@@ -139,7 +135,7 @@ class DiffInfoSuite extends AnyWordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasAdditionalNonReachableNodes shouldBe true
+      diff.hasAdditionalConsideredNonReachableNodes shouldBe true
     }
 
     "consider unreachable joining members" in {
@@ -150,7 +146,7 @@ class DiffInfoSuite extends AnyWordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasAdditionalNonReachableNodes shouldBe true
+      diff.hasAdditionalConsideredNonReachableNodes shouldBe true
     }
 
     "ignore reachable weakly-up members" in {
@@ -161,7 +157,7 @@ class DiffInfoSuite extends AnyWordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe true
-      diff.hasAdditionalNonReachableNodes shouldBe false
+      diff.hasAdditionalConsideredNonReachableNodes shouldBe false
     }
 
     "consider indirectly connected weakly-up members" in {
@@ -172,7 +168,7 @@ class DiffInfoSuite extends AnyWordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasAdditionalNonReachableNodes shouldBe true
+      diff.hasAdditionalConsideredNonReachableNodes shouldBe true
     }
 
     "consider unreachable weakly-up members" in {
@@ -183,7 +179,7 @@ class DiffInfoSuite extends AnyWordSpec with Matchers {
       val diff = DiffInfo(oldW, updatedW)
 
       diff.changeIsStable shouldBe false
-      diff.hasAdditionalNonReachableNodes shouldBe true
+      diff.hasAdditionalConsideredNonReachableNodes shouldBe true
     }
   }
 }
