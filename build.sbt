@@ -10,9 +10,22 @@ name := "lithium"
 version := "0.10.0"
 scalaVersion := scala213
 
-bintrayOrganization := Some("swissborg")
-licenses += ("Apache-2.0", url("https://opensource.org/licenses/Apache-2.0"))
-bintrayReleaseOnPublish in ThisBuild := false
+lazy val publishSettings = Seq(
+  publishMavenStyle := true,
+  licenses := Seq("Apache-2.0" -> url("https://opensource.org/licenses/Apache-2.0")),
+  publishTo := sonatypePublishToBundle.value,
+  homepage := Some(url("https://github.com/SwissBorg/lithium")),
+  scmInfo := Some(ScmInfo(url("https://github.com/SwissBorg/lithium"), "scm:git@github.com:SwissBorg/lithium.git")),
+  pomExtra := (
+    <developers>
+        <developer>
+          <id>DennisVDB</id>
+          <name>Dennis van der Bij</name>
+          <url>https://github.com/DennisVDB/</url>
+        </developer>
+      </developers>
+  )
+)
 
 lazy val scalacOptionsOnly212 = Seq("-Ypartial-unification", "-Xfuture", "-Yno-adapted-args")
 scalacOptions ++=
@@ -33,7 +46,7 @@ scalacOptions ++=
     "-deprecation"
   ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
     case Some((2, 12)) => scalacOptionsOnly212
-    case _               => Seq()
+    case _             => Seq()
   })
 
 val akkaVersion                = "2.6.1"
@@ -109,8 +122,8 @@ libraryDependencies ++= Seq(
 
 // ScalaTest
 libraryDependencies ++= Seq(
-  "eu.timepit"                 %% "refined-scalacheck"        % refinedScalacheckVersion   % Test,
-  "org.scalatest"              %% "scalatest"                 % scalatestVersion           % Test
+  "eu.timepit"    %% "refined-scalacheck" % refinedScalacheckVersion % Test,
+  "org.scalatest" %% "scalatest"          % scalatestVersion         % Test
 )
 
 // ScalaCheck
@@ -129,6 +142,7 @@ lazy val root = (project in file("."))
   .settings(multiJvmSettings: _*)
   .settings(parallelExecution in Test := false)
   .settings(crossScalaVersions := supportedScalaVersions)
+  .settings(publishSettings)
 
 scalafmtOnCompile := true
 
