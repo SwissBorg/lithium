@@ -39,7 +39,6 @@ final private[reporter] case class SplitBrainReporterState(worldView: WorldView)
 }
 
 private[reporter] object SplitBrainReporterState {
-
   def fromSnapshot(selfMember: Member, snapshot: CurrentClusterState): SplitBrainReporterState =
     SplitBrainReporterState(WorldView.fromSnapshot(selfMember, snapshot))
 }

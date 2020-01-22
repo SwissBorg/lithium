@@ -7,7 +7,6 @@ lazy val supportedScalaVersions = List(scala212, scala213)
 
 organization := "com.swissborg"
 name := "lithium"
-version := "0.10.0"
 scalaVersion := scala213
 
 lazy val publishSettings = Seq(

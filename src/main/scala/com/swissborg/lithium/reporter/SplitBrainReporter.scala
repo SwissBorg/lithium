@@ -9,13 +9,10 @@ import akka.cluster._
 import cats.data.StateT
 import cats.effect.SyncIO
 import cats.implicits._
-import com.swissborg.lithium._
-import com.swissborg.lithium.implicits._
 import com.swissborg.lithium.reachability.ReachabilityStatus.Reachable
 import com.swissborg.lithium.reachability._
 import com.swissborg.lithium.resolver._
 
-import scala.collection.immutable.SortedSet
 import scala.concurrent.duration._
 
 /**
@@ -109,7 +106,7 @@ private[lithium] class SplitBrainReporter(private val splitBrainResolver: ActorR
         else cancelClusterIsUnstable
 
       def scheduleClusterIsUnstableIfSplitBrainWorsened: SyncIO[Unit] =
-        if (diff.hasAdditionalNonReachableNodes) scheduleClusterIsUnstable
+        if (diff.hasAdditionalConsideredNonReachableNodes) scheduleClusterIsUnstable
         else SyncIO.unit
 
       val resetClusterIsStableIfUnstable: SyncIO[Unit] =
@@ -204,7 +201,8 @@ private[lithium] class SplitBrainReporter(private val splitBrainResolver: ActorR
     }
 
   private def hasSplitBrain(worldView: WorldView): Boolean =
-    worldView.unreachableNodes.nonEmpty || worldView.indirectlyConnectedNodes.nonEmpty
+    (worldView.unreachableNodes ++ worldView.indirectlyConnectedNodes)
+      .exists(n => !nonHinderingWhenUnreachableStatus.contains(n.status))
 
   override def preStart(): Unit = {
     if (trackIndirectlyConnectedNodes) {
@@ -229,6 +227,9 @@ private[lithium] class SplitBrainReporter(private val splitBrainResolver: ActorR
 private[lithium] object SplitBrainReporter {
   private type F[A] = StateT[SyncIO, SplitBrainReporterState, A]
 
+  val nonFullyFledgedMemberStatus: Set[MemberStatus]       = Set(Joining, WeaklyUp)
+  val nonHinderingWhenUnreachableStatus: Set[MemberStatus] = Set(Down, Exiting)
+
   def props(downer: ActorRef,
             stableAfter: FiniteDuration,
             downAllWhenUnstable: Option[FiniteDuration],
@@ -251,30 +252,27 @@ private[lithium] object SplitBrainReporter {
   /**
    * Information on the difference between two world views.
    *
-   * @param changeIsStable true if both world views are the same ignoring `Joining` and `WeaklyUp` members.
-   * @param hasAdditionalNonReachableNodes true if the updated world view has more unreachable or indirectly
-   *                                               connected nodes.
+   * @param changeIsStable true if the changed the topology of the partition
+   * @param hasAdditionalConsideredNonReachableNodes true if the updated world view has more unreachable or indirectly
+   *                                                 connected nodes.
    */
   sealed abstract private[reporter] case class DiffInfo(changeIsStable: Boolean,
-                                                        hasAdditionalNonReachableNodes: Boolean)
+                                                        hasAdditionalConsideredNonReachableNodes: Boolean)
 
   private[reporter] object DiffInfo {
 
     def apply(oldWorldView: WorldView, updatedWorldView: WorldView): DiffInfo = {
-      def isJoining(node: Node): Boolean = node.status === Joining || node.status === WeaklyUp
+      def considered[N <: Node](nodes: Set[N]): Set[N] = nodes.filter { node =>
+        val isReachable = updatedWorldView.status(node.uniqueAddress).exists(_ === Reachable)
 
-      // Only consider members that are not reachable joining or weakly-up.
-      // Unreachable or indirectly-connected joining or weakly-up nodes are counted
-      // as they also impact the duties of the leader.
-      def isConsidered(node: Node): Boolean = {
-        lazy val isReachable = updatedWorldView.status(node.uniqueAddress).exists(_ === Reachable)
+        val isReachableConsideredNode = isReachable && !nonFullyFledgedMemberStatus.contains(node.status)
 
-        !(isJoining(node) && isReachable)
+        val isNonReachableHinderingLeader =
+          !isReachable &&
+            !nonHinderingWhenUnreachableStatus.contains(node.status) // not automatically removed on convergence
+
+        isReachableConsideredNode || isNonReachableHinderingLeader
       }
-
-      // Remove members that are `Joining` or `WeaklyUp` as they
-      // can appear during a split-brain.
-      def considered[N <: Node](nodes: SortedSet[N]): SortedSet[N] = nodes.filter(isConsidered)
 
       /**
        * True if the both sets contain the same nodes with the same status.
