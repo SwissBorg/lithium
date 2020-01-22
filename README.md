@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/SwissBorg/lithium.svg?branch=master)](https://travis-ci.com/SwissBorg/lithium)
+[![Build Status](https://travis-ci.org/SwissBorg/lithium.svg?branch=master)](https://travis-ci.org/SwissBorg/lithium)
 [![Maven Central](https://img.shields.io/maven-central/v/com.swissborg/lithium_2.12)](https://oss.sonatype.org/content/repositories/releases/com/swissborg/lithium_2.12/)
 
 # Lithium - A Split-Brain Resolver for Akka-Cluster
