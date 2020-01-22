@@ -10,19 +10,16 @@ name := "lithium"
 scalaVersion := scala213
 
 lazy val publishSettings = Seq(
-  publishMavenStyle := true,
   licenses := Seq("Apache-2.0" -> url("https://opensource.org/licenses/Apache-2.0")),
-  publishTo := sonatypePublishToBundle.value,
   homepage := Some(url("https://github.com/SwissBorg/lithium")),
   scmInfo := Some(ScmInfo(url("https://github.com/SwissBorg/lithium"), "scm:git@github.com:SwissBorg/lithium.git")),
-  pomExtra := (
-    <developers>
-        <developer>
-          <id>DennisVDB</id>
-          <name>Dennis van der Bij</name>
-          <url>https://github.com/DennisVDB/</url>
-        </developer>
-      </developers>
+  developers := List(
+    Developer(
+      "DennisVDB",
+      "Dennis van der Bij",
+      "d.vanderbij@gmail.com",
+      url("https://github.com/DennisVDB")
+    )
   )
 )
 
