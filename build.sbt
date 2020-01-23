@@ -65,9 +65,9 @@ resolvers += Resolver.sonatypeRepo("releases")
 
 // Akka
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor"              % akkaVersion,
-  "com.typesafe.akka" %% "akka-cluster"            % akkaVersion,
-  "com.typesafe.akka" %% "akka-remote"             % akkaVersion,
+  "com.typesafe.akka" %% "akka-actor"              % akkaVersion % Provided,
+  "com.typesafe.akka" %% "akka-cluster"            % akkaVersion % Provided,
+  "com.typesafe.akka" %% "akka-remote"             % akkaVersion % Provided,
   "com.typesafe.akka" %% "akka-testkit"            % akkaVersion % Test,
   "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion % Test
 )
