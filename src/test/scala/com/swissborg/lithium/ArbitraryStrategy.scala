@@ -52,7 +52,12 @@ object ArbitraryStrategy extends EitherValues {
     : ArbitraryStrategy[KeepMajority[F]] =
     new ArbitraryStrategy[KeepMajority[F]] {
       override def fromScenario(scenario: Scenario): Arbitrary[KeepMajority[F]] =
-        Arbitrary(arbitrary[String].map(role => new strategy.KeepMajority(KeepMajority.Config(role))))
+        Arbitrary {
+          for {
+            role                  <- arbitrary[String]
+            weaklUpMembersAllowed <- arbitrary[Boolean]
+          } yield new strategy.KeepMajority(KeepMajority.Config(role), weaklUpMembersAllowed)
+        }
     }
 
   implicit def keepOldestArbitraryStrategy[F[_]: ApplicativeError[*[_], Throwable]]: ArbitraryStrategy[KeepOldest[F]] =
