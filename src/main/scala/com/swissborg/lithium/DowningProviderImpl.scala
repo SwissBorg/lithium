@@ -3,7 +3,7 @@ package com.swissborg.lithium
 import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorSystem, Props}
-import akka.cluster.DowningProvider
+import akka.cluster.{Cluster, DowningProvider}
 import akka.event.Logging
 import cats.effect.SyncIO
 import cats.implicits._
@@ -50,7 +50,7 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
       case `keepMajority` =>
         KeepMajority.Config.load(system.settings.config).map { config =>
           logStartup(keepMajority)
-          sbResolver(new lithium.strategy.KeepMajority(config))
+          sbResolver(new lithium.strategy.KeepMajority(config, Cluster(system).settings.AllowWeaklyUpMembers))
         }
 
       case `keepOldest` =>
