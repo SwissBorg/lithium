@@ -3,15 +3,11 @@ package com.swissborg.lithium
 package resolver
 
 import akka.actor._
-import akka.cluster.Cluster
 import akka.cluster._
 import cats.effect.SyncIO
 import cats.implicits._
 import com.swissborg.lithium.reporter._
 import com.swissborg.lithium.strategy._
-import io.circe.Encoder
-import io.circe.generic.semiauto.deriveEncoder
-import io.circe.syntax._
 
 import scala.concurrent.duration._
 
@@ -37,10 +33,8 @@ private[lithium] class SplitBrainResolver(private val _strategy: Strategy[SyncIO
                                           private val trackIndirectlyConnectedNodes: Boolean)
     extends Actor
     with ActorLogging {
-  discard(
-    context.actorOf(SplitBrainReporter.props(self, stableAfter, downAllWhenUnstable, trackIndirectlyConnectedNodes),
-                    "split-brain-reporter")
-  )
+  context.actorOf(SplitBrainReporter.props(self, stableAfter, downAllWhenUnstable, trackIndirectlyConnectedNodes),
+                  "split-brain-reporter")
 
   private val cluster: Cluster                 = Cluster(context.system)
   private val selfUniqueAddress: UniqueAddress = cluster.selfUniqueAddress
@@ -66,9 +60,21 @@ private[lithium] class SplitBrainResolver(private val _strategy: Strategy[SyncIO
   private def resolveSplitBrain(worldView: WorldView): SyncIO[Unit] =
     for {
       _ <- SyncIO(
-        log.info(s"[{}] Received request to handle a split-brain... {}",
-                 selfUniqueAddress,
-                 worldView.simple.asJson.noSpaces)
+        log.info(
+          """[{}] Received request to handle a split-brain...
+            |-- Worldview --
+            |Reachable nodes:
+            |  {}
+            |Unreachable nodes:
+            |  {}
+            |Indirectly-connected nodes:
+            |  {}
+            |""".stripMargin,
+          selfUniqueAddress,
+          worldView.reachableNodes.mkString_("\n  "),
+          worldView.unreachableNodes.mkString_("\n  "),
+          worldView.indirectlyConnectedNodes.mkString_("\n  ")
+        )
       )
       _ <- runStrategy(strategy, worldView)
     } yield ()
@@ -79,9 +85,21 @@ private[lithium] class SplitBrainResolver(private val _strategy: Strategy[SyncIO
   private def downAll(worldView: WorldView): SyncIO[Unit] =
     for {
       _ <- SyncIO(
-        log.info(s"[{}] Received request to down all the nodes... {}",
-                 selfUniqueAddress,
-                 worldView.simple.asJson.noSpaces)
+        log.info(
+          """[{}] Received request to down all the nodes...
+            |-- Worldview --
+            |Reachable nodes:
+            |  {}
+            |Unreachable nodes:
+            |  {}
+            |Indirectly-connected nodes:
+            |  {}
+            |""".stripMargin,
+          selfUniqueAddress,
+          worldView.reachableNodes.mkString_("\n  "),
+          worldView.unreachableNodes.mkString_("\n  "),
+          worldView.indirectlyConnectedNodes.mkString_("\n  ")
+        )
       )
       _ <- runStrategy(downAll, worldView)
     } yield ()
@@ -95,7 +113,10 @@ private[lithium] class SplitBrainResolver(private val _strategy: Strategy[SyncIO
   private def runStrategy(strategy: Strategy[SyncIO], worldView: WorldView): SyncIO[Unit] = {
     def execute(decision: Decision): SyncIO[Unit] =
       for {
-        _ <- SyncIO(log.info("[{}] Downing the nodes: {}", selfUniqueAddress, decision.simple.asJson.noSpaces))
+        _ <- SyncIO(
+          log.info("""[{}] Downing the nodes:
+                     |  {}""".stripMargin, selfUniqueAddress, Decision.allNodesToDown(decision).mkString_("\n  "))
+        )
         _ <- decision.nodesToDown.toList.traverse_(node => SyncIO(cluster.down(node.address)))
 
       } yield ()
@@ -119,19 +140,7 @@ object SplitBrainResolver {
 
   sealed private[lithium] trait Event
 
-  final private[lithium] case class ResolveSplitBrain(worldView: WorldView) extends Event {
-    lazy val simple: ResolveSplitBrain.Simple = ResolveSplitBrain.Simple(worldView.simple)
-  }
-
-  private[lithium] object ResolveSplitBrain {
-
-    final case class Simple(worldView: WorldView.Simple)
-
-    object Simple {
-      implicit val simpleHandleSplitBrainEncoder: Encoder[Simple] = deriveEncoder
-    }
-
-  }
+  final private[lithium] case class ResolveSplitBrain(worldView: WorldView) extends Event
 
   final private[lithium] case class DownAll(worldView: WorldView) extends Event
 

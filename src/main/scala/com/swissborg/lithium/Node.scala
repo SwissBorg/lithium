@@ -2,7 +2,8 @@ package com.swissborg.lithium
 
 import akka.actor.Address
 import akka.cluster.{Member, MemberStatus, UniqueAddress}
-import cats.Order
+import cats.{Order, Show}
+import cats.implicits._
 
 /**
  * Wrapper around a member adding the reachability information
@@ -35,6 +36,10 @@ sealed abstract private[lithium] class Node extends Product with Serializable {
 private[lithium] object Node {
   implicit val nodeOrdering: Ordering[Node] = Ordering.by(_.member)
   implicit val nodeOrder: Order[Node]       = Order.fromOrdering
+  implicit val nodeShow: Show[Node] = Show.show { node =>
+    val member = node.member
+    s"${member.toString().dropRight(1)}, roles = ${member.roles.mkString("[", ", ", "]")})"
+  }
 }
 
 sealed private[lithium] trait NonIndirectlyConnectedNode extends Node
@@ -57,6 +62,7 @@ final private[lithium] case class UnreachableNode(member: Member) extends NonInd
 private[lithium] object UnreachableNode {
   implicit val unreachableNodeOrdering: Ordering[UnreachableNode] = Ordering.by(_.member)
   implicit val unreachableNodeOrder: Order[UnreachableNode]       = Order.fromOrdering
+  implicit val unreachableNodeShow: Show[UnreachableNode]         = Show[Node].contramap(identity)
 }
 
 /**
@@ -69,6 +75,7 @@ final private[lithium] case class ReachableNode(member: Member) extends NonIndir
 private[lithium] object ReachableNode {
   implicit val reachableNodeOrdering: Ordering[ReachableNode] = Ordering.by(_.member)
   implicit val reachableNodeOrder: Order[ReachableNode]       = Order.fromOrdering
+  implicit val reachableNodeShow: Show[ReachableNode]         = Show[Node].contramap(identity)
 }
 
 /**
@@ -79,7 +86,7 @@ final private[lithium] case class IndirectlyConnectedNode(member: Member) extend
 }
 
 private[lithium] object IndirectlyConnectedNode {
-  implicit val indirectlyConnectedNodeOrdering: Ordering[IndirectlyConnectedNode] =
-    Ordering.by(_.member)
-  implicit val indirectlyConnectedNodeOrder: Order[IndirectlyConnectedNode] = Order.fromOrdering
+  implicit val indirectlyConnectedNodeOrdering: Ordering[IndirectlyConnectedNode] = Ordering.by(_.member)
+  implicit val indirectlyConnectedNodeOrder: Order[IndirectlyConnectedNode]       = Order.fromOrdering
+  implicit val indirectlyConnectedNodeShow: Show[IndirectlyConnectedNode]         = Show[Node].contramap(identity)
 }

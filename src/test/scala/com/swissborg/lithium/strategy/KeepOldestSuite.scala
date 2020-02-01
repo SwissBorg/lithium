@@ -26,10 +26,12 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
     "down the unreachable nodes when being the oldest node and not alone" in {
       val w = WorldView.fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb, cc), Set(bb), seenBy = Set.empty))
 
-      new KeepOldest[Try](KeepOldest.Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(
+      new KeepOldest[Try](KeepOldestConfig(downIfAlone = true, role = "")).takeDecision(w).get should ===(
         Decision.DownUnreachable(w)
       )
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = false, role = ""))
+        .takeDecision(w)
+        .get should ===(
         Decision.DownUnreachable(w)
       )
     }
@@ -37,7 +39,9 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
     "down the other partition when being the oldest and alone" in {
       val w = WorldView.fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb, cc), Set(bb, cc), seenBy = Set.empty))
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = false, role = ""))
+        .takeDecision(w)
+        .get should ===(
         Decision.DownUnreachable(w)
       )
     }
@@ -45,7 +49,9 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
     "down itself when being the oldest node and alone" in {
       val w = WorldView.fromSnapshot(aa, CurrentClusterState(SortedSet(aa, bb, cc), Set(bb, cc), seenBy = Set.empty))
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = true, role = ""))
+        .takeDecision(w)
+        .get should ===(
         Decision.DownReachable(w)
       )
     }
@@ -53,10 +59,14 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
     "down the reachable nodes when the oldest is unreachable and not alone" in {
       val w = WorldView.fromSnapshot(bb, CurrentClusterState(SortedSet(aa, bb, cc), Set(aa, cc), seenBy = Set.empty))
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = true, role = ""))
+        .takeDecision(w)
+        .get should ===(
         Decision.DownReachable(w)
       )
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = false, role = ""))
+        .takeDecision(w)
+        .get should ===(
         Decision.DownReachable(w)
       )
     }
@@ -64,10 +74,14 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
     "down the correct nodes when the oldest is unreachable and alone" in {
       val w = WorldView.fromSnapshot(bb, CurrentClusterState(SortedSet(aa, bb, cc), Set(aa), seenBy = Set.empty))
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = false, role = ""))
+        .takeDecision(w)
+        .get should ===(
         Decision.DownReachable(w)
       )
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = true, role = ""))
+        .takeDecision(w)
+        .get should ===(
         Decision.DownUnreachable(w)
       )
     }
@@ -75,10 +89,14 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
     "down the unreachable nodes when the oldest is reachable and not alone" in {
       val w = WorldView.fromSnapshot(bb, CurrentClusterState(SortedSet(aa, bb, cc), Set(cc), seenBy = Set.empty))
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = false, role = "")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = false, role = ""))
+        .takeDecision(w)
+        .get should ===(
         Decision.DownUnreachable(w)
       )
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = true, role = ""))
+        .takeDecision(w)
+        .get should ===(
         Decision.DownUnreachable(w)
       )
     }
@@ -89,10 +107,12 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
       val w =
         WorldView.fromSnapshot(cc, CurrentClusterState(SortedSet(aa, bb, cc, dd, ee), Set(bb), seenBy = Set.empty))
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = true, role = "role")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = true, role = "role"))
+        .takeDecision(w)
+        .get should ===(
         Decision.DownUnreachable(w)
       )
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = false, role = "role"))
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = false, role = "role"))
         .takeDecision(w)
         .get should ===(Decision.DownUnreachable(w))
     }
@@ -102,7 +122,7 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
         WorldView.fromSnapshot(cc,
                                CurrentClusterState(SortedSet(aa, bb, cc, dd, ee), Set(bb, dd, ee), seenBy = Set.empty))
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = false, role = "role"))
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = false, role = "role"))
         .takeDecision(w)
         .get should ===(Decision.DownUnreachable(w))
     }
@@ -113,7 +133,9 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
         CurrentClusterState(SortedSet(aa, bb, cc, dd, ee), Set(aa, bb, dd, ee), seenBy = Set.empty)
       )
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = true, role = "role")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = true, role = "role"))
+        .takeDecision(w)
+        .get should ===(
         Decision.DownReachable(w)
       )
     }
@@ -122,11 +144,13 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
       val w =
         WorldView.fromSnapshot(ee, CurrentClusterState(SortedSet(aa, bb, cc, dd, ee), Set(cc, dd), seenBy = Set.empty))
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = true, role = "role")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = true, role = "role"))
+        .takeDecision(w)
+        .get should ===(
         Decision.DownReachable(w)
       )
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = false, role = "role"))
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = false, role = "role"))
         .takeDecision(w)
         .get should ===(Decision.DownReachable(w))
     }
@@ -136,11 +160,13 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
         WorldView.fromSnapshot(dd,
                                CurrentClusterState(SortedSet(aa, bb, cc, dd, ee), Set(cc, aa, bb), seenBy = Set.empty))
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = false, role = "role"))
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = false, role = "role"))
         .takeDecision(w)
         .get should ===(Decision.DownReachable(w))
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = true, role = "role")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = true, role = "role"))
+        .takeDecision(w)
+        .get should ===(
         Decision.DownUnreachable(w)
       )
     }
@@ -150,11 +176,13 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
         WorldView.fromSnapshot(dd,
                                CurrentClusterState(SortedSet(aa, bb, cc, dd, ee), Set(aa, bb, ee), seenBy = Set.empty))
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = false, role = "role"))
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = false, role = "role"))
         .takeDecision(w)
         .get should ===(Decision.DownUnreachable(w))
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = true, role = "role")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = true, role = "role"))
+        .takeDecision(w)
+        .get should ===(
         Decision.DownUnreachable(w)
       )
     }
@@ -162,7 +190,7 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
     "not down the oldest node when alone in the cluster" in {
       val w = WorldView.fromSnapshot(aa, CurrentClusterState(SortedSet(aa), seenBy = Set.empty))
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = false, role = ""))
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = false, role = ""))
         .takeDecision(w)
         .map(_.simplify)
         .get should ===(Decision.Idle)
@@ -171,7 +199,7 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
     "down the oldest node when alone in the cluster" in {
       val w = WorldView.fromSnapshot(aa, CurrentClusterState(SortedSet(aa), seenBy = Set.empty))
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = true, role = ""))
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = true, role = ""))
         .takeDecision(w)
         .map(_.simplify)
         .get should ===(Decision.DownReachable(w))
@@ -183,7 +211,7 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
       val w = WorldView.fromSnapshot(cc, CurrentClusterState(SortedSet(aa, bb, cc), Set(aa, bb), seenBy = Set.empty))
 
       val keepOldest =
-        new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = true, role = ""))
+        new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = true, role = ""))
 
       keepOldest.takeDecision(w).get should ===(Decision.DownReachable(w))
 
@@ -198,7 +226,9 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
         CurrentClusterState(SortedSet(aa, weaklyUpBB, cc), Set(aa, weaklyUpBB), seenBy = Set.empty)
       )
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = true, role = ""))
+        .takeDecision(w)
+        .get should ===(
         Decision.DownReachable(w)
       )
     }
@@ -211,7 +241,7 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
         CurrentClusterState(SortedSet(leavingAa, bb, cc), Set(leavingAa), seenBy = Set.empty)
       )
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = true, "")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = true, "")).takeDecision(w).get should ===(
         Decision.DownReachable(w)
       )
     }
@@ -224,7 +254,7 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
         CurrentClusterState(SortedSet(leavingAa, bb, cc), Set(cc), seenBy = Set.empty)
       )
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = false, "")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = false, "")).takeDecision(w).get should ===(
         Decision.DownReachable(w)
       )
     }
@@ -237,7 +267,7 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
         CurrentClusterState(SortedSet(leavingAa, bb, cc), Set(bb, cc), seenBy = Set.empty)
       )
 
-      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = true, "")).takeDecision(w).get should ===(
+      new strategy.KeepOldest[Try](KeepOldestConfig(downIfAlone = true, "")).takeDecision(w).get should ===(
         Decision.DownReachable(w)
       )
     }

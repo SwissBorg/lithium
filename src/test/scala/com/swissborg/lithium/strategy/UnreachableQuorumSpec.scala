@@ -3,26 +3,22 @@ package com.swissborg.lithium
 package strategy
 
 import akka.cluster.MemberStatus.{Leaving, Up}
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
+import org.scalacheck.Prop.propBoolean
 
 class UnreachableQuorumSpec extends LithiumSpec {
   "UnreachableQuorum" must {
     "instantiate the correct instance" in {
-      forAll { (worldView: WorldView, quorumSize: Int Refined Positive, role: String) =>
-        val nbrOfConsideredUnreachableNodes = worldView.unreachableNodesWithRole(role).count { node =>
-          node.status == Up || node.status == Leaving
-        }
+      forAll { (worldView: WorldView, quorumSize: Int, role: String) =>
+        (quorumSize > 0) ==> {
+          val nbrOfConsideredUnreachableNodes = worldView.unreachableNodesWithRole(role).count { node =>
+            node.status == Up || node.status == Leaving
+          }
 
-        UnreachableQuorum(worldView, quorumSize, role) match {
-          case UnreachableQuorum.None =>
-            nbrOfConsideredUnreachableNodes shouldBe 0
-
-          case UnreachableQuorum.PotentialQuorum =>
-            nbrOfConsideredUnreachableNodes should be >= quorumSize.value
-
-          case UnreachableQuorum.SubQuorum =>
-            nbrOfConsideredUnreachableNodes should be < quorumSize.value
+          UnreachableQuorum(worldView, quorumSize, role) match {
+            case UnreachableQuorum.None            => nbrOfConsideredUnreachableNodes == 0
+            case UnreachableQuorum.PotentialQuorum => nbrOfConsideredUnreachableNodes >= quorumSize
+            case UnreachableQuorum.SubQuorum       => nbrOfConsideredUnreachableNodes < quorumSize
+          }
         }
       }
     }

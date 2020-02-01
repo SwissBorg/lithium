@@ -16,8 +16,7 @@ import com.swissborg.lithium.implicits._
  * This strategy is useful when you are trying do not want the singleton instances to be migrated
  * after a resolution. The oldest node in the cluster contains the current singleton instance.
  */
-private[lithium] class KeepOldest[F[_]: ApplicativeError[*[_], Throwable]](config: KeepOldest.Config)
-    extends Strategy[F] {
+private[lithium] class KeepOldest[F[_]: Applicative](config: KeepOldestConfig) extends Strategy[F] {
 
   import config._
 
@@ -81,20 +80,4 @@ private[lithium] class KeepOldest[F[_]: ApplicativeError[*[_], Throwable]](confi
   }
 
   override def toString: String = s"KeepOldest($config)"
-}
-
-private[lithium] object KeepOldest {
-
-  /**
-   * [[KeepOldest]] configuration.
-   *
-   * @param downIfAlone down the oldest node if it is cutoff from all the nodes with the given role.
-   * @param role        the role of the nodes to take in account.
-   */
-  final case class Config(downIfAlone: Boolean, role: String)
-
-  object Config extends StrategyReader[Config] {
-    override val name: String = "keep-oldest"
-  }
-
 }

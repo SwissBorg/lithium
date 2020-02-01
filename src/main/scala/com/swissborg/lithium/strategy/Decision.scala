@@ -4,9 +4,6 @@ package strategy
 
 import cats._
 import cats.data.NonEmptySet
-import io.circe.Encoder
-import io.circe.generic.semiauto.deriveEncoder
-import monocle.Getter
 
 import scala.collection.immutable.SortedSet
 
@@ -17,6 +14,18 @@ import scala.collection.immutable.SortedSet
 sealed abstract private[lithium] class Decision extends Product with Serializable
 
 private[lithium] object Decision {
+
+  /**
+   * Extract all the nodes to down as described in the decision.
+   */
+  def allNodesToDown(decision: Decision): SortedSet[Node] = decision match {
+    case DownThese(decision1, decision2)      => decision1.nodesToDown ++ decision2.nodesToDown
+    case DownReachable(nodesToDown)           => nodesToDown.map(identity[Node])
+    case DownUnreachable(nodesToDown)         => nodesToDown.map(identity[Node])
+    case DownIndirectlyConnected(nodesToDown) => nodesToDown.map(identity[Node])
+    case DownAll(nodesToDown)                 => nodesToDown.toSortedSet
+    case _: Idle.type                         => SortedSet.empty
+  }
 
   /**
    * Decision to down the reachable nodes.
@@ -60,31 +69,8 @@ private[lithium] object Decision {
 
   case object Idle extends Decision
 
-  final case class SimpleStrategyDecision(downReachable: List[SimpleMember],
-                                          downIndirectlyConnected: List[SimpleMember],
-                                          downUnreachable: List[SimpleMember])
-
-  object SimpleStrategyDecision {
-    val empty: SimpleStrategyDecision = SimpleStrategyDecision(List.empty, List.empty, List.empty)
-
-    implicit val simpleStrategyDecisionEncoder: Encoder[SimpleStrategyDecision] = deriveEncoder
-  }
-
-  /**
-   * Get the nodes to down given the strategy decision.
-   */
-  val nodesToDown: Getter[Decision, SortedSet[Node]] =
-    Getter[Decision, SortedSet[Node]] {
-      case DownThese(decision1, decision2)      => decision1.nodesToDown ++ decision2.nodesToDown
-      case DownReachable(nodesToDown)           => nodesToDown.map(identity[Node])
-      case DownUnreachable(nodesToDown)         => nodesToDown.map(identity[Node])
-      case DownIndirectlyConnected(nodesToDown) => nodesToDown.map(identity[Node])
-      case DownAll(nodesToDown)                 => nodesToDown.toSortedSet
-      case _: Idle.type                         => SortedSet.empty
-    }
-
   implicit class DecisionOps(private val decision: Decision) extends AnyVal {
-    def nodesToDown: SortedSet[Node] = Decision.nodesToDown.get(decision)
+    def nodesToDown: SortedSet[Node] = Decision.allNodesToDown(decision)
 
     /**
      * The strategy decision with the leafs without nodes to to
@@ -102,23 +88,6 @@ private[lithium] object Decision {
             else if (decision2.nodesToDown.isEmpty) decision1.simplify
             else decision
         }
-      }
-
-    def simple: SimpleStrategyDecision =
-      nodesToDown.foldLeft(SimpleStrategyDecision.empty) {
-        case (decision, node) =>
-          node match {
-            case ReachableNode(member) =>
-              decision.copy(downReachable = SimpleMember.fromMember(member) :: decision.downReachable)
-
-            case IndirectlyConnectedNode(member) =>
-              decision.copy(
-                downIndirectlyConnected = SimpleMember.fromMember(member) :: decision.downIndirectlyConnected
-              )
-
-            case UnreachableNode(member) =>
-              decision.copy(downUnreachable = SimpleMember.fromMember(member) :: decision.downUnreachable)
-          }
       }
   }
 

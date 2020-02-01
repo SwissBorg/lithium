@@ -6,9 +6,6 @@ import akka.cluster.MemberStatus.{Leaving, Up}
 import cats.effect.Sync
 import cats.implicits._
 import com.swissborg.lithium.implicits._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto._
-import eu.timepit.refined.numeric._
 import org.slf4j.LoggerFactory
 
 /**
@@ -18,7 +15,7 @@ import org.slf4j.LoggerFactory
  *
  * This strategy is useful when the cluster has a fixed size.
  */
-private[lithium] class StaticQuorum[F[_]](config: StaticQuorum.Config)(implicit val F: Sync[F]) extends Strategy[F] {
+private[lithium] class StaticQuorum[F[_]: Sync](config: StaticQuorumConfig) extends Strategy[F] {
 
   import config._
 
@@ -33,7 +30,8 @@ private[lithium] class StaticQuorum[F[_]](config: StaticQuorum.Config)(implicit 
       // The quorumSize is too small for the cluster size,
       // more than one side might be a quorum and create
       // a split-brain. In this case we down the cluster.
-      F.delay(logger.warn("The configured quorum-size ({}) is too small!", quorumSize))
+      Sync[F]
+        .delay(logger.warn("The configured quorum-size ({}) is too small!", quorumSize))
         .as(Decision.downReachable(worldView))
     } else {
       (ReachableQuorum(worldView, quorumSize, role), UnreachableQuorum(worldView, quorumSize, role)) match {
@@ -79,21 +77,4 @@ private[lithium] class StaticQuorum[F[_]](config: StaticQuorum.Config)(implicit 
   }
 
   override def toString: String = s"StaticQuorum($config)"
-}
-
-private[lithium] object StaticQuorum {
-
-  /**
-   * [[StaticQuorum]] config.
-   *
-   * @param quorumSize the minimum number of nodes the surviving partition must contain.
-   *                   The size must be chosen as more than `number-of-nodes / 2 + 1`.
-   * @param role       the role of the nodes to take in account.
-   */
-  final case class Config(role: String, quorumSize: Int Refined Positive)
-
-  object Config extends StrategyReader[Config] {
-    override val name: String = "static-quorum"
-  }
-
 }

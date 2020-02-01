@@ -14,7 +14,7 @@ import com.swissborg.lithium.implicits._
  *
  * This strategy is useful when the cluster size is dynamic.
  */
-private[lithium] class KeepMajority[F[_]: ApplicativeError[*[_], Throwable]](config: KeepMajority.Config,
+private[lithium] class KeepMajority[F[_]: ApplicativeError[*[_], Throwable]](config: KeepMajorityConfig,
                                                                              weaklyUpMembersAllowed: Boolean)
     extends Strategy[F] {
 
@@ -72,18 +72,5 @@ private[lithium] class KeepMajority[F[_]: ApplicativeError[*[_], Throwable]](con
 }
 
 private[lithium] object KeepMajority {
-
-  /**
-   * [[KeepMajority]] configuration.
-   *
-   * @param role the role of the nodes to take in account.
-   */
-  final case class Config(role: String)
-
-  object Config extends StrategyReader[Config] {
-    override val name: String = "keep-majority"
-  }
-
   case object NoMajority extends Throwable
-
 }

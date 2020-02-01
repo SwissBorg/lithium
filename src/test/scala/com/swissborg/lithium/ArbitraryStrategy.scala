@@ -5,9 +5,6 @@ import cats.effect.Sync
 import cats.{Applicative, ApplicativeError, Functor, Semigroupal}
 import com.swissborg.lithium.instances.ArbitraryTestInstances._
 import com.swissborg.lithium.strategy._
-import eu.timepit.refined.auto._
-import eu.timepit.refined.numeric.Positive
-import eu.timepit.refined.refineV
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalacheck.Gen.chooseNum
 import org.scalacheck.{Arbitrary, Gen}
@@ -29,8 +26,7 @@ object ArbitraryStrategy extends EitherValues {
 
           downIfLessThan <- chooseNum(1, maybeNodes.fold(1)(_.length))
         } yield new strategy.KeepReferee[F](
-          KeepReferee.Config(refineV[SBAddress](referee.member.address.toString).rightValue,
-                             refineV[Positive](downIfLessThan).rightValue)
+          KeepRefereeConfig(referee.member.address.toString, downIfLessThan)
         )
       }
     }
@@ -42,9 +38,9 @@ object ArbitraryStrategy extends EitherValues {
 
         val minQuorumSize = clusterSize / 2 + 1
         for {
-          quorumSize <- chooseNum(minQuorumSize, clusterSize.value)
+          quorumSize <- chooseNum(minQuorumSize, clusterSize)
           role       <- arbitrary[String]
-        } yield new strategy.StaticQuorum(StaticQuorum.Config(role, refineV[Positive](quorumSize).rightValue))
+        } yield new strategy.StaticQuorum(StaticQuorumConfig(role, quorumSize))
       }
     }
 
@@ -56,7 +52,7 @@ object ArbitraryStrategy extends EitherValues {
           for {
             role                  <- arbitrary[String]
             weaklUpMembersAllowed <- arbitrary[Boolean]
-          } yield new strategy.KeepMajority(KeepMajority.Config(role), weaklUpMembersAllowed)
+          } yield new strategy.KeepMajority(KeepMajorityConfig(role), weaklUpMembersAllowed)
         }
     }
 
@@ -66,7 +62,7 @@ object ArbitraryStrategy extends EitherValues {
         for {
           downIfAlone <- arbitrary[Boolean]
           role        <- arbitrary[String]
-        } yield new strategy.KeepOldest(KeepOldest.Config(downIfAlone, role))
+        } yield new strategy.KeepOldest(KeepOldestConfig(downIfAlone, role))
       }
 
     }
