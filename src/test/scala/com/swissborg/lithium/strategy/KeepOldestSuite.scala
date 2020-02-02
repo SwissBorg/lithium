@@ -14,7 +14,7 @@ import scala.util.Try
 import org.scalatest.matchers.should.Matchers
 
 class KeepOldestSuite extends AnyWordSpecLike with Matchers {
-  val aa = TestMember(Address("akka", "sys", "a", 2552), Up)
+  val aa = TestMember(Address("akka", "sys", "a", 2552), Up) // oldest node
   val bb = TestMember(Address("akka", "sys", "b", 2552), Up)
   val cc = TestMember(Address("akka", "sys", "c", 2552), Up, Set("role"))
   val dd = TestMember(Address("akka", "sys", "d", 2552), Up, Set("role"))
@@ -199,6 +199,45 @@ class KeepOldestSuite extends AnyWordSpecLike with Matchers {
       )
 
       new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = true, role = "")).takeDecision(w).get should ===(
+        Decision.DownReachable(w)
+      )
+    }
+
+    "down the reachable nodes when the oldest node is alone, leaving and unreachable" in {
+      val leavingAa = aa.copy(Leaving)
+
+      val w = WorldView.fromSnapshot(
+        bb,
+        CurrentClusterState(SortedSet(leavingAa, bb, cc), Set(leavingAa), seenBy = Set.empty)
+      )
+
+      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = true, "")).takeDecision(w).get should ===(
+        Decision.DownReachable(w)
+      )
+    }
+
+    "down the reachable nodes when the oldest node is reachable and leaving" in {
+      val leavingAa = aa.copy(Leaving)
+
+      val w = WorldView.fromSnapshot(
+        aa,
+        CurrentClusterState(SortedSet(leavingAa, bb, cc), Set(cc), seenBy = Set.empty)
+      )
+
+      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = false, "")).takeDecision(w).get should ===(
+        Decision.DownReachable(w)
+      )
+    }
+
+    "down the oldest node when it is reachable, leaving and alone" in {
+      val leavingAa = aa.copy(Leaving)
+
+      val w = WorldView.fromSnapshot(
+        aa,
+        CurrentClusterState(SortedSet(leavingAa, bb, cc), Set(bb, cc), seenBy = Set.empty)
+      )
+
+      new strategy.KeepOldest[Try](KeepOldest.Config(downIfAlone = true, "")).takeDecision(w).get should ===(
         Decision.DownReachable(w)
       )
     }
