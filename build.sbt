@@ -47,7 +47,7 @@ scalacOptions ++=
 
 val akkaVersion                = "2.6.3"
 val catsVersion                = "2.1.1"
-val catsEffectVersion          = "2.1.1"
+val catsEffectVersion          = "2.1.2"
 val scalatestVersion           = "3.1.1"
 val monocleVersion             = "2.0.1"
 val shapelessVersion           = "2.3.3"
