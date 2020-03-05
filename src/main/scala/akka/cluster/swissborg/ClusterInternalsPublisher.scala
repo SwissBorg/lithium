@@ -20,8 +20,8 @@ class ClusterInternalsPublisher extends Actor {
   }
 
   override def preStart(): Unit = {
-    discard(context.system.eventStream.subscribe(self, classOf[ReachabilityChanged]))
-    discard(context.system.eventStream.subscribe(self, classOf[SeenChanged]))
+    context.system.eventStream.subscribe(self, classOf[ReachabilityChanged])
+    context.system.eventStream.subscribe(self, classOf[SeenChanged])
   }
 
   override def postStop(): Unit = context.system.eventStream.unsubscribe(self)

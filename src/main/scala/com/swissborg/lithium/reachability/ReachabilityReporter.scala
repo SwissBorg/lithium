@@ -89,8 +89,8 @@ private[lithium] class ReachabilityReporter(private val splitBrainReporter: Acto
 
   override def preStart(): Unit = {
     cluster.subscribe(self, classOf[MemberEvent])
-    discard(ClusterInternals(context.system).subscribeToReachabilityChanged(self))
-    discard(ClusterInternals(context.system).subscribeToSeenChanged(self))
+    ClusterInternals(context.system).subscribeToReachabilityChanged(self)
+    ClusterInternals(context.system).subscribeToSeenChanged(self)
   }
 
   override def postStop(): Unit = {

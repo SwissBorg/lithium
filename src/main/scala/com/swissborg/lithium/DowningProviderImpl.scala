@@ -10,10 +10,7 @@ import cats.implicits._
 import com.swissborg.lithium
 import com.swissborg.lithium.resolver.SplitBrainResolver
 import com.swissborg.lithium.strategy.Strategy
-import com.swissborg.lithium.strategy.StrategyReader.UnknownStrategy
 import com.swissborg.lithium.strategy._
-import eu.timepit.refined.pureconfig._
-import pureconfig.generic.auto._
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
@@ -34,53 +31,51 @@ class DowningProviderImpl(system: ActorSystem) extends DowningProvider {
 
   @SuppressWarnings(Array("org.wartremover.warts.Throw"))
   override def downingActorProps: Option[Props] = {
-    val keepMajority = KeepMajority.Config.name
-    val keepOldest   = KeepOldest.Config.name
-    val keepReferee  = KeepReferee.Config.name
-    val staticQuorum = StaticQuorum.Config.name
+    val keepMajority = KeepMajorityConfig.name
+    val keepOldest   = KeepOldestConfig.name
+    val keepReferee  = KeepRefereeConfig.name
+    val staticQuorum = StaticQuorumConfig.name
     val downAll      = DownAll.name
 
     def sbResolver(strategy: Strategy[SyncIO]): Props =
       SplitBrainResolver.props(strategy,
                                config.stableAfter,
                                config.downAllWhenUnstable,
-                               config.trackIndirectlyConnectdeNodes)
+                               config.trackIndirectlyConnectedNodes)
 
-    val strategy = config.activeStrategy match {
+    config.activeStrategy match {
       case `keepMajority` =>
-        KeepMajority.Config.load(system.settings.config).map { config =>
-          logStartup(keepMajority)
-          sbResolver(new lithium.strategy.KeepMajority(config, Cluster(system).settings.AllowWeaklyUpMembers))
-        }
+        val config = KeepMajorityConfig.fromConfig(system.settings.config)
+        logStartup(keepMajority)
+        sbResolver(new lithium.strategy.KeepMajority(config, Cluster(system).settings.AllowWeaklyUpMembers)).some
 
       case `keepOldest` =>
-        KeepOldest.Config.load(system.settings.config).map { config =>
-          logStartup(keepOldest)
-          sbResolver(new lithium.strategy.KeepOldest(config))
-        }
+        val config = KeepOldestConfig.fromConfig(system.settings.config)
+        logStartup(keepOldest)
+        sbResolver(new lithium.strategy.KeepOldest(config)).some
 
       case `keepReferee` =>
-        KeepReferee.Config.load(system.settings.config).map { config =>
-          logStartup(keepReferee)
-          sbResolver(new lithium.strategy.KeepReferee(config))
-        }
+        val config = KeepRefereeConfig.fromConfig(system.settings.config)
+        logStartup(keepReferee)
+        sbResolver(new lithium.strategy.KeepReferee(config)).some
 
       case `staticQuorum` =>
-        StaticQuorum.Config.load(system.settings.config).map { config =>
-          logStartup(staticQuorum)
-          sbResolver(new lithium.strategy.StaticQuorum(config))
-        }
+        val config = StaticQuorumConfig.fromConfig(system.settings.config)
+        logStartup(staticQuorum)
+        sbResolver(new lithium.strategy.StaticQuorum(config)).some
 
       case `downAll` =>
         logStartup(downAll)
-        sbResolver(new lithium.strategy.DownAll).asRight
+        sbResolver(new lithium.strategy.DownAll).some
 
       case unknownStrategy =>
-        logger.error("'{}' is not a valid Lithium strategy.", unknownStrategy)
-        UnknownStrategy(unknownStrategy).asLeft
-    }
+        val err = new IllegalArgumentException(
+          s"Unknown strategy: '${unknownStrategy}'. Expected one off: ${StaticQuorumConfig.name}, ${KeepMajorityConfig.name}, ${KeepOldestConfig.name} or ${KeepRefereeConfig.name}"
+        )
 
-    strategy.fold(throw _, Some(_))
+        logger.error(err, "Invalid strategy")
+        throw err
+    }
   }
 
   private def logStartup(strategyName: String): Unit =
@@ -92,7 +87,7 @@ object DowningProviderImpl {
   sealed abstract case class Config(activeStrategy: String,
                                     stableAfter: FiniteDuration,
                                     downAllWhenUnstable: Option[FiniteDuration],
-                                    trackIndirectlyConnectdeNodes: Boolean)
+                                    trackIndirectlyConnectedNodes: Boolean)
 
   object Config {
     final private val prefix: String                  = "com.swissborg.lithium"

@@ -2,10 +2,6 @@ package com.swissborg.lithium
 
 import akka.cluster.swissborg.EitherValues
 import cats.data.{NonEmptyList, NonEmptySet}
-import eu.timepit.refined._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto._
-import eu.timepit.refined.numeric.Positive
 import org.scalacheck.Arbitrary
 import org.scalacheck.Gen._
 
@@ -20,7 +16,7 @@ package object utils extends EitherValues {
     Arbitrary {
       for {
         // Split the allNodes in `nSubCluster`.
-        nSubClusters <- chooseNum(1, as.length).map(refineV[Positive](_).rightValue) // always > 1
+        nSubClusters <- chooseNum(1, as.length) // always > 1
         subClusters  <- splitIn(nSubClusters, as).arbitrary
       } yield subClusters
     }
@@ -29,14 +25,14 @@ package object utils extends EitherValues {
    * Splits `as` in `parts` parts of arbitrary sizes.
    * If `parts` is less than or more than the size of `as` it will return `NonEmptySet(as)`.
    */
-  def splitIn[A](parts: Int Refined Positive, as: NonEmptySet[A]): Arbitrary[NonEmptyList[NonEmptySet[A]]] =
+  def splitIn[A](parts: Int, as: NonEmptySet[A]): Arbitrary[NonEmptyList[NonEmptySet[A]]] =
     Arbitrary {
       if (parts <= 1 || parts > as.length) const(NonEmptyList.of(as))
       else {
         for {
           takeN <- chooseNum(1, as.length - parts + 1) // leave enough `as` to have at least 1 element per part
           newSet = as.toSortedSet.take(takeN.toInt)
-          newSets <- splitIn(refineV[Positive](parts - 1).rightValue, // parts > takeN
+          newSets <- splitIn(parts - 1, // parts > takeN
                              NonEmptySet.fromSetUnsafe(as.toSortedSet -- newSet)).arbitrary
         } yield NonEmptySet.fromSetUnsafe(newSet) :: newSets
       }

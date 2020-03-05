@@ -7,9 +7,6 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import com.swissborg.lithium.testImplicits._
 import com.swissborg.lithium.utils._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.numeric.Positive
-import eu.timepit.refined.refineV
 import org.scalacheck.Arbitrary._
 import org.scalacheck.Gen.someOf
 import org.scalacheck.{Arbitrary, Gen}
@@ -17,11 +14,10 @@ import org.scalacheck.{Arbitrary, Gen}
 sealed abstract class Scenario {
   def worldViews: List[WorldView]
 
-  def clusterSize: Int Refined Positive
+  def clusterSize: Int
 }
 
-final case class OldestRemovedDisseminationScenario(worldViews: List[WorldView], clusterSize: Int Refined Positive)
-    extends Scenario
+final case class OldestRemovedDisseminationScenario(worldViews: List[WorldView], clusterSize: Int) extends Scenario
 
 object OldestRemovedDisseminationScenario extends EitherValues {
   implicit val arbOldestRemovedScenario: Arbitrary[OldestRemovedDisseminationScenario] = {
@@ -55,12 +51,11 @@ object OldestRemovedDisseminationScenario extends EitherValues {
       upMembers          <- arbAllUpWorldView.map(_.members)
       partitions         <- split(upMembers)
       divergedWorldViews <- partitions.traverse(divergeWorldView(upMembers))
-    } yield OldestRemovedDisseminationScenario(divergedWorldViews.toList.flatten,
-                                               refineV[Positive](upMembers.length).rightValue)
+    } yield OldestRemovedDisseminationScenario(divergedWorldViews.toList.flatten, upMembers.length)
   }
 }
 
-final case class CleanPartitionScenario(worldViews: List[WorldView], clusterSize: Int Refined Positive) extends Scenario
+final case class CleanPartitionScenario(worldViews: List[WorldView], clusterSize: Int) extends Scenario
 
 object CleanPartitionScenario extends EitherValues {
 
@@ -85,13 +80,12 @@ object CleanPartitionScenario extends EitherValues {
 
       // Each sub-allNodes sees the other nodes as unreachable.
       partitionedWorldViews = partitions.map(partitionedWorldView(members))
-    } yield CleanPartitionScenario(partitionedWorldViews.toList, refineV[Positive](members.length).rightValue)
+    } yield CleanPartitionScenario(partitionedWorldViews.toList, members.length)
   }
 
 }
 
-final case class UpDisseminationScenario(worldViews: List[WorldView], clusterSize: Int Refined Positive)
-    extends Scenario
+final case class UpDisseminationScenario(worldViews: List[WorldView], clusterSize: Int) extends Scenario
 
 object UpDisseminationScenario extends EitherValues {
   implicit val arbUpDisseminationScenario: Arbitrary[UpDisseminationScenario] = {
@@ -131,13 +125,11 @@ object UpDisseminationScenario extends EitherValues {
       oldestMember = allMembersUp.head // upNumber = 0
 
       divergedWorldViews <- partitions.traverse(divergeWorldView(joiningAndWeaklyUpMembers, allMembersUp, oldestMember))
-    } yield UpDisseminationScenario(divergedWorldViews.toList,
-                                    refineV[Positive](joiningAndWeaklyUpMembers.length).rightValue)
+    } yield UpDisseminationScenario(divergedWorldViews.toList, joiningAndWeaklyUpMembers.length)
   }
 }
 
-final case class RemovedDisseminationScenario(worldViews: List[WorldView], clusterSize: Int Refined Positive)
-    extends Scenario
+final case class RemovedDisseminationScenario(worldViews: List[WorldView], clusterSize: Int) extends Scenario
 
 object RemovedDisseminationScenario extends EitherValues {
   implicit val arbRemovedDisseminationScenario: Arbitrary[RemovedDisseminationScenario] = {
@@ -177,12 +169,11 @@ object RemovedDisseminationScenario extends EitherValues {
       membersToRemove <- pickNonEmptySubset(allUpMembers)
 
       divergedWorldViews <- partitions.traverse(divergeWorldView(allUpMembers, membersToRemove))
-    } yield RemovedDisseminationScenario(divergedWorldViews.toList, refineV[Positive](allUpMembers.length).rightValue)
+    } yield RemovedDisseminationScenario(divergedWorldViews.toList, allUpMembers.length)
   }
 }
 
-final case class WithNonCleanPartitions[S <: Scenario](worldViews: List[WorldView], clusterSize: Int Refined Positive)
-    extends Scenario
+final case class WithNonCleanPartitions[S <: Scenario](worldViews: List[WorldView], clusterSize: Int) extends Scenario
 
 object WithNonCleanPartitions {
   implicit def arbWithNonCleanPartitions[S <: Scenario: Arbitrary]: Arbitrary[WithNonCleanPartitions[S]] = Arbitrary {

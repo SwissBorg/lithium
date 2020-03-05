@@ -5,13 +5,10 @@ import akka.cluster.MemberStatus._
 import akka.cluster.{Member, UniqueAddress}
 import cats.data.NonEmptySet
 import cats.implicits._
-import cats.kernel.Eq
 import com.swissborg.lithium.WorldView.OtherStatus.OtherStatus
 import com.swissborg.lithium.WorldView.SelfStatus.SelfStatus
 import com.swissborg.lithium.implicits._
 import com.swissborg.lithium.reachability._
-import io.circe.Encoder
-import io.circe.generic.semiauto.deriveEncoder
 
 import scala.collection.immutable.SortedSet
 
@@ -215,28 +212,9 @@ final private[lithium] case class WorldView private (selfUniqueAddress: UniqueAd
     } else {
       this
     }
-
-  lazy val simple: Simple = Simple(
-    selfUniqueAddress,
-    reachableNodes.toList.map(n => SimpleMember.fromMember(n.member)),
-    indirectlyConnectedNodes.toList.map(n => SimpleMember.fromMember(n.member)),
-    unreachableNodes.toList.map(n => SimpleMember.fromMember(n.member))
-  )
 }
 
 private[lithium] object WorldView {
-  final case class Simple(selfUniqueAddress: UniqueAddress,
-                          reachableMembers: List[SimpleMember],
-                          indirectlyConnectedMembers: List[SimpleMember],
-                          unreachableMembers: List[SimpleMember])
-
-  object Simple {
-    implicit val simpleWorldViewEncoder: Encoder[Simple] = deriveEncoder
-    implicit val simpleWorldEq: Eq[Simple] = Eq.and(
-      Eq.and(Eq.and(Eq.by(_.reachableMembers), Eq.by(_.unreachableMembers)), Eq.by(_.indirectlyConnectedMembers)),
-      Eq.by(_.selfUniqueAddress)
-    )
-  }
 
   /**
    * Create an empty world view.
