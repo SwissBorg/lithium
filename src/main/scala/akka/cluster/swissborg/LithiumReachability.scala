@@ -1,6 +1,5 @@
 package akka.cluster.swissborg
 
-import akka.cluster.Reachability.Record
 import akka.cluster._
 
 sealed abstract class LithiumReachability {
