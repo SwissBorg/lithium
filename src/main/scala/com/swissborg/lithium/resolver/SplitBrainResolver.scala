@@ -6,6 +6,7 @@ import akka.actor._
 import akka.cluster._
 import cats.effect.SyncIO
 import cats.implicits._
+import com.swissborg.lithium.implicits._
 import com.swissborg.lithium.reporter._
 import com.swissborg.lithium.strategy._
 
@@ -38,6 +39,7 @@ private[lithium] class SplitBrainResolver(private val _strategy: Strategy[SyncIO
 
   private val cluster: Cluster                 = Cluster(context.system)
   private val selfUniqueAddress: UniqueAddress = cluster.selfUniqueAddress
+  private val selfMember: Member               = cluster.selfMember
 
   private val strategy: Union[SyncIO, Strategy, IndirectlyConnected] =
     new Union(_strategy, new IndirectlyConnected)
@@ -47,20 +49,42 @@ private[lithium] class SplitBrainResolver(private val _strategy: Strategy[SyncIO
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
   override def receive: Receive = {
     case SplitBrainResolver.ResolveSplitBrain(worldView) =>
-      resolveSplitBrain(worldView).unsafeRunSync()
+      cluster.state.leader match {
+        case Some(leader) if leader === selfUniqueAddress.address =>
+          resolveSplitBrain(worldView, false).unsafeRunSync()
+
+        case None =>
+          // There is no leader, only down self if part of the nodes to down
+          resolveSplitBrain(worldView, true).unsafeRunSync()
+
+        case _ =>
+          // member is not the leader, do nothing.
+          log.debug("[{}}] is not the leader. The leader will handle the split-brain.", selfMember)
+      }
 
     case SplitBrainResolver.DownAll(worldView) =>
-      downAll(worldView).unsafeRunSync()
+      cluster.state.leader match {
+        case Some(leader) if leader === selfUniqueAddress.address =>
+          downAll(worldView, false).unsafeRunSync()
+
+        case None =>
+          // There is no leader, only down self if part of the nodes to down
+          downAll(worldView, true).unsafeRunSync()
+
+        case _ =>
+          // member is not the leader, do nothing.
+          log.debug("[{}}] is not the leader. The leader will down all the nodes.", selfMember)
+      }
   }
 
   /**
    * Handle the partition using the [[Union]] of the configured
    * strategy and the [[IndirectlyConnected]].
    */
-  private def resolveSplitBrain(worldView: WorldView): SyncIO[Unit] =
+  private def resolveSplitBrain(worldView: WorldView, downSelfOnly: Boolean): SyncIO[Unit] =
     for {
       _ <- SyncIO(
-        log.info(
+        log.warning(
           """[{}] Received request to handle a split-brain...
             |-- Worldview --
             |Reachable nodes:
@@ -70,22 +94,22 @@ private[lithium] class SplitBrainResolver(private val _strategy: Strategy[SyncIO
             |Indirectly-connected nodes:
             |  {}
             |""".stripMargin,
-          selfUniqueAddress,
+          selfMember,
           worldView.reachableNodes.mkString_("\n  "),
           worldView.unreachableNodes.mkString_("\n  "),
           worldView.indirectlyConnectedNodes.mkString_("\n  ")
         )
       )
-      _ <- runStrategy(strategy, worldView)
+      _ <- runStrategy(strategy, worldView, downSelfOnly)
     } yield ()
 
   /**
    * Handle the partition by downing all the members.
    */
-  private def downAll(worldView: WorldView): SyncIO[Unit] =
+  private def downAll(worldView: WorldView, downSelfOnly: Boolean): SyncIO[Unit] =
     for {
       _ <- SyncIO(
-        log.info(
+        log.warning(
           """[{}] Received request to down all the nodes...
             |-- Worldview --
             |Reachable nodes:
@@ -95,13 +119,13 @@ private[lithium] class SplitBrainResolver(private val _strategy: Strategy[SyncIO
             |Indirectly-connected nodes:
             |  {}
             |""".stripMargin,
-          selfUniqueAddress,
+          selfMember,
           worldView.reachableNodes.mkString_("\n  "),
           worldView.unreachableNodes.mkString_("\n  "),
           worldView.indirectlyConnectedNodes.mkString_("\n  ")
         )
       )
-      _ <- runStrategy(downAll, worldView)
+      _ <- runStrategy(downAll, worldView, downSelfOnly)
     } yield ()
 
   /**
@@ -110,16 +134,35 @@ private[lithium] class SplitBrainResolver(private val _strategy: Strategy[SyncIO
    * Enable `nonJoiningOnly` so that joining and weakly-up
    * members do not run the strategy.
    */
-  private def runStrategy(strategy: Strategy[SyncIO], worldView: WorldView): SyncIO[Unit] = {
-    def execute(decision: Decision): SyncIO[Unit] =
-      for {
-        _ <- SyncIO(
-          log.info("""[{}] Downing the nodes:
-                     |  {}""".stripMargin, selfUniqueAddress, Decision.allNodesToDown(decision).mkString_("\n  "))
-        )
-        _ <- decision.nodesToDown.toList.traverse_(node => SyncIO(cluster.down(node.address)))
+  private def runStrategy(strategy: Strategy[SyncIO], worldView: WorldView, downSelfOnly: Boolean): SyncIO[Unit] = {
+    def execute(decision: Decision): SyncIO[Unit] = {
 
-      } yield ()
+      val nodesToDown =
+        if (downSelfOnly) decision.nodesToDown.filter(_.uniqueAddress === selfUniqueAddress)
+        else decision.nodesToDown
+
+      if (nodesToDown.nonEmpty) {
+        for {
+          _ <- SyncIO(
+            log.warning(
+              """[{}] Downing the nodes:
+                |  {}{}
+                |""".stripMargin,
+              selfMember,
+              nodesToDown.mkString_("\n  "),
+              if (downSelfOnly) "\nNote: no leader, only the self node will be downed." else ""
+            )
+          )
+          _ <- nodesToDown.toList.traverse_(node => SyncIO(cluster.down(node.address)))
+        } yield ()
+      } else {
+        SyncIO(
+          log.warning("[{}] No nodes to down. {}",
+                      selfMember,
+                      if (downSelfOnly) "\nNote: no leader, only the self node can be downed." else "")
+        )
+      }
+    }
 
     strategy
       .takeDecision(worldView)

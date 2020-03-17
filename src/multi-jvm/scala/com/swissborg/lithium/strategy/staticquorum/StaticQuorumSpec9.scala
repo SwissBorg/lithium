@@ -20,7 +20,7 @@ class StaticQuorumSpec9MultiJvmNode9  extends StaticQuorumSpec9
 class StaticQuorumSpec9MultiJvmNode10 extends StaticQuorumSpec9
 
 /**
- * Node2 and node3 are indirectly connected in a ten node cluster
+ * Node8 and node9 are indirectly connected in a ten node cluster
  * Node9 and node10 are indirectly connected in a ten node cluster
  */
 sealed abstract class StaticQuorumSpec9 extends TenNodeSpec("StaticQuorum", StaticQuorumSpec3Config) {
