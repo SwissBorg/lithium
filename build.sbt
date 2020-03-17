@@ -45,7 +45,7 @@ scalacOptions ++=
     case _             => Seq()
   })
 
-val akkaVersion                = "2.6.3"
+val akkaVersion                = "2.6.4"
 val catsVersion                = "2.1.1"
 val catsEffectVersion          = "2.1.2"
 val scalacheckVersion          = "1.14.3"
