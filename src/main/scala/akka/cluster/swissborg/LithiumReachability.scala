@@ -15,6 +15,11 @@ sealed abstract class LithiumReachability {
    * Removes the records mentioning any of the `nodes`.
    */
   def remove(nodes: Set[UniqueAddress]): LithiumReachability
+
+  /**
+   * Removes the observations of the `nodes`
+   */
+  def removeObservers(nodes: Set[UniqueAddress]): LithiumReachability
 }
 
 object LithiumReachability {
@@ -30,6 +35,9 @@ object LithiumReachability {
     override def isReachable(node: UniqueAddress): Boolean = r.isReachable(node)
 
     override def remove(nodes: Set[UniqueAddress]): LithiumReachability = fromReachability(r.remove(nodes))
+
+    override def removeObservers(nodes: Set[UniqueAddress]): LithiumReachability =
+      fromReachability(r.removeObservers(nodes))
   }
 
   // Used for testing
@@ -58,5 +66,20 @@ object LithiumReachability {
               }
           }
         )
+
+      override def removeObservers(nodes: Set[UniqueAddress]): LithiumReachability =
+        if (nodes.isEmpty) this
+        else {
+          val (newReachableNodes, updatedOserversGroupedByUnreachable) = observersGroupedByUnreachable.foldLeft(
+            (Set.empty[UniqueAddress], Map.empty[UniqueAddress, Set[UniqueAddress]])
+          ) {
+            case ((reachableNodes, observersGroupedByUnreachable), (unreachable, observers)) =>
+              val observersLeft = observers -- nodes
+              if (observersLeft.isEmpty) (reachableNodes + unreachable, observersGroupedByUnreachable)
+              else (reachableNodes, observersGroupedByUnreachable + (unreachable -> observersLeft))
+          }
+
+          LithiumReachability(reachableNodes ++ newReachableNodes, updatedOserversGroupedByUnreachable)
+        }
     }
 }
