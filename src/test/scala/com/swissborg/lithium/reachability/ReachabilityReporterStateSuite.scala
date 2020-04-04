@@ -169,11 +169,7 @@ class ReachabilityReporterStateSuite extends AnyWordSpec with Matchers {
       } yield events
 
       val events = getEvents
-        .runA(
-          ReachabilityReporterState.fromSnapshot(CurrentClusterState(members = SortedSet(aaMember, bbMember, ccMember),
-                                                                     seenBy = Set(aa.address, cc.address)),
-                                                 defaultDc)
-        )
+        .runA(ReachabilityReporterState(aaMember.dataCenter).withMembers(Set(aaMember, bbMember, ccMember)))
         .value
 
       events.toSet should ===(Set(NodeIndirectlyConnected(aa), NodeIndirectlyConnected(cc), NodeUnreachable(bb)))
@@ -193,11 +189,7 @@ class ReachabilityReporterStateSuite extends AnyWordSpec with Matchers {
       } yield events
 
       val events = getEvents
-        .runA(
-          ReachabilityReporterState.fromSnapshot(CurrentClusterState(members = SortedSet(aaMember, bbMember, ccMember),
-                                                                     seenBy = Set(aa.address, cc.address)),
-                                                 defaultDc)
-        )
+        .runA(ReachabilityReporterState(aaMember.dataCenter).withMembers(Set(aaMember, bbMember, ccMember)))
         .value
 
       events.toSet should ===(Set(NodeUnreachable(bb)))

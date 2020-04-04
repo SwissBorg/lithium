@@ -10,9 +10,10 @@ import cats.data._
 import cats.effect._
 import cats.implicits._
 import cats.{~>, Eval}
-import com.swissborg.lithium.implicits._
 import com.swissborg.lithium.internals._
 import com.swissborg.lithium.reporter.SplitBrainReporter._
+
+import scala.concurrent.duration._
 
 /**
  * Actor reporting the reachability status of cluster members based on `akka.cluster.Reachability`.
@@ -22,24 +23,14 @@ import com.swissborg.lithium.reporter.SplitBrainReporter._
 private[lithium] class ReachabilityReporter(private val splitBrainReporter: ActorRef)
     extends Actor
     with ActorLogging
-    with Stash {
+    with Stash
+    with Timers {
 
   import ReachabilityReporter._
 
   private val cluster = Cluster(context.system)
 
-  private val selfUniqueAddress = cluster.selfUniqueAddress
-
-  override def receive: Receive = initializing
-
-  @SuppressWarnings(Array("org.wartremover.warts.Any"))
-  private def initializing: Receive = {
-    case snapshot: CurrentClusterState =>
-      unstashAll()
-      context.become(active(ReachabilityReporterState.fromSnapshot(snapshot, cluster.selfDataCenter)))
-
-    case _ => stash()
-  }
+  override def receive: Receive = active(ReachabilityReporterState(cluster.selfDataCenter))
 
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
   private def active(state: ReachabilityReporterState): Receive = {
@@ -49,11 +40,8 @@ private[lithium] class ReachabilityReporter(private val splitBrainReporter: Acto
     case LithiumSeenChanged(_, seenBy) =>
       context.become(active(updateSeenBy(seenBy).runS(state).unsafeRunSync()))
 
-    case MemberJoined(m) =>
-      context.become(active(add(m).runS(state).unsafeRunSync()))
-
-    case MemberRemoved(m, _) =>
-      context.become(active(remove(m.uniqueAddress).runS(state).unsafeRunSync()))
+    case RetrieveSnapshot =>
+      context.become(active(updateFromSnapshot(cluster.state).runS(state).unsafeRunSync()))
   }
 
   private def updateReachability(reachability: LithiumReachability): F[Unit] =
@@ -68,32 +56,21 @@ private[lithium] class ReachabilityReporter(private val splitBrainReporter: Acto
       _      <- events.traverse_(sendToReporter)
     } yield ()
 
-  private def add(member: Member): F[Unit] = StateT.modify(_.withMember(member))
+  private def updateFromSnapshot(snapshot: CurrentClusterState): F[Unit] =
+    StateT.modify(_.withMembers(snapshot.members))
 
   private def sendToReporter(reachabilityEvent: NodeReachabilityEvent): F[Unit] =
     StateT.liftF(SyncIO(splitBrainReporter ! reachabilityEvent))
 
-  /**
-   * Register the node as removed.
-   *
-   * If the removed node is the current one the actor will stop itself.
-   */
-  private def remove(node: UniqueAddress): F[Unit] =
-    if (node === selfUniqueAddress) {
-      // This node is being stopped. Kill the actor
-      // to stop any further updates.
-      StateT.liftF(SyncIO(context.stop(self)))
-    } else {
-      StateT.modify(_.remove(node))
-    }
-
   override def preStart(): Unit = {
-    cluster.subscribe(self, classOf[MemberEvent])
+    timers.startTimerAtFixedRate(RetrieveSnapshot, RetrieveSnapshot, 100.millis)
+    cluster.sendCurrentClusterState(self)
     ClusterInternals(context.system).subscribeToReachabilityChanged(self)
     ClusterInternals(context.system).subscribeToSeenChanged(self)
   }
 
   override def postStop(): Unit = {
+    timers.cancelAll()
     cluster.unsubscribe(self)
     ClusterInternals(context.system).unsubscribe(self)
   }
@@ -102,7 +79,7 @@ private[lithium] class ReachabilityReporter(private val splitBrainReporter: Acto
 private[lithium] object ReachabilityReporter {
   private type F[A] = StateT[SyncIO, ReachabilityReporterState, A]
 
-  case object RetrieveMembership
+  case object RetrieveSnapshot
 
   def props(sendTo: ActorRef): Props = Props(new ReachabilityReporter(sendTo))
 

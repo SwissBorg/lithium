@@ -142,19 +142,19 @@ private[lithium] class SplitBrainReporter(private val splitBrainResolver: ActorR
   private def withReachableNode(node: UniqueAddress): F[Unit] =
     for {
       _ <- modifyAndManageStability(_.withReachableNode(node))
-      _ <- StateT.liftF(SyncIO(log.info("[{}] became reachable.", node)))
+      _ <- StateT.liftF(SyncIO(log.info("[{}] became reachable.", node.address)))
     } yield ()
 
   private def withUnreachableNode(node: UniqueAddress): F[Unit] =
     for {
       _ <- modifyAndManageStability(_.withUnreachableNode(node))
-      _ <- StateT.liftF(SyncIO(log.warning("[{}] became unreachable.", node)))
+      _ <- StateT.liftF(SyncIO(log.warning("[{}] became unreachable.", node.address)))
     } yield ()
 
   private def withIndirectlyConnectedNode(node: UniqueAddress): F[Unit] =
     for {
       _ <- modifyAndManageStability(_.withIndirectlyConnectedNode(node))
-      _ <- StateT.liftF(SyncIO(log.warning("[{}] became indirectly-connected.", node)))
+      _ <- StateT.liftF(SyncIO(log.warning("[{}] became indirectly-connected.", node.address)))
     } yield ()
 
   private val scheduleClusterIsStable: SyncIO[Unit] =

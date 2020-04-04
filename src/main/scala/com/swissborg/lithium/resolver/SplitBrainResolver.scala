@@ -59,7 +59,7 @@ private[lithium] class SplitBrainResolver(private val _strategy: Strategy[SyncIO
 
         case _ =>
           // member is not the leader, do nothing.
-          log.debug("[{}}] is not the leader. The leader will handle the split-brain.", selfMember)
+          log.debug("[{}}] is not the leader. The leader will handle the split-brain.", selfMember.address)
       }
 
     case SplitBrainResolver.DownAll(worldView) =>
@@ -73,7 +73,7 @@ private[lithium] class SplitBrainResolver(private val _strategy: Strategy[SyncIO
 
         case _ =>
           // member is not the leader, do nothing.
-          log.debug("[{}}] is not the leader. The leader will down all the nodes.", selfMember)
+          log.debug("[{}}] is not the leader. The leader will down all the nodes.", selfMember.address)
       }
   }
 
@@ -94,7 +94,7 @@ private[lithium] class SplitBrainResolver(private val _strategy: Strategy[SyncIO
             |Indirectly-connected nodes:
             |  {}
             |""".stripMargin,
-          selfMember,
+          selfMember.address,
           worldView.reachableNodes.mkString_("\n  "),
           worldView.unreachableNodes.mkString_("\n  "),
           worldView.indirectlyConnectedNodes.mkString_("\n  ")
@@ -119,7 +119,7 @@ private[lithium] class SplitBrainResolver(private val _strategy: Strategy[SyncIO
             |Indirectly-connected nodes:
             |  {}
             |""".stripMargin,
-          selfMember,
+          selfMember.address,
           worldView.reachableNodes.mkString_("\n  "),
           worldView.unreachableNodes.mkString_("\n  "),
           worldView.indirectlyConnectedNodes.mkString_("\n  ")
@@ -148,7 +148,7 @@ private[lithium] class SplitBrainResolver(private val _strategy: Strategy[SyncIO
               """[{}] Downing the nodes:
                 |  {}{}
                 |""".stripMargin,
-              selfMember,
+              selfMember.address,
               nodesToDown.mkString_("\n  "),
               if (downSelfOnly) "\nNote: no leader, only the self node will be downed." else ""
             )
@@ -158,7 +158,7 @@ private[lithium] class SplitBrainResolver(private val _strategy: Strategy[SyncIO
       } else {
         SyncIO(
           log.warning("[{}] No nodes to down. {}",
-                      selfMember,
+                      selfMember.address,
                       if (downSelfOnly) "\nNote: no leader, only the self node can be downed." else "")
         )
       }
@@ -168,7 +168,7 @@ private[lithium] class SplitBrainResolver(private val _strategy: Strategy[SyncIO
       .takeDecision(worldView)
       .flatMap(execute)
       .handleErrorWith(
-        err => SyncIO(log.error(err, "[{}] An error occurred during the resolution.", selfUniqueAddress))
+        err => SyncIO(log.error(err, "[{}] An error occurred during the resolution.", selfMember.address))
       )
   }
 }
