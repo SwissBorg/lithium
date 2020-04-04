@@ -13,7 +13,7 @@ without needing any intervention.
 ## Getting started
 
 ```scala
-libraryDependencies += "com.swissborg" %% "lithium" % "0.11.0"
+libraryDependencies += "com.swissborg" %% "lithium" % "0.11.1"
 ```
 
 ## Stable-After
