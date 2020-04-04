@@ -3,7 +3,6 @@ package com.swissborg.lithium
 package reachability
 
 import akka.actor.Address
-import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.ClusterSettings.DataCenter
 import akka.cluster.swissborg.LithiumReachability
 import akka.cluster.swissborg.implicits._
@@ -21,7 +20,7 @@ import scala.collection.immutable.SortedSet
 final private[reachability] case class ReachabilityReporterState private (
   selfDataCenter: DataCenter,
   members: SortedSet[Member],
-  otherDcMembers: SortedSet[UniqueAddress],
+  otherDcMembers: Set[UniqueAddress],
   latestReachability: Option[LithiumReachability],
   latestSeenBy: Option[Set[Address]],
   latestReceived: Option[LatestReceived],
@@ -29,6 +28,18 @@ final private[reachability] case class ReachabilityReporterState private (
   latestUnreachableNodes: Set[UniqueAddress],
   latestReachableNodes: Set[UniqueAddress]
 ) {
+  private[reachability] def withMembers(members: Set[Member]): ReachabilityReporterState = {
+    // todo make this quicker
+    val removed = (members.map(_.uniqueAddress) ++ otherDcMembers) -- members.map(_.uniqueAddress)
+    copy(
+      members = SortedSet(members.filter(_.dataCenter === selfDataCenter).toSeq: _*),
+      otherDcMembers = otherDcMembers -- removed,
+      latestIndirectlyConnectedNodes = latestIndirectlyConnectedNodes -- removed,
+      latestUnreachableNodes = latestUnreachableNodes -- removed,
+      latestReachableNodes = latestReachableNodes -- removed
+    )
+  }
+
   private[reachability] def withMember(member: Member): ReachabilityReporterState =
     if (member.dataCenter === selfDataCenter) {
       copy(members = members + member)
@@ -71,10 +82,6 @@ private[reachability] object ReachabilityReporterState {
                               Set.empty,
                               Set.empty,
                               Set.empty)
-
-  def fromSnapshot(snapshot: CurrentClusterState, selfDataCenter: DataCenter): ReachabilityReporterState =
-    snapshot.members.foldLeft(ReachabilityReporterState(selfDataCenter))(_.withMember(_))
-
   def withSeenBy(seenBy: Set[Address]): State[ReachabilityReporterState, List[NodeReachabilityEvent]] =
     State
       .get[ReachabilityReporterState]
