@@ -4,6 +4,7 @@ package reachability
 
 import akka.actor.Address
 import akka.cluster.ClusterSettings.DataCenter
+import akka.cluster.MemberStatus.Down
 import akka.cluster.swissborg.LithiumReachability
 import akka.cluster.swissborg.implicits._
 import akka.cluster.{Member, UniqueAddress}
@@ -19,7 +20,7 @@ import scala.collection.immutable.SortedSet
  */
 final private[reachability] case class ReachabilityReporterState private (
   selfDataCenter: DataCenter,
-  members: SortedSet[Member],
+  selfDcMembers: SortedSet[Member],
   otherDcMembers: Set[UniqueAddress],
   latestReachability: Option[LithiumReachability],
   latestSeenBy: Option[Set[Address]],
@@ -28,36 +29,25 @@ final private[reachability] case class ReachabilityReporterState private (
   latestUnreachableNodes: Set[UniqueAddress],
   latestReachableNodes: Set[UniqueAddress]
 ) {
-  private[reachability] def withMembers(members: Set[Member]): ReachabilityReporterState = {
+  def withMembers(members: Set[Member]): ReachabilityReporterState = {
     // todo make this quicker
-    val removed = (members.map(_.uniqueAddress) ++ otherDcMembers) -- members.map(_.uniqueAddress)
+    val removed = (selfDcMembers.map(_.uniqueAddress) ++ otherDcMembers) -- members.map(_.uniqueAddress)
     copy(
-      members = SortedSet(members.filter(_.dataCenter === selfDataCenter).toSeq: _*),
-      otherDcMembers = otherDcMembers -- removed,
+      selfDcMembers = SortedSet(members.filter(_.dataCenter === selfDataCenter).toSeq: _*),
+      otherDcMembers = members.collect {
+        case member if member.dataCenter =!= selfDataCenter => member.uniqueAddress
+      },
       latestIndirectlyConnectedNodes = latestIndirectlyConnectedNodes -- removed,
       latestUnreachableNodes = latestUnreachableNodes -- removed,
       latestReachableNodes = latestReachableNodes -- removed
     )
   }
 
-  private[reachability] def withMember(member: Member): ReachabilityReporterState =
-    if (member.dataCenter === selfDataCenter) {
-      copy(members = members + member)
-    } else {
-      copy(otherDcMembers = otherDcMembers + member.uniqueAddress)
-    }
+  def withSeenBy(addresses: Set[Address]): ReachabilityReporterState =
+    copy(latestSeenBy = addresses.some, latestReceived = LatestReceived.SeenBy.some)
 
-  /**
-   * Remove the node.
-   */
-  private[reachability] def remove(node: UniqueAddress): ReachabilityReporterState =
-    copy(
-      members = members.filterNot(m => m.uniqueAddress === node),
-      otherDcMembers = otherDcMembers - node, // no need to check DC
-      latestIndirectlyConnectedNodes = latestIndirectlyConnectedNodes - node,
-      latestUnreachableNodes = latestUnreachableNodes - node,
-      latestReachableNodes = latestReachableNodes - node
-    )
+  def withReachability(reachability: LithiumReachability): ReachabilityReporterState =
+    copy(latestReachability = reachability.some, latestReceived = LatestReceived.Reachability.some)
 }
 
 private[reachability] object ReachabilityReporterState {
@@ -89,11 +79,11 @@ private[reachability] object ReachabilityReporterState {
         s =>
           s.latestReceived.fold(ignore) {
             case LatestReceived.SeenBy =>
-              s.latestReachability.fold(ignore)(updatedReachabilityEvents(_, seenBy, s.members))
+              s.latestReachability.fold(ignore)(updatedReachabilityEvents(_, seenBy, s.selfDcMembers))
             case LatestReceived.Reachability => ignore
           }
       )
-      .modify(_.copy(latestSeenBy = Some(seenBy), latestReceived = Some(LatestReceived.SeenBy)))
+      .modify(_.withSeenBy(seenBy))
 
   def withReachability(
     reachability: LithiumReachability
@@ -103,20 +93,26 @@ private[reachability] object ReachabilityReporterState {
       .flatMap(
         s =>
           s.latestReceived
-            .fold(ignore)(_ => s.latestSeenBy.fold(ignore)(updatedReachabilityEvents(reachability, _, s.members)))
+            .fold(ignore)(_ => s.latestSeenBy.fold(ignore)(updatedReachabilityEvents(reachability, _, s.selfDcMembers)))
       )
-      .modify(_.copy(latestReachability = Some(reachability), latestReceived = Some(LatestReceived.Reachability)))
+      .modify(_.withReachability(reachability))
 
   private val ignore = State.empty[ReachabilityReporterState, List[NodeReachabilityEvent]]
 
   private def updatedReachabilityEvents(
     reachability: LithiumReachability,
     seenBy: Set[Address],
-    members: SortedSet[Member]
+    selfDcMembers: SortedSet[Member]
   ): State[ReachabilityReporterState, List[NodeReachabilityEvent]] = State { s =>
     // Only keep reachability information made by members and of members
-    // in this data-center.
-    val reachabilityNoOutsideNodes = reachability.remove(s.otherDcMembers)
+    // in this data-center. Additionally, ignore the observations of members
+    // that have been downed.
+    val reachabilityNoOutsideNodes =
+      reachability
+        .removeObservers(selfDcMembers.collect {
+          case m if m.status === Down => m.uniqueAddress
+        } ++ s.otherDcMembers)
+        .remove(s.otherDcMembers)
 
     // Nodes that have seen the current snapshot and were detected as unreachable.
     val suspiciousUnreachableNodes =
@@ -133,7 +129,7 @@ private[reachability] object ReachabilityReporterState {
 
     val unreachableNodes = reachabilityNoOutsideNodes.allUnreachable -- indirectlyConnectedNodes
 
-    val reachableNodes = members
+    val reachableNodes = selfDcMembers
       .collect {
         case m if m.dataCenter === s.selfDataCenter && reachabilityNoOutsideNodes.isReachable(m.uniqueAddress) =>
           m.uniqueAddress
