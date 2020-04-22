@@ -64,14 +64,12 @@ private[lithium] class ReachabilityReporter(private val splitBrainReporter: Acto
 
   override def preStart(): Unit = {
     timers.startTimerAtFixedRate(RetrieveSnapshot, RetrieveSnapshot, 100.millis)
-    cluster.sendCurrentClusterState(self)
     ClusterInternals(context.system).subscribeToReachabilityChanged(self)
     ClusterInternals(context.system).subscribeToSeenChanged(self)
   }
 
   override def postStop(): Unit = {
     timers.cancelAll()
-    cluster.unsubscribe(self)
     ClusterInternals(context.system).unsubscribe(self)
   }
 }
