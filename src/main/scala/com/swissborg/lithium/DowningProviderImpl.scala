@@ -6,7 +6,7 @@ import akka.actor.{ActorSystem, Props}
 import akka.cluster.{Cluster, DowningProvider}
 import akka.event.Logging
 import cats.effect.SyncIO
-import cats.implicits._
+import cats.syntax.all._
 import com.swissborg.lithium
 import com.swissborg.lithium.resolver.SplitBrainResolver
 import com.swissborg.lithium.strategy.Strategy

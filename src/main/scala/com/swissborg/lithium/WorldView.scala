@@ -4,7 +4,7 @@ import akka.cluster.ClusterEvent._
 import akka.cluster.MemberStatus._
 import akka.cluster.{Member, UniqueAddress}
 import cats.data.NonEmptySet
-import cats.implicits._
+import cats.syntax.all._
 import com.swissborg.lithium.WorldView.OtherStatus.OtherStatus
 import com.swissborg.lithium.WorldView.SelfStatus.SelfStatus
 import com.swissborg.lithium.implicits._

@@ -5,7 +5,7 @@ package strategy
 import akka.cluster.Member
 import akka.cluster.MemberStatus._
 import cats._
-import cats.implicits._
+import cats.syntax.all._
 import com.swissborg.lithium.implicits._
 
 /**

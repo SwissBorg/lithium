@@ -3,7 +3,7 @@ package com.swissborg.lithium
 package strategy
 
 import cats.Id
-import cats.implicits._
+import cats.syntax.all._
 
 class IndirectlyConnectedSpec extends LithiumSpec {
   private val indirectlyConnected: IndirectlyConnected[Id] = new strategy.IndirectlyConnected[Id]

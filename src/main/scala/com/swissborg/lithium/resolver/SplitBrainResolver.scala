@@ -5,7 +5,7 @@ package resolver
 import akka.actor._
 import akka.cluster._
 import cats.effect.SyncIO
-import cats.implicits._
+import cats.syntax.all._
 import com.swissborg.lithium.implicits._
 import com.swissborg.lithium.reporter._
 import com.swissborg.lithium.strategy._

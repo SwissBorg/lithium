@@ -5,7 +5,7 @@ package strategy
 import akka.cluster.MemberStatus
 import akka.cluster.MemberStatus._
 import cats.Applicative
-import cats.implicits._
+import cats.syntax.all._
 
 /**
  * Split-brain strategy that will keep the partition containing the referee (`config.address`)

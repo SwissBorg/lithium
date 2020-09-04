@@ -3,7 +3,7 @@ package com.swissborg.lithium
 package strategy
 
 import cats.Applicative
-import cats.implicits._
+import cats.syntax.all._
 
 /**
  * Split-brain resolver strategy that will down all indirectly connected nodes.
