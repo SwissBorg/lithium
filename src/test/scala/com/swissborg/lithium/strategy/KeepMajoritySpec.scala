@@ -2,8 +2,6 @@ package com.swissborg.lithium
 
 package strategy
 
-import cats.implicits._
-
 import scala.util.Try
 
 class KeepMajoritySpec extends LithiumSpec {

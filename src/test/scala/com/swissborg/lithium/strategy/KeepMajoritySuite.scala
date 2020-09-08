@@ -6,7 +6,6 @@ import akka.actor.Address
 import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.MemberStatus.{Joining, Up, WeaklyUp}
 import akka.cluster.swissborg.TestMember
-import cats.implicits._
 import com.swissborg.lithium.strategy.Decision._
 
 import scala.collection.immutable.SortedSet

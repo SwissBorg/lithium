@@ -2,7 +2,7 @@ package com.swissborg.lithium
 
 package strategy
 
-import cats.implicits._
+import cats.syntax.all._
 import cats._
 
 /**
