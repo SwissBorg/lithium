@@ -8,7 +8,7 @@ import akka.cluster._
 import akka.cluster.swissborg._
 import cats.data._
 import cats.effect._
-import cats.implicits._
+import cats.syntax.all._
 import cats.{~>, Eval}
 import com.swissborg.lithium.internals._
 import com.swissborg.lithium.reporter.SplitBrainReporter._

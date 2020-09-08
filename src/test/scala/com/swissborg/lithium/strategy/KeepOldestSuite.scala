@@ -6,7 +6,6 @@ import akka.actor.Address
 import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.MemberStatus._
 import akka.cluster.swissborg.TestMember
-import cats.implicits._
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.collection.immutable.SortedSet

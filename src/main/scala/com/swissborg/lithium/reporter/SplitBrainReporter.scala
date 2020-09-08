@@ -8,7 +8,7 @@ import akka.cluster.MemberStatus._
 import akka.cluster._
 import cats.data.StateT
 import cats.effect.SyncIO
-import cats.implicits._
+import cats.syntax.all._
 import com.swissborg.lithium.reachability.ReachabilityStatus.Reachable
 import com.swissborg.lithium.reachability._
 import com.swissborg.lithium.resolver._

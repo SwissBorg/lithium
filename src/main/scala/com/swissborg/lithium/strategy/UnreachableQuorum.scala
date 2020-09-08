@@ -3,7 +3,7 @@ package com.swissborg.lithium
 package strategy
 
 import akka.cluster.MemberStatus.{Leaving, Up}
-import cats.implicits._
+import cats.syntax.all._
 import com.swissborg.lithium.implicits._
 
 sealed abstract private[lithium] class UnreachableQuorum

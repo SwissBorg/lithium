@@ -3,7 +3,7 @@ package com.swissborg.lithium
 import akka.actor.Address
 import akka.cluster.{Member, MemberStatus, UniqueAddress}
 import cats.{Order, Show}
-import cats.implicits._
+import cats.syntax.all._
 
 /**
  * Wrapper around a member adding the reachability information

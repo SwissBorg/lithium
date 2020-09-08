@@ -1,6 +1,6 @@
 package com.swissborg.lithium
 
-import cats.implicits._
+import cats.syntax.all._
 import cats._
 import com.swissborg.lithium.strategy._
 import com.swissborg.lithium.utils._

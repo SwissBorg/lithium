@@ -1,6 +1,6 @@
 package com.swissborg.lithium
 
-import cats.implicits._
+import cats.syntax.all._
 import cats.{Applicative, Functor, Monoid}
 import com.swissborg.lithium.ArbitraryStrategy._
 import com.swissborg.lithium.instances.ArbitraryTestInstances

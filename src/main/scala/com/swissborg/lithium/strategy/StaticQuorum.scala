@@ -4,7 +4,7 @@ package strategy
 
 import akka.cluster.MemberStatus.{Leaving, Up}
 import cats.effect.Sync
-import cats.implicits._
+import cats.syntax.all._
 import com.swissborg.lithium.implicits._
 import org.slf4j.LoggerFactory
 
