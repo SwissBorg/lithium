@@ -55,7 +55,7 @@ val scalacheckShapelessVersion = "1.2.5"
 val shapelessVersion           = "2.3.3"
 val logbackVersion             = "1.2.3"
 val slf4jApiVersion            = "1.7.30"
-val kindProjectorVersion       = "0.11.0"
+val kindProjectorVersion       = "0.11.2"
 val betterMonadicForVersion    = "0.3.1"
 
 resolvers += Resolver.sonatypeRepo("releases")
