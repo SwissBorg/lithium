@@ -1,6 +1,14 @@
 [![Build Status](https://travis-ci.org/SwissBorg/lithium.svg?branch=master)](https://travis-ci.org/SwissBorg/lithium)
 [![Maven Central](https://img.shields.io/maven-central/v/com.swissborg/lithium_2.12)](https://oss.sonatype.org/content/repositories/releases/com/swissborg/lithium_2.12/)
 
+# Archived
+
+If you were here for a split-brain resolver have a look at Akka's open-source SBR (https://doc.akka.io/docs/akka/current/split-brain-resolver.html).
+The migration should be straightforward as the Akka SBR provides the same strategies, configurations, and behaves similarly.
+
+It was decided to archive this project as it overlaps too much with the now open-sourced Akka SBR and is likely to be more battle-tested than Lithium. For any questions regarding the migration, contact be on gitter @DennisVDB.
+
+
 # Lithium - A Split-Brain Resolver for Akka-Cluster
 
 When a cluster member becomes unreachable the leader cannot perform its 
